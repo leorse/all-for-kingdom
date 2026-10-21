@@ -9,6 +9,7 @@
 //!   cargo run -- --day-seconds 10     journée de 10 s (tout le rythme de vie suit)
 //!   cargo run -- --speed 20           journée normale vue en accéléré (30 s)
 
+mod camera;
 mod input;
 mod render;
 
@@ -43,12 +44,14 @@ async fn main() {
     let mut game = Game::new(Scenario::village(), 1, config);
     game.apply(Command::Possess { player: me, character: CharacterId(0) });
 
+    let mut view = render::View::new();
+    // Le personnage que la caméra suit : le dernier incarné (elle continue de le suivre en mode AFK).
+    let mut followed: Option<CharacterId> = None;
+
     // Pas fixe pour la simulation : le comportement ne dépend pas de la vitesse d'affichage.
     let mut accumulator = 0.0_f32;
 
     loop {
-        let view = render::View::fit(&game);
-
         let input = input::poll(me, &view, &game);
         if input.quit {
             break;
@@ -71,6 +74,15 @@ async fn main() {
             game.step(TICK);
             accumulator -= TICK;
         }
+
+        // la caméra : glisse vers un nouveau personnage incarné, puis le suit
+        let mut recenter = false;
+        if let Some(id) = game.possessed_by(me) {
+            recenter = followed.is_some() && followed != Some(id);
+            followed = Some(id);
+        }
+        let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
+        view.update(&game, target, recenter, get_frame_time());
 
         render::draw(&game, &view, me, speed);
         next_frame().await;

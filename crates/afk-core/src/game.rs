@@ -354,8 +354,8 @@ mod tests {
     const KING: CharacterId = CharacterId(2);
     const WARLORD: CharacterId = CharacterId(3);
     /// Le paysan démarre sur cette parcelle, tourné vers le bas : il fait donc face à la suivante.
-    const PLOT_HERE: TilePos = TilePos::new(3, 4);
-    const PLOT_FRONT: TilePos = TilePos::new(3, 5);
+    const PLOT_HERE: TilePos = TilePos::new(4, 5);
+    const PLOT_FRONT: TilePos = TilePos::new(4, 6);
 
     /// Nombre de pas simulés avant que `done` devienne vrai.
     fn ticks_until(game: &mut Game, max_secs: f32, done: impl Fn(&Game) -> bool) -> u32 {
@@ -414,21 +414,21 @@ mod tests {
     fn find_path_is_connected_and_walkable() {
         let scenario = Scenario::village();
         let map = &scenario.map;
-        let path = map.find_path(TilePos::new(22, 5), TilePos::new(5, 14));
+        let path = map.find_path(TilePos::new(38, 15), TilePos::new(21, 24));
         assert!(!path.is_empty(), "la forge doit être reliée à la caserne");
-        let mut prev = TilePos::new(22, 5);
+        let mut prev = TilePos::new(38, 15);
         for p in path {
             assert!(!map.get(p).is_solid());
             assert_eq!((p.x - prev.x).abs() + (p.y - prev.y).abs(), 1);
             prev = p;
         }
-        assert_eq!(prev, TilePos::new(5, 14));
+        assert_eq!(prev, TilePos::new(21, 24));
     }
 
     #[test]
     fn find_path_to_a_wall_is_empty() {
         let map = Scenario::village().map;
-        assert!(map.find_path(TilePos::new(15, 10), TilePos::new(12, 1)).is_empty());
+        assert!(map.find_path(TilePos::new(31, 20), TilePos::new(28, 11)).is_empty());
     }
 
     #[test]
@@ -454,7 +454,7 @@ mod tests {
         game.apply(Command::Move { player: P0, dir: Vec2::new(0.0, -1.0) });
         run(&mut game, 5.0);
         let king = game.character(CharacterId(2)).unwrap();
-        assert!(king.pos.y >= 2.0 + crate::character::BODY_HALF - 0.01, "le roi a traversé le mur : {:?}", king.pos);
+        assert!(king.pos.y >= 12.0 + crate::character::BODY_HALF - 0.01, "le roi a traversé le mur : {:?}", king.pos);
         assert!(!game.map().get(king.tile()).is_solid());
     }
 
@@ -589,8 +589,8 @@ mod tests {
             g.apply(Command::Move { player: P0, dir: Vec2::new(1.0, 0.0) });
             run(g, 1.0);
         }
-        let d_fresh = fresh.characters[FARMER.0].pos.x - 3.5;
-        let d_tired = tired.characters[FARMER.0].pos.x - 3.5;
+        let d_fresh = fresh.characters[FARMER.0].pos.x - 4.5;
+        let d_tired = tired.characters[FARMER.0].pos.x - 4.5;
         assert!(d_tired < d_fresh * 0.9, "la fatigue ne ralentit pas : {d_tired} vs {d_fresh}");
     }
 
@@ -799,7 +799,7 @@ mod tests {
     #[test]
     fn night_interrupts_the_ai_farmer_who_goes_to_bed() {
         let mut game = fast_day_game();
-        run_until(&mut game, 1, 22.0);
+        run_until(&mut game, 1, 23.5); // le champ est à une longue marche du lit
         let farmer = &game.characters[FARMER.0];
         assert!(farmer.asleep && farmer.work.is_none());
     }
@@ -878,7 +878,7 @@ mod tests {
     // ------------------------------------------------------------ le forgeron
 
     const SMITH: CharacterId = CharacterId(1);
-    const ANVIL: TilePos = TilePos::new(23, 5);
+    const ANVIL: TilePos = TilePos::new(39, 15);
 
     #[test]
     fn scenario_has_one_anvil_and_beds_are_distinct() {
@@ -919,7 +919,7 @@ mod tests {
         assert!(game.characters[SMITH.0].work.is_none(), "il ne doit plus forger sans fer");
         // et le joueur non plus : rien à faire à l'enclume
         game.apply(Command::Possess { player: P0, character: SMITH });
-        game.characters[SMITH.0].pos = TilePos::new(22, 5).center();
+        game.characters[SMITH.0].pos = TilePos::new(38, 15).center();
         game.characters[SMITH.0].facing = crate::character::Facing::Right;
         assert_eq!(game.available_work(SMITH), None);
     }
@@ -949,7 +949,7 @@ mod tests {
     fn only_the_blacksmith_can_use_the_anvil_and_the_blacksmith_cannot_till() {
         let mut game = new_game();
         // un paysan à côté de l'enclume, tourné vers elle : rien à faire
-        game.characters[FARMER.0].pos = TilePos::new(22, 5).center();
+        game.characters[FARMER.0].pos = TilePos::new(38, 15).center();
         game.characters[FARMER.0].facing = crate::character::Facing::Right;
         game.apply(Command::Possess { player: P0, character: FARMER });
         assert_eq!(game.available_work(FARMER), None);
@@ -966,14 +966,14 @@ mod tests {
         use crate::scenario::CharacterSpec;
 
         let mut scenario = Scenario::village();
-        let home = TilePos::new(28, 4); // un second lit dans la maison du forgeron
+        let home = TilePos::new(56, 5); // un second lit dans la maison du forgeron
         scenario.map.set(home, Tile::Bed);
         scenario.characters.push(CharacterSpec {
             name: "Forgeron 2".to_string(),
             role: Role::Blacksmith,
             home,
             night_shift: false,
-            work_spots: vec![TilePos::new(24, 5)],
+            work_spots: vec![TilePos::new(40, 15)],
         });
         let mut game = Game::new(scenario, 1, Config::default());
         run(&mut game, 1.0); // le premier forgeron (IA) est déjà au travail sur l'enclume
@@ -982,7 +982,7 @@ mod tests {
         // le second forgeron, joueur, juste de l'autre côté de l'enclume, la regarde : c'est occupé
         let second = id_of(&game, "Forgeron 2");
         game.apply(Command::Possess { player: P0, character: second });
-        game.characters[second.0].pos = TilePos::new(24, 5).center();
+        game.characters[second.0].pos = TilePos::new(40, 15).center();
         game.characters[second.0].facing = Facing::Left;
         assert_eq!(game.available_work(second), None, "l'enclume est déjà occupée");
 

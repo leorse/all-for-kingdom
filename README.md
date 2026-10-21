@@ -25,11 +25,20 @@ Tous les autres réglages (heure de départ, aube, crépuscule, rythme de fatigu
 | Touche | Action |
 |---|---|
 | ZQSD / WASD / flèches | bouger |
-| Tab, 1 à 9, clic | incarner un personnage |
+| Tab, 1 à 9, clic | incarner un personnage (la caméra glisse jusqu'à lui) |
 | E | travailler la parcelle visée (paysan) / se coucher près de son lit / se lever / annuler le travail en cours |
 | Espace | mode AFK on/off |
 | T | vitesse de simulation (debug) |
 | Échap | quitter |
+
+## Le royaume et la caméra
+
+Le royaume (64×40 tuiles) est plus grand que l'écran : les bâtiments publics sont au centre, les maisons
+et les champs sont loin, vers les bords. Le zoom est fixe (32 px par tuile). La caméra suit le personnage
+incarné : elle glisse rapidement vers lui quand on change de personnage, puis ne défile que lorsqu'il
+s'approche du bord de l'écran. En mode AFK, elle continue de suivre le dernier personnage incarné.
+La disposition est définie dans `crates/afk-core/src/scenario.rs` ; le réglage de la caméra (durée du
+glissement, marge de suivi, zoom) est dans `crates/afk-game/src/camera.rs`.
 
 ## Règles actuelles
 

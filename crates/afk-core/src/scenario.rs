@@ -45,9 +45,10 @@ fn spec(name: &str, role: Role, home: (i32, i32), list: &[(i32, i32)]) -> Charac
 }
 
 impl Scenario {
-    /// Le petit village de départ.
+    /// Le village de départ : les bâtiments publics au centre, les maisons et les champs loin
+    /// vers les bords, reliés par de longues routes (le royaume dépasse largement l'écran).
     pub fn village() -> Scenario {
-        let (w, h) = (32, 20);
+        let (w, h) = (64, 40);
         let mut map = TileMap::new(w, h, Tile::Grass);
 
         // bordure d'eau
@@ -56,39 +57,41 @@ impl Scenario {
         map.fill_rect(0, 0, 1, h, Tile::Water);
         map.fill_rect(w - 1, 0, 1, h, Tile::Water);
 
-        // routes
-        map.fill_rect(1, 10, w - 2, 1, Tile::Path);
-        map.fill_rect(15, 6, 1, h - 7, Tile::Path);
+        // routes : la grande route est-ouest et l'axe nord-sud du château
+        map.fill_rect(1, 20, w - 2, 1, Tile::Path);
+        map.fill_rect(31, 16, 1, h - 17, Tile::Path);
 
-        // champs
-        map.fill_rect(2, 3, 8, 6, Tile::Field);
+        // champs, à l'extrémité nord-ouest du royaume
+        map.fill_rect(3, 4, 8, 6, Tile::Field);
+        map.fill_rect(7, 10, 1, 10, Tile::Path); // route des champs
 
-        // bâtiments publics : x, y, largeur, hauteur, porte
-        map.add_building(12, 1, 7, 5, TilePos::new(15, 5)); // château
-        map.add_building(20, 3, 6, 5, TilePos::new(22, 7)); // forge
-        map.add_building(3, 12, 6, 5, TilePos::new(5, 12)); // caserne
-        map.add_building(20, 12, 6, 5, TilePos::new(22, 12)); // taverne
+        // bâtiments publics, regroupés au centre : x, y, largeur, hauteur, porte
+        map.add_building(28, 11, 7, 5, TilePos::new(31, 15)); // château
+        map.add_building(36, 13, 6, 5, TilePos::new(38, 17)); // forge
+        map.add_building(19, 22, 6, 5, TilePos::new(21, 22)); // caserne
+        map.add_building(36, 22, 6, 5, TilePos::new(38, 22)); // taverne
 
         // l'enclume, au milieu de la forge
-        map.set(TilePos::new(23, 5), Tile::Anvil);
+        map.set(TilePos::new(39, 15), Tile::Anvil);
 
-        // maisons
-        map.add_building(10, 12, 5, 4, TilePos::new(12, 12)); // maison du paysan
-        map.add_building(26, 3, 5, 4, TilePos::new(28, 6)); // maison du forgeron
-        map.add_building(27, 12, 4, 4, TilePos::new(28, 12)); // maison du tavernier
+        // maisons, loin du centre
+        map.add_building(10, 26, 5, 4, TilePos::new(12, 26)); // maison du paysan (sud-ouest)
+        map.add_building(54, 4, 5, 4, TilePos::new(56, 7)); // maison du forgeron (nord-est)
+        map.add_building(54, 28, 4, 4, TilePos::new(56, 28)); // maison du tavernier (sud-est)
 
         // chemins entre les portes et la grande route
-        map.fill_rect(22, 8, 1, 2, Tile::Path);
-        map.set(TilePos::new(5, 11), Tile::Path);
-        map.set(TilePos::new(22, 11), Tile::Path);
-        map.set(TilePos::new(12, 11), Tile::Path);
-        map.fill_rect(28, 7, 1, 3, Tile::Path);
-        map.set(TilePos::new(28, 11), Tile::Path);
+        map.fill_rect(38, 18, 1, 2, Tile::Path);
+        map.set(TilePos::new(21, 21), Tile::Path);
+        map.set(TilePos::new(38, 21), Tile::Path);
+        map.fill_rect(12, 21, 1, 5, Tile::Path);
+        map.fill_rect(56, 8, 1, 12, Tile::Path);
+        map.fill_rect(56, 21, 1, 7, Tile::Path);
 
         // quelques arbres (seulement sur l'herbe)
         for &(x, y) in &[
-            (11, 8), (12, 14), (13, 17), (18, 15), (28, 4), (29, 6), (28, 9),
-            (29, 15), (27, 17), (2, 18), (10, 3), (1, 13), (30, 11),
+            (14, 14), (24, 14), (26, 8), (45, 14), (48, 26), (26, 32), (36, 33), (44, 34),
+            (10, 16), (16, 34), (3, 22), (2, 34), (50, 12), (58, 14), (60, 24), (52, 36),
+            (18, 6), (44, 6), (22, 4), (8, 32), (60, 34), (4, 16), (28, 24), (46, 20),
         ] {
             let p = TilePos::new(x, y);
             if map.get(p) == Tile::Grass {
@@ -97,23 +100,23 @@ impl Scenario {
         }
 
         let characters = vec![
-            spec("Paysan", Role::Farmer, (11, 14), &[(3, 4), (5, 4), (7, 4), (3, 6), (5, 6), (7, 6)]),
-            spec("Forgeron", Role::Blacksmith, (27, 4), &[(22, 5), (24, 5), (23, 6)]),
-            spec("Roi", Role::King, (17, 2), &[(15, 3), (13, 3), (17, 3)]),
-            spec("Chef de guerre", Role::Warlord, (4, 13), &[(5, 14), (7, 14), (6, 10), (10, 10)]),
-            spec("Tavernier", Role::Innkeeper, (29, 14), &[(22, 14), (24, 14), (22, 13)]),
+            spec("Paysan", Role::Farmer, (11, 28), &[(4, 5), (6, 5), (8, 5), (4, 7), (6, 7), (8, 7)]),
+            spec("Forgeron", Role::Blacksmith, (55, 5), &[(38, 15), (40, 15), (39, 16)]),
+            spec("Roi", Role::King, (33, 12), &[(31, 13), (29, 13), (33, 13)]),
+            spec("Chef de guerre", Role::Warlord, (20, 23), &[(21, 24), (23, 24), (22, 20), (26, 20)]),
+            spec("Tavernier", Role::Innkeeper, (56, 30), &[(38, 24), (40, 24), (38, 23)]),
             // les gardes dorment à la caserne et font des rondes sur les routes du royaume
             spec(
                 "Garde de jour",
                 Role::Guard,
-                (7, 13),
-                &[(15, 9), (24, 10), (28, 10), (22, 11), (15, 12), (15, 17), (10, 10), (5, 11)],
+                (23, 23),
+                &[(31, 19), (44, 20), (56, 19), (38, 21), (31, 25), (31, 37), (21, 21), (12, 20), (7, 19)],
             ),
             spec(
                 "Garde de nuit",
                 Role::Guard,
-                (7, 15),
-                &[(15, 7), (28, 10), (15, 17), (4, 10), (22, 10)],
+                (23, 25),
+                &[(31, 17), (56, 19), (31, 37), (7, 19), (38, 19)],
             )
             .on_night_shift(),
         ];
@@ -129,7 +132,7 @@ impl Scenario {
     /// Le village avec `farmers` paysans au total (au moins 1, au plus 6), pour tester la
     /// main-d'œuvre agricole. Les paysans supplémentaires dorment dans la maison du paysan.
     pub fn village_with_farmers(farmers: usize) -> Scenario {
-        const EXTRA_BEDS: [(i32, i32); 5] = [(12, 14), (13, 14), (11, 13), (12, 13), (13, 13)];
+        const EXTRA_BEDS: [(i32, i32); 5] = [(12, 28), (13, 28), (11, 27), (12, 27), (13, 27)];
         assert!(farmers <= 1 + EXTRA_BEDS.len(), "pas assez de lits pour {farmers} paysans");
 
         let mut scenario = Scenario::village();
@@ -142,9 +145,56 @@ impl Scenario {
                 role: Role::Farmer,
                 home,
                 night_shift: false,
-                work_spots: vec![TilePos::new(2 + i as i32, 3)],
+                work_spots: vec![TilePos::new(3 + i as i32, 4)],
             });
         }
         scenario
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn assert_connected(scenario: &Scenario) {
+        let map = &scenario.map;
+        let hub = scenario.characters.iter().find(|c| c.role == Role::King).unwrap().work_spots[0];
+        for c in &scenario.characters {
+            let targets = c.work_spots.iter().copied().chain(std::iter::once(c.home));
+            for t in targets {
+                assert!(map.in_bounds(t), "{} : {:?} hors de la carte", c.name, t);
+                assert!(t == c.home || !map.get(t).is_solid(), "{} : poste {:?} sur une tuile solide", c.name, t);
+                assert!(
+                    t == hub || !map.find_path(hub, t).is_empty(),
+                    "{} : {:?} n'est pas joignable depuis le château",
+                    c.name,
+                    t
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn village_is_bigger_than_a_default_window_and_fully_connected() {
+        let village = Scenario::village();
+        // fenêtre par défaut 1024x640 à 32 px par tuile = 32x20 tuiles
+        assert!(village.map.width() > 32 && village.map.height() > 20);
+        assert_connected(&village);
+    }
+
+    #[test]
+    fn village_with_all_farmers_is_fully_connected() {
+        assert_connected(&Scenario::village_with_farmers(6));
+    }
+
+    #[test]
+    fn houses_and_fields_are_far_from_the_center() {
+        let village = Scenario::village();
+        let center = TilePos::new(31, 20).center();
+        for c in village.characters.iter().filter(|c| matches!(c.role, Role::Farmer | Role::Blacksmith | Role::Innkeeper)) {
+            assert!(c.home.center().distance(center) > 16.0, "{} dort trop près du centre", c.name);
+        }
+        let farmer = village.characters.iter().find(|c| c.role == Role::Farmer).unwrap();
+        assert!(farmer.work_spots[0].center().distance(center) > 16.0, "le champ est trop près du centre");
     }
 }

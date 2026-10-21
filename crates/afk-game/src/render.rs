@@ -2,26 +2,36 @@
 //! C'est ici (et dans `input.rs`) que vivent les choix visuels : couleurs, sprites, tailles, lumières...
 //! Changer de bibliothèque de rendu = réécrire ce fichier, pas la logique du jeu.
 
+use crate::camera::{Camera, TILE_PX};
 use afk_core::{Activity, Character, Game, PlayerId, PlotState, Resource, Role, Tile, TilePos, Vec2, WorkKind};
 use macroquad::prelude::*;
 
-/// Passage coordonnées monde (tuiles) <-> écran (pixels). S'adapte à la taille de la fenêtre.
+/// Passage coordonnées monde (tuiles) <-> écran (pixels). Le zoom est fixe ; la caméra décide
+/// quelle partie de la carte est à l'écran.
 pub struct View {
     pub tile_px: f32,
     origin: (f32, f32),
+    screen: (f32, f32),
+    camera: Camera,
 }
 
 impl View {
-    pub fn fit(game: &Game) -> View {
-        let (w, h) = (game.map().width() as f32, game.map().height() as f32);
-        let tile_px = (screen_width() / w).min(screen_height() / h).floor().max(8.0);
-        View {
-            tile_px,
-            origin: (
-                ((screen_width() - tile_px * w) / 2.0).floor(),
-                ((screen_height() - tile_px * h) / 2.0).floor(),
-            ),
-        }
+    pub fn new() -> View {
+        View { tile_px: TILE_PX, origin: (0.0, 0.0), screen: (0.0, 0.0), camera: Camera::new() }
+    }
+
+    /// À appeler une fois par image, avant de dessiner. `target` : le personnage suivi ;
+    /// `recenter` : on vient d'en incarner un autre, la caméra glisse jusqu'à lui.
+    pub fn update(&mut self, game: &Game, target: Option<Vec2>, recenter: bool, dt: f32) {
+        self.screen = (screen_width(), screen_height());
+        let map = Vec2::new(game.map().width() as f32, game.map().height() as f32);
+        let view = Vec2::new(self.screen.0 / self.tile_px, self.screen.1 / self.tile_px);
+        self.camera.update(target.unwrap_or(self.camera.center()), view, map, recenter, dt);
+        let c = self.camera.center();
+        self.origin = (
+            (self.screen.0 / 2.0 - c.x * self.tile_px).floor(),
+            (self.screen.1 / 2.0 - c.y * self.tile_px).floor(),
+        );
     }
 
     pub fn to_screen(&self, p: Vec2) -> (f32, f32) {
@@ -38,6 +48,25 @@ impl View {
     /// Coin haut-gauche d'une tuile, en pixels.
     fn tile_origin(&self, t: TilePos) -> (f32, f32) {
         self.to_screen(Vec2::new(t.x as f32, t.y as f32))
+    }
+
+    /// Plage de tuiles (x0..x1, y0..y1) qui touchent l'écran, bornée à la carte.
+    fn visible_tiles(&self, map_w: i32, map_h: i32) -> (i32, i32, i32, i32) {
+        let tl = self.to_world((0.0, 0.0));
+        let br = self.to_world(self.screen);
+        (
+            (tl.x.floor() as i32).max(0),
+            (br.x.ceil() as i32).min(map_w),
+            (tl.y.floor() as i32).max(0),
+            (br.y.ceil() as i32).min(map_h),
+        )
+    }
+
+    /// Ce point du monde est-il (à peu près) à l'écran ? `margin` en tuiles, pour les éléments qui débordent.
+    fn point_visible(&self, p: Vec2, margin: f32) -> bool {
+        let (x, y) = self.to_screen(p);
+        let m = margin * self.tile_px;
+        x >= -m && y >= -m && x <= self.screen.0 + m && y <= self.screen.1 + m
     }
 }
 
@@ -134,8 +163,9 @@ fn draw_map(game: &Game, view: &View) {
     let map = game.map();
     let t = view.tile_px;
     let s = t / 32.0;
-    for y in 0..map.height() {
-        for x in 0..map.width() {
+    let (x0, x1, y0, y1) = view.visible_tiles(map.width(), map.height());
+    for y in y0..y1 {
+        for x in x0..x1 {
             let tile = map.get(TilePos::new(x, y));
             let (px, py) = view.tile_origin(TilePos::new(x, y));
             draw_rectangle(px, py, t, t, tile_color(tile, x, y));
@@ -172,8 +202,8 @@ fn draw_farm(game: &Game, view: &View) {
     let furrow = Color::from_rgba(68, 44, 26, 255);
 
     for plot in game.farm().plots() {
-        if plot.state == PlotState::Fallow {
-            continue; // l'aspect de base du champ suffit
+        if plot.state == PlotState::Fallow || !view.point_visible(plot.tile.center(), 1.0) {
+            continue; // l'aspect de base du champ suffit, et rien à dessiner hors écran
         }
         let (px, py) = view.tile_origin(plot.tile);
         draw_rectangle(px, py, t, t, soil);
@@ -218,6 +248,9 @@ fn draw_characters(game: &Game, view: &View, me: PlayerId) {
     order.sort_by(|a, b| a.pos.y.partial_cmp(&b.pos.y).unwrap_or(std::cmp::Ordering::Equal));
 
     for c in order {
+        if !view.point_visible(c.pos, 2.0) {
+            continue;
+        }
         let (x, y) = view.to_screen(c.pos);
         let active = Some(c.id) == possessed;
 
@@ -274,6 +307,9 @@ fn draw_forge_sparks(game: &Game, view: &View) {
     let t = game.time();
     for c in game.characters() {
         let Some(work) = c.work.filter(|w| w.kind == WorkKind::Forge) else { continue };
+        if !view.point_visible(work.tile.center(), 1.0) {
+            continue;
+        }
         let (px, py) = view.tile_origin(work.tile);
         draw_rectangle(px + 9.0 * s, py + 7.0 * s, 14.0 * s, 3.0 * s, Color::from_rgba(255, 150, 40, 255));
         for i in 0..4 {
