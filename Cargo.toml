@@ -1,0 +1,10 @@
+[workspace]
+resolver = "2"
+members = ["crates/afk-core", "crates/afk-game"]
+
+[profile.dev]
+opt-level = 1
+
+# Les dépendances (macroquad...) sont optimisées même en dev : le jeu reste fluide.
+[profile.dev.package."*"]
+opt-level = 3

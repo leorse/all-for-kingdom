@@ -1,0 +1,8 @@
+[package]
+name = "afk-core"
+version = "0.1.0"
+edition = "2021"
+description = "All For Kingdom : logique de jeu pure (aucune dépendance graphique, audio ou fenêtrage)"
+
+# Règle d'or : ce crate ne doit JAMAIS dépendre d'une bibliothèque de rendu ou d'entrées.
+[dependencies]

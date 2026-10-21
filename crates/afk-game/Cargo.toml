@@ -1,0 +1,13 @@
+[package]
+name = "afk-game"
+version = "0.1.0"
+edition = "2021"
+description = "All For Kingdom : frontend macroquad (rendu + entrées). Seul crate qui connaît macroquad."
+
+[[bin]]
+name = "all-for-kingdom"
+path = "src/main.rs"
+
+[dependencies]
+afk-core = { path = "../afk-core" }
+macroquad = "0.4"
