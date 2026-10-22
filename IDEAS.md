@@ -1,6 +1,6 @@
 # Idées
 
-Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une idée mûrit, elle devient un changement OpenSpec.
+Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une idée mûrit, elle est décrite dans `docs/gameplay/` puis devient un changement OpenSpec.
 
 ## Bandits
 - Ils circulent dans le royaume, peuvent voler et attaquer.
@@ -17,8 +17,22 @@ Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une i
 - Le roi les affecte à un rôle (paysan, forgeron, etc.).
 
 ## Mineurs
-- Ils travaillent dans la mine et ramènent du minerai au forgeron (aujourd'hui le fer est un stock de départ).
-- Il faut donc pouvoir placer des mines sur la carte.
+Décidé dans les grandes lignes : voir `docs/gameplay/mineur.md`. Reste à trancher le nombre de niveaux de qualité, l'usage du cuivre, la capacité des entrepôts.
+
+## Forgeron : liste d'objets et priorités du roi
+- Le forgeron a une liste d'objets qu'il sait faire : lingots, outils, armes, pièces d'or, et d'autres plus tard.
+- Le roi lui donne des priorités ; il fabrique selon ces priorités et selon son stock.
+- Détails dans `docs/gameplay/forgeron.md`.
+
+## Gestion des stocks
+- Chaque métier a un stock limité (le mineur dans sa mine, le paysan, le forgeron...). Stock plein : il arrête de produire.
+- Implique d'équilibrer le nombre de travailleurs entre les métiers.
+- Détails dans `docs/gameplay/ressources-et-stocks.md`.
+
+## Amélioration des maisons
+- Une maison s'améliore : confort, sommeil plus rapide, travailleur plus rapide, entrepôt plus grand.
+- Probablement lié à l'idée « Mobilier » ci-dessous.
+- Détails dans `docs/gameplay/habitat.md`.
 
 ## Région et royaume ennemi
 - Le royaume est dans une région du monde, avec un ennemi qui a les mêmes besoins et les mêmes villageois.
