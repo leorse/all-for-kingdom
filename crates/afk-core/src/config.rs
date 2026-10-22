@@ -44,7 +44,7 @@ pub struct Config {
     pub wheat_per_harvest: u32,
 
     // --- forge
-    /// Fer disponible au début de la partie (il n'y a pas encore de mine pour en produire d'autre).
+    /// Fer dans le coffre de la forge au début de la partie.
     pub starting_iron: u32,
     /// Fer consommé pour forger un outil.
     pub iron_per_tool: u32,
@@ -52,6 +52,33 @@ pub struct Config {
     pub tools_per_forge: u32,
     /// Durée (secondes réelles, pour l'IA en pleine forme) pour forger un outil.
     pub forge_secs: f32,
+
+    // --- mine
+    /// Coups de pioche par unité de minerai, pour une roche pure, moyenne et impure.
+    pub strikes_per_quality: [u32; 3],
+    /// Durée d'un coup de pioche (secondes réelles, pour l'IA en pleine forme).
+    pub strike_secs: f32,
+
+    // --- forêt
+    /// Durée de référence pour abattre un arbre (secondes réelles, un bûcheron IA en pleine forme
+    /// seul ; à plusieurs, les coups s'additionnent).
+    pub chop_secs: f32,
+    /// Bûches obtenues quand un arbre tombe.
+    pub logs_per_tree: u32,
+    /// Temps de repousse d'un arbre abattu, en heures de jeu.
+    pub tree_regrow_hours: f32,
+
+    // --- contenants et transport
+    /// Quantité maximale de chaque ressource dans un contenant.
+    pub container_capacity: u32,
+    /// Ressources qu'un transporteur porte par voyage.
+    pub transport_load: u32,
+    /// Vitesse des transporteurs par rapport aux autres personnages (ils courent).
+    pub transporter_speed_factor: f32,
+    /// Bûches qu'un bûcheron peut porter à la main.
+    pub lumberjack_carry: u32,
+    /// Blé qu'un paysan peut porter à la main.
+    pub farmer_carry: u32,
 }
 
 impl Default for Config {
@@ -77,6 +104,16 @@ impl Default for Config {
             iron_per_tool: 2,
             tools_per_forge: 1,
             forge_secs: 8.0,
+            strikes_per_quality: [3, 5, 8],
+            strike_secs: 1.0,
+            chop_secs: 6.0,
+            logs_per_tree: 3,
+            tree_regrow_hours: 24.0,
+            container_capacity: 200,
+            transport_load: 10,
+            transporter_speed_factor: 1.5,
+            lumberjack_carry: 9,
+            farmer_carry: 20,
         }
     }
 }

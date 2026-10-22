@@ -26,19 +26,30 @@ Tous les autres réglages (heure de départ, aube, crépuscule, rythme de fatigu
 |---|---|
 | ZQSD / WASD / flèches | bouger |
 | Tab, 1 à 9, clic | incarner un personnage (la caméra glisse jusqu'à lui) |
-| E | travailler la parcelle visée (paysan) / se coucher près de son lit / se lever / annuler le travail en cours |
-| Espace | mode AFK on/off |
+| E | travailler la parcelle visée (paysan) / forger (forgeron) / miner le filon visé (mineur) / abattre l'arbre visé (bûcheron) / se coucher près de son lit / se lever / annuler le travail en cours |
+| C | vider l'entrepôt central (toutes ses ressources disparaissent) |
+| Espace | mode AFK on/off (en vue libre, reprend aussi le dernier personnage) |
+| Bouton droit maintenu + souris | déplacer la vue : on tire la carte |
+| Molette | zoomer / dézoomer autour du curseur |
 | T | vitesse de simulation (debug) |
 | Échap | quitter |
 
 ## Le royaume et la caméra
 
 Le royaume (64×40 tuiles) est plus grand que l'écran : les bâtiments publics sont au centre, les maisons
-et les champs sont loin, vers les bords. Le zoom est fixe (32 px par tuile). La caméra suit le personnage
+et les champs sont loin, vers les bords. Le zoom part de 32 px par tuile. La caméra suit le personnage
 incarné : elle glisse rapidement vers lui quand on change de personnage, puis ne défile que lorsqu'il
 s'approche du bord de l'écran. En mode AFK, elle continue de suivre le dernier personnage incarné.
+
+**À la souris** : en maintenant le bouton droit, on tire la carte (elle reste bornée à ses bords) ; la molette
+change de palier de zoom (16, 20, 24, 32, 40, 48 ou 64 px par tuile) autour du curseur, et à 16 px le royaume
+entier tient dans la fenêtre par défaut. Déplacer la vue ainsi la rend **libre** : la caméra ne suit plus le
+personnage, même s'il sort de l'écran. Elle le reprend (par un glissement) dès qu'on le déplace avec le
+clavier, qu'on incarne un autre personnage (Tab, 1-9, clic) ou qu'on reprend la main avec Espace. Zoomer ne
+rend pas la vue libre.
+
 La disposition est définie dans `crates/afk-core/src/scenario.rs` ; le réglage de la caméra (durée du
-glissement, marge de suivi, zoom) est dans `crates/afk-game/src/camera.rs`.
+glissement, marge de suivi, paliers de zoom) est dans `crates/afk-game/src/camera.rs`.
 
 ## Règles actuelles
 
@@ -58,7 +69,7 @@ glissement, marge de suivi, zoom) est dans `crates/afk-game/src/camera.rs`.
 - Le joueur travaille **2 fois plus vite** que l'IA (`player_work_speed`). La fatigue ralentit tout le monde.
 - La pousse (12 h de jeu) ne dépend que du temps : personne ne peut l'accélérer.
 - L'IA du paysan travaille seule : récolte d'abord, puis semis, puis labour, parcelle par parcelle.
-  Récolter augmente le stock de blé, affiché en haut à droite (simple compteur pour l'instant).
+  Le blé récolté est porté à la main jusqu'au coffre du champ (voir « Les coffres et les transporteurs »).
 - Les durées de labour, semis et récolte sont en secondes réelles ; la pousse est en heures de jeu.
   Tout se règle dans `crates/afk-core/src/config.rs`.
 - Plusieurs paysans se répartissent les parcelles : chacun réserve celle qu'il vise, et les autres l'évitent
@@ -68,8 +79,30 @@ glissement, marge de suivi, zoom) est dans `crates/afk-game/src/camera.rs`.
 - L'enclume est un obstacle : on forge depuis une case voisine en la regardant (bouger vers elle suffit à la
   regarder), puis `E`. Chaque coup de forge dure 8 s (4 s pour le joueur), consomme 2 de fer et produit 1 outil.
 - L'IA va seule à côté de l'enclume et forge tant qu'il reste du fer, puis traîne dans sa forge.
-- **Le fer est fini** (60 au départ, aucune mine pour l'instant) : l'IA le transforme en outils en moins d'un jour.
+- Le forgeron prend son fer dans le coffre de la forge et y range ses outils sans quitter l'enclume. Le fer de départ (60) y est complété par celui que les transporteurs apportent des mines. Coffre sans fer ou plein d'outils : il attend.
   Réglable avec `starting_iron`, `iron_per_tool`, `forge_secs` dans `config.rs`.
+
+**Le mineur**
+- Un filon est un bloc de 2×2 tuiles solide, infini. Sa couleur dit sa nature (gris : fer, doré : or, beige clair :
+  pierre ; le cuivre existe mais n'est pas encore posé) et ses points disent sa qualité : plus il y en a, plus la roche est
+  impure et plus il faut de coups de pioche (3, 5 ou 8, d'une seconde chacun, `strikes_per_quality` et `strike_secs`).
+- On mine depuis une case voisine en regardant le filon, puis `E` (2 fois plus vite que l'IA). Une unité terminée entre
+  dans le coffre de la mine, sans que le mineur ait à y aller ; coffre plein (200), il attend.
+- Chaque mineur a sa mine (sa maison, accolée au filon) et n'exploite que ce filon. Trois mines au départ : fer, or, pierre.
+  L'IA se place sur la case libre la plus proche du filon et mine le jour ; la nuit elle rentre dormir.
+- Le fer extrait est porté à la forge par les transporteurs : le fer n'est plus fini.
+
+**Le bûcheron**
+- Deux forêts (zones d'arbres avec des couloirs), chacune avec sa cabane et son bûcheron. On abat un arbre depuis une case voisine en le regardant, puis `E` : 6 s pour l'IA, 3 s pour le joueur (`chop_secs`), 3 bûches par arbre (`logs_per_tree`), que le bûcheron porte lui-même (9 au plus) jusqu'au coffre de sa cabane.
+- Un arbre abattu laisse une pousse, qui redevient un arbre après 24 h de jeu (`tree_regrow_hours`). Les forêts ne s'étendent pas : on peut les vider en coupant plus vite que la repousse.
+- Plusieurs bûcherons peuvent abattre le même arbre : leurs coups s'additionnent, mais seul celui qui porte le dernier coup reçoit le bois. L'IA coupe l'arbre le plus proche de sa forêt. Les arbres isolés hors forêt restent du décor.
+
+**Les coffres et les transporteurs**
+- Chaque lieu de travail a un **coffre** posé **dehors** : le champ du paysan, chaque mine, chaque cabane, la forge, et l'entrepôt central. Il affiche son contenu (« Fer 12/200 ») ; **200 au plus de chaque ressource**. Un producteur dont le coffre est plein s'arrête, et reprend dès qu'une place se libère.
+- Trois **transporteurs** vivent à l'entrepôt central, près du château. Ils portent **10 ressources** par voyage, décident seuls (le fer des mines va à la forge d'abord, tout le reste à l'entrepôt central ; jamais dans un coffre plein) et **courent** (1,5 fois plus vite). On voit sur eux, comme sur le bûcheron, un bloc de la couleur de la ressource et la quantité portée.
+- Incarné, un transporteur charge et décharge avec `E` devant un coffre ; le bûcheron dépose son bois et le paysan son blé de la même façon. `C` vide l'entrepôt central.
+- Le paysan porte lui-même son blé (20 au plus, `farmer_carry`) jusqu'au coffre du champ, comme le bûcheron son bois.
+- Les compteurs en haut à droite sont le total de tous les coffres. Réglages dans `config.rs` : `container_capacity`, `transport_load`, `transporter_speed_factor`, `lumberjack_carry`, `farmer_carry`.
 
 **Les gardes**
 - Deux gardes dorment à la caserne et font des rondes dans l'ordre le long des routes, avec une pause à chaque
@@ -114,6 +147,9 @@ Rien dans `afk-core` ne bouge.
 - [x] Jalon 1 : cycle jour/nuit, maisons et lits, fatigue, routine de l'IA (dormir/travailler)
 - [x] Jalon 2 : le paysan (parcelles, labourer/planter/récolter), travail joueur 2x plus rapide, stock de blé affiché
 - [x] Jalon 3 : forgeron (forger, consomme du fer) et gardes (patrouilles, quart de jour et de nuit)
-- À venir : une source de fer (mine ou commerce), décrets du roi qui orientent les priorités de l'IA
+- [x] Jalon 4 : filons de minerai, mineurs et mines
+- [x] Jalon 5 : forêts, arbres qui repoussent et bûcherons
+- [x] Jalon 6 : coffres limités à 200, trois transporteurs qui courent, bûcheron porteur
+- À venir : priorités du roi pour les transporteurs, décrets du roi qui orientent les priorités de l'IA
   (que forger, combien de paysans), roi / chef de guerre / tavernier avec un vrai travail
 - Plus tard : sprites en atlas, vraie lumière (carte de lumière), coop réseau

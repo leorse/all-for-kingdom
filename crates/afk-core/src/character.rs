@@ -6,13 +6,17 @@
 //! `WorkDone` et c'est `Game` qui en applique les effets (parcelle, stock...).
 
 use crate::config::Config;
+use crate::container::Container;
 use crate::farm::Farm;
 use crate::game::CharacterId;
 use crate::map::{Tile, TileMap};
+use crate::forest::Forest;
+use crate::mine::Vein;
 use crate::math::{TilePos, Vec2};
-use crate::resources::{Resource, Stock};
+use crate::resources::Resource;
 use crate::rng::Rng;
-use crate::work::{Work, WorkDone, WorkKind};
+use crate::transport::{best_destination, best_trip, Job, Reservation};
+use crate::work::{work_secs, Work, WorkDone, WorkKind};
 use std::collections::VecDeque;
 
 /// Vitesse d'un personnage dirigé par le joueur (tuiles par seconde).
@@ -26,7 +30,9 @@ pub const BODY_HALF: f32 = 0.28;
 pub(crate) struct Env<'a> {
     pub map: &'a TileMap,
     pub farm: &'a Farm,
-    pub stock: &'a Stock,
+    pub containers: &'a [Container],
+    /// Ce que les AUTRES transporteurs ont promis de prendre ou d'apporter.
+    pub reservations: &'a [Reservation],
     pub cfg: &'a Config,
     pub night: bool,
     /// Durée du pas en secondes réelles.
@@ -35,6 +41,29 @@ pub(crate) struct Env<'a> {
     pub dt_hours: f32,
     /// Tuiles visées ou travaillées par les AUTRES personnages en ce moment (voir `claimed_tile`).
     pub claimed: &'a [TilePos],
+    pub veins: &'a [Vein],
+    pub forests: &'a [Forest],
+}
+
+impl Env<'_> {
+    /// Place restante dans ce contenant pour cette ressource (0 s'il n'y a pas de contenant).
+    pub fn room(&self, container: Option<usize>, resource: Resource) -> u32 {
+        container.and_then(|i| self.containers.get(i)).map_or(0, |c| c.room(resource))
+    }
+
+    pub fn stored(&self, container: Option<usize>, resource: Resource) -> u32 {
+        container.and_then(|i| self.containers.get(i)).map_or(0, |c| c.get(resource))
+    }
+}
+
+/// Ce qu'un pas de personnage demande à `Game` d'appliquer au monde.
+pub(crate) enum Outcome {
+    /// Un travail vient de se terminer.
+    Work(WorkDone),
+    /// Prendre jusqu'à `amount` de `resource` dans un contenant, en main.
+    Take { container: usize, resource: Resource, amount: u32 },
+    /// Déposer sa cargaison dans un contenant.
+    Drop { container: usize },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -45,6 +74,9 @@ pub enum Role {
     Warlord,
     Innkeeper,
     Guard,
+    Miner,
+    Lumberjack,
+    Transporter,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -100,6 +132,16 @@ pub struct Character {
     pub asleep: bool,
     /// Travail en cours, s'il y en a un.
     pub work: Option<Work>,
+    /// Pour un mineur : indice du filon de sa mine, le seul qu'il exploite.
+    pub vein: Option<usize>,
+    /// Pour un bûcheron : indice de la forêt de sa cabane, la seule où il coupe.
+    pub forest: Option<usize>,
+    /// Ce que le personnage porte en main : bois d'un bûcheron, charge d'un transporteur.
+    pub cargo: Option<(Resource, u32)>,
+    /// Son contenant : celui où il dépose sa production ou livre son bois.
+    pub container: Option<usize>,
+    /// Le voyage d'un transporteur en cours.
+    pub(crate) job: Option<Job>,
 
     // --- état interne de l'IA
     work_spots: Vec<TilePos>,
@@ -113,6 +155,12 @@ pub struct Character {
     wait: f32,
     at_work: bool,
     stuck: f32,
+    /// Part d'arbre abattue pendant ce pas par ce bûcheron (voir `Game::step`, qui additionne les coups).
+    chop_delta: f32,
+    /// Un porteur qui s'est couché avec du bois en main le livre à son réveil avant de reprendre le travail.
+    deliver_first: bool,
+    /// Chargement ou déchargement demandé pendant ce pas : c'est `Game` qui l'applique.
+    outcome: Option<Outcome>,
 }
 
 impl Character {
@@ -137,6 +185,14 @@ impl Character {
             fatigue: 0.0,
             asleep: false,
             work: None,
+            vein: None,
+            forest: None,
+            cargo: None,
+            container: None,
+            job: None,
+            deliver_first: false,
+            outcome: None,
+            chop_delta: 0.0,
             work_spots,
             path: VecDeque::new(),
             goal: None,
@@ -157,7 +213,10 @@ impl Character {
     /// état : elle disparaît toute seule dès qu'il change de plan (nuit, joueur qui le prend,
     /// travail terminé...).
     pub fn claimed_tile(&self) -> Option<TilePos> {
-        self.work.map(|w| w.tile).or(self.work_target)
+        // qui mine ou abat occupe une case voisine de sa cible : c'est elle qui est réservée, pas la cible
+        // (un filon est infini, un arbre se coupe à plusieurs)
+        let worked = self.work.map(|w| if matches!(w.kind, WorkKind::Mine | WorkKind::Chop) { self.tile() } else { w.tile });
+        worked.or(self.work_target)
     }
 
     /// La tuile juste devant lui.
@@ -185,6 +244,15 @@ impl Character {
         (100.0 - self.fatigue).clamp(0.0, 100.0)
     }
 
+    /// Les transporteurs courent : ils vont plus vite que les autres, à pied comme sous le contrôle du joueur.
+    fn speed_factor(&self, cfg: &Config) -> f32 {
+        if self.role == Role::Transporter {
+            cfg.transporter_speed_factor
+        } else {
+            1.0
+        }
+    }
+
     /// Rendement de 0.5 à 1.0 : plein jusqu'à 50 de fatigue, puis il baisse jusqu'à moitié à 100.
     /// S'applique aux déplacements et à la vitesse de travail.
     pub fn efficiency(&self) -> f32 {
@@ -199,7 +267,9 @@ impl Character {
 
     /// Un pas de simulation complet pour ce personnage.
     /// `control` : `Some(direction)` s'il est incarné par un joueur, `None` s'il est piloté par l'IA.
-    pub(crate) fn update(&mut self, env: &Env, control: Option<Vec2>, rng: &mut Rng) -> Option<WorkDone> {
+    pub(crate) fn update(&mut self, env: &Env, control: Option<Vec2>, rng: &mut Rng) -> Option<Outcome> {
+        self.chop_delta = 0.0;
+        self.outcome = None;
         if self.asleep {
             self.sleep_tick(env); // dort, qu'il soit incarné ou non
             return None;
@@ -208,14 +278,15 @@ impl Character {
             Some(dir) => self.drive(dir, env),
             None => self.run_ai(env, rng),
         }
-        let done = self.advance_work(env, control.is_some());
+        let done = self.advance_work(env, control.is_some()).map(Outcome::Work);
         self.tick_fatigue(env);
-        done
+        done.or(self.outcome.take())
     }
 
     // ------------------------------------------------------------ sommeil
 
     pub(crate) fn lie_down(&mut self) {
+        self.deliver_first = self.cargo.is_some(); // il garde sa cargaison et la livrera à son réveil
         self.pos = self.home.center();
         self.asleep = true;
         self.activity = Activity::Sleeping;
@@ -257,11 +328,11 @@ impl Character {
     // ------------------------------------------------------------ travail
 
     /// Commence un travail (si c'est bien le métier de ce personnage). Renvoie `true` si démarré.
-    pub(crate) fn start_work(&mut self, kind: WorkKind, tile: TilePos) -> bool {
+    pub(crate) fn start_work(&mut self, kind: WorkKind, tile: TilePos, secs: f32) -> bool {
         if kind.role() != self.role || self.asleep {
             return false;
         }
-        self.work = Some(Work { kind, tile, progress: 0.0 });
+        self.work = Some(Work { kind, tile, progress: 0.0, secs });
         self.activity = Activity::Working;
         true
     }
@@ -270,12 +341,31 @@ impl Character {
         self.work = None;
     }
 
+    /// Part d'arbre que ce bûcheron a abattue pendant le dernier pas (0 s'il ne coupe pas).
+    pub(crate) fn chop_delta(&self) -> f32 {
+        self.chop_delta
+    }
+
+    /// Affiche l'avancement partagé de l'arbre sur la barre de ce bûcheron.
+    pub(crate) fn set_work_progress(&mut self, progress: f32) {
+        if let Some(work) = self.work.as_mut() {
+            work.progress = progress;
+        }
+    }
+
     /// Fait avancer le travail en cours. Le joueur travaille plus vite que l'IA ; la fatigue ralentit.
     fn advance_work(&mut self, env: &Env, by_player: bool) -> Option<WorkDone> {
         let efficiency = self.efficiency();
         let work = self.work.as_mut()?;
         let speed = if by_player { env.cfg.player_work_speed } else { 1.0 };
-        work.progress += env.dt / work.kind.duration_secs(env.cfg) * speed * efficiency;
+        work.progress += env.dt / work.secs * speed * efficiency;
+        if work.kind == WorkKind::Chop {
+            // un arbre se coupe à plusieurs : `Game` additionne les coups de tous et décide de la chute
+            self.chop_delta = env.dt / work.secs * speed * efficiency;
+            work.progress = 0.0;
+            self.activity = Activity::Working;
+            return None;
+        }
         let (kind, tile, finished) = (work.kind, work.tile, work.progress >= 1.0);
 
         if finished {
@@ -320,7 +410,7 @@ impl Character {
             self.activity = Activity::Idle;
             return;
         }
-        let speed = PLAYER_SPEED * self.efficiency();
+        let speed = PLAYER_SPEED * self.speed_factor(env.cfg) * self.efficiency();
         self.try_move(dir * (speed * env.dt), env.map);
         self.facing = Facing::from_dir(dir); // même contre un obstacle : on le regarde
         self.activity = Activity::Walking;
@@ -348,7 +438,7 @@ impl Character {
         let goal = next.center();
         let to_goal = goal - self.pos;
         let dist = to_goal.length();
-        let step = AI_SPEED * self.efficiency() * env.dt;
+        let step = AI_SPEED * self.speed_factor(env.cfg) * self.efficiency() * env.dt;
         self.activity = Activity::Walking;
 
         if dist <= step.max(0.03) {
@@ -400,6 +490,9 @@ impl Character {
         match self.role {
             Role::Farmer => self.farm_routine(env, rng),
             Role::Blacksmith => self.forge_routine(env, rng),
+            Role::Miner => self.mine_routine(env, rng),
+            Role::Lumberjack => self.chop_routine(env, rng),
+            Role::Transporter => self.transport_routine(env, rng),
             Role::Guard => self.patrol_routine(env, rng),
             _ => self.wander_routine(env, rng),
         }
@@ -443,13 +536,22 @@ impl Character {
         // à partir d'ici, le plan précédent est terminé : on en choisit un nouveau
         self.work_target = None;
         let here = self.tile();
-        if let Some(kind) = env.farm.work_at(here) {
+        // le blé récolté se porte à la main jusqu'au coffre du champ (voir `deliver`)
+        let carried = self.cargo.map_or(0, |(_, n)| n);
+        let can_harvest = carried + env.cfg.wheat_per_harvest <= env.cfg.farmer_carry;
+        let chest_has_room = env.room(self.container, Resource::Wheat) > 0;
+        // mains pleines (ou réveil avec du blé) : on livre, si le coffre peut recevoir ; sinon on continue de cultiver
+        if carried > 0 && chest_has_room && (self.deliver_first || !can_harvest) {
+            self.deliver(env);
+            return;
+        }
+        if let Some(kind) = env.farm.work_at(here).filter(|&k| k != WorkKind::Harvest || can_harvest) {
             if !env.claimed.contains(&here) {
-                self.start_work(kind, here); // enchaîne sur place : récolte, labour, semis sans marcher
+                self.start_work(kind, here, kind.duration_secs(env.cfg)); // enchaîne sur place : récolte, labour, semis sans marcher
                 return;
             }
         }
-        if let Some(target) = env.farm.pick_target(here, env.claimed) {
+        if let Some(target) = env.farm.pick_target_with(here, env.claimed, can_harvest) {
             self.path = env.map.find_path(here, target);
             if self.path.is_empty() {
                 self.wait = 1.0; // parcelle inaccessible : on réessaiera
@@ -458,6 +560,10 @@ impl Character {
                 self.work_target = Some(target);
             }
             self.activity = Activity::Idle;
+            return;
+        }
+        if carried > 0 && chest_has_room {
+            self.deliver(env); // rien à cultiver : on livre ce qu'on porte
             return;
         }
         self.wander_routine(env, rng); // rien à faire : tout pousse
@@ -480,7 +586,9 @@ impl Character {
 
         self.work_target = None;
         let here = self.tile();
-        let enough_iron = env.stock.get(Resource::Iron) >= env.cfg.iron_per_tool;
+        // la forge a besoin de fer dans son coffre et de place pour y ranger l'outil
+        let enough_iron = env.stored(self.container, Resource::Iron) >= env.cfg.iron_per_tool
+            && env.room(self.container, Resource::Tools) >= env.cfg.tools_per_forge;
         if enough_iron {
             let anvils: Vec<TilePos> = env
                 .map
@@ -492,7 +600,7 @@ impl Character {
             // déjà à côté d'une enclume libre : on la regarde et on forge
             if let Some(&anvil) = anvils.iter().find(|&&a| is_adjacent(here, a)) {
                 self.facing = Facing::from_dir(anvil.center() - self.pos);
-                self.start_work(WorkKind::Forge, anvil);
+                self.start_work(WorkKind::Forge, anvil, WorkKind::Forge.duration_secs(env.cfg));
                 return;
             }
 
@@ -514,6 +622,275 @@ impl Character {
             }
         }
         self.wander_routine(env, rng); // pas de fer ou pas d'enclume libre
+    }
+
+    /// Le mineur : va se placer sur la case libre la plus proche de son filon, le regarde et mine.
+    /// La case réservée (`work_target`) est celle où il se tient, pour que les mineurs d'un même filon
+    /// ne se marchent pas dessus. Sans filon attitré, il traîne.
+    fn mine_routine(&mut self, env: &Env, rng: &mut Rng) {
+        if self.wait > 0.0 {
+            self.wait -= env.dt;
+            self.activity = Activity::Idle;
+            return;
+        }
+        if !self.path.is_empty() {
+            if self.follow_path(env) {
+                self.goal = None;
+            }
+            return;
+        }
+
+        self.work_target = None;
+        let Some(vein) = self.vein.and_then(|i| env.veins.get(i)) else {
+            self.wander_routine(env, rng);
+            return;
+        };
+        let here = self.tile();
+
+        // déjà contre le filon, sur une case que personne d'autre n'occupe : on le regarde et on mine
+        if !env.claimed.contains(&here) {
+            if let Some(ore) = vein.tiles().into_iter().find(|&t| is_adjacent(here, t)) {
+                self.facing = Facing::from_dir(ore.center() - self.pos);
+                if env.room(self.container, vein.kind.resource()) == 0 {
+                    self.activity = Activity::Idle; // le coffre de la mine est plein : on attend sur place
+                    return;
+                }
+                let secs = work_secs(WorkKind::Mine, ore, env.cfg, env.veins);
+                self.start_work(WorkKind::Mine, ore, secs);
+                return;
+            }
+        }
+
+        // sinon : on marche jusqu'à la case libre la plus proche
+        let best = vein
+            .access_tiles(env.map)
+            .into_iter()
+            .filter(|p| !env.claimed.contains(p))
+            .filter_map(|p| {
+                let path = env.map.find_path(here, p);
+                (!path.is_empty()).then(|| (path.len(), p, path))
+            })
+            .min_by_key(|(len, _, _)| *len);
+        if let Some((_, post, path)) = best {
+            self.goal = Some(post);
+            self.path = path;
+            self.work_target = Some(post);
+            self.activity = Activity::Idle;
+            return;
+        }
+        self.wander_routine(env, rng); // tous les postes sont pris ou inaccessibles
+    }
+
+    /// Le bûcheron : va se placer sur la case libre la plus proche d'un arbre de sa forêt, le regarde et
+    /// l'abat. Un arbre déjà attaqué par un autre n'est pas évité (on coupe à plusieurs), seule la case
+    /// où l'on se tient est réservée. Sans arbre à portée, il traîne près de sa forêt en attendant la repousse.
+    fn chop_routine(&mut self, env: &Env, rng: &mut Rng) {
+        if self.wait > 0.0 {
+            self.wait -= env.dt;
+            self.activity = Activity::Idle;
+            return;
+        }
+        if !self.path.is_empty() {
+            if self.follow_path(env) {
+                self.goal = None;
+            }
+            return;
+        }
+
+        self.work_target = None;
+        let Some(forest) = self.forest.and_then(|i| env.forests.get(i)) else {
+            self.wander_routine(env, rng);
+            return;
+        };
+        let here = self.tile();
+        let is_tree = |t: TilePos| forest.contains(t) && env.map.get(t) == Tile::Tree;
+        let carried = self.cargo.map_or(0, |(_, n)| n);
+        let room_for_a_tree = carried + env.cfg.logs_per_tree <= env.cfg.lumberjack_carry;
+        // mains pleines (ou réveil avec du bois) : on livre avant d'abattre quoi que ce soit
+        if carried > 0 && (self.deliver_first || !room_for_a_tree) {
+            self.deliver(env);
+            return;
+        }
+
+        // déjà contre un arbre de la forêt, sur une case que personne d'autre n'occupe : on le regarde et on coupe
+        if room_for_a_tree && !env.claimed.contains(&here) {
+            let next_to = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+                .iter()
+                .map(|&(dx, dy)| TilePos::new(here.x + dx, here.y + dy))
+                .find(|&t| is_tree(t));
+            if let Some(tree) = next_to {
+                self.facing = Facing::from_dir(tree.center() - self.pos);
+                self.start_work(WorkKind::Chop, tree, WorkKind::Chop.duration_secs(env.cfg));
+                return;
+            }
+        }
+
+        // sinon : on marche vers la case libre la plus proche d'un arbre (cases triées par distance, on prend
+        // la première joignable pour ne pas lancer une recherche de chemin par arbre)
+        let mut posts: Vec<TilePos> = forest
+            .trees(env.map)
+            .into_iter()
+            .flat_map(|t| env.map.walkable_neighbors(t))
+            .filter(|p| !env.claimed.contains(p))
+            .collect();
+        posts.sort_by_key(|p| ((p.x - here.x).abs() + (p.y - here.y).abs(), p.x, p.y));
+        posts.dedup();
+        for post in posts {
+            let path = env.map.find_path(here, post);
+            if !path.is_empty() {
+                self.goal = Some(post);
+                self.path = path;
+                self.work_target = Some(post);
+                self.activity = Activity::Idle;
+                return;
+            }
+        }
+        if carried > 0 {
+            self.deliver(env); // plus d'arbre à portée : on livre ce qu'on porte
+            return;
+        }
+        self.wander_routine(env, rng); // plus d'arbre à portée : on attend la repousse
+    }
+
+    /// Va se placer à côté du coffre posé sur `crate_tile` (la case voisine la plus proche) et le regarde.
+    /// Renvoie `true` quand on y est déjà : l'appelant peut alors prendre ou déposer.
+    fn approach_crate(&mut self, env: &Env, crate_tile: TilePos) -> bool {
+        let here = self.tile();
+        if is_adjacent(here, crate_tile) {
+            self.facing = Facing::from_dir(crate_tile.center() - self.pos);
+            self.activity = Activity::Idle;
+            return true;
+        }
+        let best = env
+            .map
+            .walkable_neighbors(crate_tile)
+            .into_iter()
+            .filter_map(|n| {
+                let path = env.map.find_path(here, n);
+                (!path.is_empty()).then(|| (path.len(), n, path))
+            })
+            .min_by_key(|(len, _, _)| *len);
+        match best {
+            Some((_, n, path)) => {
+                self.goal = Some(n);
+                self.path = path;
+            }
+            None => self.wait = 1.0, // coffre inaccessible : on réessaiera
+        }
+        self.activity = Activity::Idle;
+        false
+    }
+
+    /// Un bûcheron livre son bois au coffre de sa cabane : il y va, dépose ce qui rentre, et si le coffre
+    /// est plein il attend là, avec le reste en main.
+    fn deliver(&mut self, env: &Env) {
+        let Some(ci) = self.container else { return };
+        let Some(container) = env.containers.get(ci) else { return };
+        if self.approach_crate(env, container.tile) {
+            self.outcome = Some(Outcome::Drop { container: ci });
+            self.deliver_first = false;
+            self.wait = 1.0; // si le coffre est plein, on laisse passer un moment avant de réessayer
+        }
+    }
+
+    /// Le transporteur : choisit tout seul son voyage, va chercher la marchandise, la porte, et recommence.
+    /// Sa cargaison reste en main la nuit : il la livre à son réveil avant de choisir autre chose.
+    fn transport_routine(&mut self, env: &Env, rng: &mut Rng) {
+        if self.wait > 0.0 {
+            self.wait -= env.dt;
+            self.activity = Activity::Idle;
+            return;
+        }
+        if !self.path.is_empty() {
+            if self.follow_path(env) {
+                self.goal = None;
+            }
+            return;
+        }
+        let here = self.tile();
+
+        // les mains pleines : on livre
+        if let Some((resource, _)) = self.cargo {
+            let planned = self.job.filter(|j| env.containers.get(j.to).map_or(false, |c| c.room(resource) > 0));
+            let to = planned.map(|j| j.to).or_else(|| {
+                best_destination(env.containers, env.reservations, self.id, resource, here)
+            });
+            let Some(to) = to else {
+                self.wait = 1.0; // personne ne peut la recevoir : on attend avec la cargaison
+                return;
+            };
+            if let Some(job) = self.job.as_mut() {
+                job.to = to;
+            }
+            if self.approach_crate(env, env.containers[to].tile) {
+                self.outcome = Some(Outcome::Drop { container: to });
+                self.wait = 0.2;
+            }
+            return;
+        }
+
+        // les mains vides, un voyage décidé : on va chercher la marchandise
+        if let Some(job) = self.job {
+            if self.approach_crate(env, env.containers[job.from].tile) {
+                self.outcome = Some(Outcome::Take { container: job.from, resource: job.resource, amount: job.amount });
+                self.wait = 0.2;
+            }
+            return;
+        }
+
+        // rien en cours : on cherche le meilleur voyage, sinon on attend à l'entrepôt central
+        match best_trip(env.containers, env.reservations, self.id, env.cfg.transport_load, here) {
+            Some(job) => self.job = Some(job),
+            None => self.wander_routine(env, rng),
+        }
+    }
+
+    /// `Game` : la prise est faite, le personnage porte maintenant `taken` unités. Rien de pris : le voyage tombe.
+    pub(crate) fn loaded(&mut self, resource: Resource, taken: u32) {
+        if taken == 0 {
+            self.job = None;
+            return;
+        }
+        self.cargo = Some((resource, taken));
+        if let Some(job) = self.job.as_mut() {
+            job.amount = taken;
+        }
+    }
+
+    /// `Game` : un dépôt vient d'avoir lieu ; `left` unités n'ont pas pu entrer et restent en main.
+    pub(crate) fn unloaded(&mut self, left: u32) {
+        self.cargo = match self.cargo {
+            Some((resource, _)) if left > 0 => Some((resource, left)),
+            _ => None,
+        };
+        if self.cargo.is_none() {
+            self.job = None;
+        }
+    }
+
+    /// `Game` : ajoute à ce qu'on porte (le bois d'un arbre abattu).
+    pub(crate) fn pick_up(&mut self, resource: Resource, amount: u32) {
+        let held = match self.cargo {
+            Some((r, n)) if r == resource => n,
+            _ => 0,
+        };
+        self.cargo = Some((resource, held + amount));
+    }
+
+    /// Ce que ce transporteur a promis de prendre et d'apporter, pour que les autres n'en tiennent pas pour acquis.
+    pub(crate) fn reservations(&self) -> Vec<Reservation> {
+        let Some(job) = self.job else { return Vec::new() };
+        let mut list = Vec::new();
+        match self.cargo {
+            None => {
+                list.push(Reservation { owner: self.id, container: job.from, resource: job.resource, amount: job.amount, incoming: false });
+                list.push(Reservation { owner: self.id, container: job.to, resource: job.resource, amount: job.amount, incoming: true });
+            }
+            Some((resource, amount)) => {
+                list.push(Reservation { owner: self.id, container: job.to, resource, amount, incoming: true });
+            }
+        }
+        list
     }
 
     /// Le garde : fait sa ronde, point par point dans l'ordre, et s'arrête un instant à chacun.

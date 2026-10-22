@@ -7,6 +7,7 @@
 use crate::character::Role;
 use crate::config::Config;
 use crate::math::TilePos;
+use crate::mine::Vein;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum WorkKind {
@@ -18,6 +19,10 @@ pub enum WorkKind {
     Harvest,
     /// Forger un outil sur une enclume (consomme du fer).
     Forge,
+    /// Donner des coups de pioche sur un filon.
+    Mine,
+    /// Donner des coups de hache sur un arbre de forêt (à plusieurs : les coups s'additionnent).
+    Chop,
 }
 
 impl WorkKind {
@@ -26,6 +31,8 @@ impl WorkKind {
         match self {
             WorkKind::Till | WorkKind::Plant | WorkKind::Harvest => Role::Farmer,
             WorkKind::Forge => Role::Blacksmith,
+            WorkKind::Mine => Role::Miner,
+            WorkKind::Chop => Role::Lumberjack,
         }
     }
 
@@ -36,7 +43,20 @@ impl WorkKind {
             WorkKind::Plant => cfg.plant_secs,
             WorkKind::Harvest => cfg.harvest_secs,
             WorkKind::Forge => cfg.forge_secs,
+            WorkKind::Mine => cfg.strike_secs,
+            WorkKind::Chop => cfg.chop_secs,
         }
+    }
+}
+
+/// Durée d'un travail sur cette tuile. Miner dépend de la qualité du filon : nombre de coups × durée d'un coup.
+pub fn work_secs(kind: WorkKind, tile: TilePos, cfg: &Config, veins: &[Vein]) -> f32 {
+    match (kind, veins.iter().find(|v| v.contains(tile))) {
+        (WorkKind::Mine, Some(vein)) => {
+            let strikes = cfg.strikes_per_quality[vein.quality as usize];
+            strikes as f32 * cfg.strike_secs
+        }
+        _ => kind.duration_secs(cfg),
     }
 }
 
@@ -47,6 +67,8 @@ pub struct Work {
     pub tile: TilePos,
     /// Avancement de 0.0 à 1.0.
     pub progress: f32,
+    /// Durée totale de ce travail, en secondes réelles (pour l'IA en pleine forme).
+    pub secs: f32,
 }
 
 /// Événement : un travail vient de se terminer. C'est `Game` qui en applique les effets au monde.

@@ -18,9 +18,9 @@ Il se place à côté de l'enclume en la regardant, puis appuie sur la touche d'
 - Quand il n'y a plus de fer, elle traîne dans la forge en attendant.
 - Plusieurs forgerons ne se disputent pas la même enclume : celle qui est prise est évitée.
 
-## Le fer — en place, à changer
+## Le fer — en place
 
-Le fer est aujourd'hui un **stock de départ fini** (60). Il est transformé en outils en moins d'une journée. Aucune source n'en produit d'autre : c'est le [mineur](mineur.md) qui va l'alimenter.
+Le fer vient d'un **stock de départ** (60) et du [mineur de fer](mineur.md), qui l'ajoute au même compteur. Le forgeron puise dans ce compteur. Pas encore de stock local ni de lingots.
 
 ## Décidé : le forgeron fabrique une liste d'objets
 

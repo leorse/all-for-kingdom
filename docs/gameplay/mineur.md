@@ -1,6 +1,17 @@
 # Le mineur
 
-Il extrait du **minerai** des filons du royaume. C'est lui qui alimente le [forgeron](forgeron.md). Ce métier est **décidé mais pas encore dans le jeu**.
+Il extrait du **minerai** des filons du royaume. C'est lui qui alimente le [forgeron](forgeron.md). Ce métier est **en place** : filons, mineurs, mine-maison et coffre de la mine.
+
+## En place aujourd'hui
+
+- Trois filons sur la carte (fer, or, pierre), chacun avec sa mine accolée et son mineur. Le cuivre existe comme nature mais n'est pas posé.
+- Qualité en **trois niveaux** (1, 2 ou 3 points par tuile) : **3, 5 ou 8 coups de pioche** d'une seconde par unité de minerai, pour la roche pure, moyenne ou impure. La pierre suit les mêmes règles.
+- Un mineur a **un filon attitré** : celui de sa mine. Jusqu'à 8 mineurs peuvent se placer autour d'un même filon, un par case.
+- Une unité extraite va **tout de suite dans le coffre de la mine**, posé **à côté du bâtiment** (le mineur n'a pas à y aller). Le coffre contient au plus **200** unités de son minerai : **une fois plein, le mineur ne mine plus** et attend qu'un [transporteur](transporteur.md) en emporte. Les transporteurs portent le fer à la forge, le reste à l'entrepôt central.
+- La mine est pour l'instant seulement la **maison** du mineur (son lit).
+- Le fer de départ (60) est conservé.
+
+Ce qui suit en « décidé » et n'est **pas encore fait** : l'amélioration de la mine (confort, entrepôt plus grand). Le coffre est aujourd'hui **dehors**, et non dans la mine elle-même.
 
 ## Les filons — décidé
 
@@ -46,11 +57,8 @@ La mine est attenante à son filon : on la construit contre lui.
 
 ## À définir
 
-- La **pierre** a-t-elle aussi des qualités (impuretés), ou est-elle toujours pareille ?
-- Le **nombre de niveaux de qualité**, et le nombre de coups pour chacun.
 - Le **cuivre** : à quoi sert-il ? Pour le fer et l'or, on sait que le forgeron en fait des lingots.
 - La **capacité de départ** d'un entrepôt de mine.
-- Un mineur a-t-il **un filon attitré**, ou va-t-il vers celui qui est libre ?
-- Les **8 postes** autour d'un filon sont-ils tous utilisés d'emblée, ou limités par la taille de la mine ?
+- Les **8 postes** autour d'un filon sont aujourd'hui tous utilisables : seront-ils limités par la taille de la mine ?
 - Le **fer de départ** du royaume : on le garde, on le réduit, on le supprime ?
 - Où placer les mines sur la carte ? D'abord dans le scénario fixé à l'avance, puis par le roi (voir [roi.md](roi.md)).

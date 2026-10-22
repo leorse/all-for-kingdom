@@ -2,15 +2,23 @@
 
 ## Aujourd'hui — en place
 
-Le royaume a trois ressources, affichées en haut à droite de l'écran sous forme de **compteurs globaux** :
+Le royaume a sept ressources. Elles vivent dans des **coffres** (un par lieu de travail, plafonnés à 200 de chaque ressource) ; les compteurs affichés en haut à droite de l'écran en sont le **total**.
 
 | Ressource | D'où elle vient | À quoi elle sert |
 |---|---|---|
 | Blé | récolté par le [paysan](paysan.md) | à rien pour l'instant |
-| Fer | stock de départ (60) | consommé par le [forgeron](forgeron.md) |
+| Fer | stock de départ (60), puis le [mineur](mineur.md) | consommé par le [forgeron](forgeron.md) |
 | Outils | forgés par le forgeron | à rien pour l'instant |
 
-Il n'y a pas de transport : une ressource apparaît dans le compteur dès que le travail est fini. Il n'y a pas de limite.
+Ce que le mineur et le forgeron produisent entre dans le coffre de leur lieu de travail dès que le travail est fini, sans trajet. Le paysan (son blé) et le bûcheron (son bois) le portent à la main jusqu'à leur coffre. Les [transporteurs](transporteur.md) font circuler le reste. Un coffre plein arrête son producteur.
+
+## En place : le bois du bûcheron
+
+Le [bûcheron](bucheron.md) coupe des arbres (3 bûches chacun), porte ses bûches à la main (9 au plus) et les dépose dans le coffre de sa cabane.
+
+## En place : le minerai des mineurs
+
+Les mineurs alimentent des compteurs globaux de **fer**, d'**or** et de **pierre** (le **cuivre** existe, mais aucun filon n'en fournit). Il n'y a pas encore d'entrepôt ni de limite : le minerai arrive tout de suite dans le compteur.
 
 ## Décidé : les ressources du mineur
 

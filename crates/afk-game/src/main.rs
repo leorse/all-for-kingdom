@@ -51,6 +51,11 @@ async fn main() {
     // Pas fixe pour la simulation : le comportement ne dépend pas de la vitesse d'affichage.
     let mut accumulator = 0.0_f32;
 
+    // Position de la souris à l'image précédente tant que le bouton droit est tenu (pour mesurer le déplacement).
+    let mut last_mouse: Option<(f32, f32)> = None;
+    // Un personnage était-il incarné à l'image précédente ? (Espace en quitte puis en reprend un.)
+    let mut was_possessed = true;
+
     loop {
         let input = input::poll(me, &view, &game);
         if input.quit {
@@ -69,6 +74,19 @@ async fn main() {
             game.apply(command);
         }
 
+        // la vue à la souris : bouton droit maintenu = on tire la carte ; molette = zoom autour du curseur
+        if input.right_down {
+            if let Some(last) = last_mouse {
+                view.pan_pixels(input.mouse.0 - last.0, input.mouse.1 - last.1);
+            }
+            last_mouse = Some(input.mouse);
+        } else {
+            last_mouse = None;
+        }
+        if input.wheel != 0 {
+            view.zoom(input.wheel, input.mouse);
+        }
+
         accumulator = (accumulator + get_frame_time().min(0.1) * speed).min(10.0);
         while accumulator >= TICK {
             game.step(TICK);
@@ -81,6 +99,14 @@ async fn main() {
             recenter = followed.is_some() && followed != Some(id);
             followed = Some(id);
         }
+        // vue libre : le joueur reprend son personnage en le déplaçant ou avec Espace (changer de personnage recentre déjà)
+        let possessed = game.possessed_by(me).is_some();
+        let moves_it = input.moving && !input.right_down && possessed;
+        let takes_it_back = possessed && !was_possessed; // Espace : on reprend le dernier personnage
+        if view.is_free() && (moves_it || takes_it_back) {
+            recenter = true;
+        }
+        was_possessed = possessed;
         let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
         view.update(&game, target, recenter, get_frame_time());
 

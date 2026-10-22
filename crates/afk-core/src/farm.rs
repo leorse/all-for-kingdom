@@ -54,7 +54,7 @@ fn priority(kind: WorkKind) -> u8 {
         WorkKind::Harvest => 0,
         WorkKind::Plant => 1,
         WorkKind::Till => 2,
-        WorkKind::Forge => 3, // pas un travail de ferme : n'arrive jamais ici
+        WorkKind::Forge | WorkKind::Mine | WorkKind::Chop => 3, // pas un travail de ferme : n'arrive jamais ici
     }
 }
 
@@ -90,10 +90,17 @@ impl Farm {
     /// (récolte, semis, labour), puis la plus proche de `from`.
     /// `claimed` : parcelles déjà visées ou travaillées par quelqu'un d'autre, à laisser tranquilles.
     pub fn pick_target(&self, from: TilePos, claimed: &[TilePos]) -> Option<TilePos> {
+        self.pick_target_with(from, claimed, true)
+    }
+
+    /// Comme `pick_target`, mais `can_harvest == false` écarte les parcelles mûres : le coffre du champ
+    /// est plein, la récolte attend et le paysan continue de labourer et de semer.
+    pub fn pick_target_with(&self, from: TilePos, claimed: &[TilePos], can_harvest: bool) -> Option<TilePos> {
         self.plots
             .iter()
             .filter(|p| !claimed.contains(&p.tile))
             .filter_map(|p| p.state.next_work().map(|kind| (kind, p.tile)))
+            .filter(|&(kind, _)| can_harvest || kind != WorkKind::Harvest)
             .min_by_key(|&(kind, t)| (priority(kind), (t.x - from.x).abs() + (t.y - from.y).abs()))
             .map(|(_, t)| t)
     }

@@ -17,11 +17,18 @@ pub enum Tile {
     Bed,
     /// Une enclume : c'est un obstacle, on forge depuis une case voisine en la regardant.
     Anvil,
+    /// Une tuile de filon de minerai : solide, on mine depuis une case voisine en la regardant.
+    Ore,
+    /// Un coffre (contenant de ressources), posé à l'extérieur des bâtiments : solide, on y accède
+    /// depuis une case voisine.
+    Crate,
+    /// Une pousse d'arbre : praticable, redevient un arbre après un délai.
+    Sapling,
 }
 
 impl Tile {
     pub fn is_solid(self) -> bool {
-        matches!(self, Tile::Water | Tile::Wall | Tile::Tree | Tile::Anvil)
+        matches!(self, Tile::Water | Tile::Wall | Tile::Tree | Tile::Anvil | Tile::Ore | Tile::Crate)
     }
 }
 

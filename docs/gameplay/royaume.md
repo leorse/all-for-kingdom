@@ -10,7 +10,7 @@
 - **Au centre** : les bâtiments publics, le château, la forge, la caserne et la taverne, reliés par la grande route est-ouest et l'axe nord-sud.
 - **Loin du centre** : les maisons et les champs. Le champ est à l'extrémité nord-ouest.
 - Tout est **relié par des routes**. Chaque personnage doit pouvoir atteindre son lit et ses postes de travail.
-- Il y a quelques arbres, qui bloquent le passage.
+- Il y a quelques arbres isolés, qui bloquent le passage, et deux forêts dont on peut couper les arbres.
 
 ## Décidé : les filons
 
@@ -30,7 +30,7 @@ Pour l'instant, **tout est posé à la main** dans le scénario de départ. C'es
 
 ## Décidé : les forêts sont limitées
 
-Les arbres **poussent**, et il y a des **zones de forêt** en nombre limité. Voir [bucheron.md](bucheron.md).
+Les arbres **poussent**, et il y a des **zones de forêt** en nombre limité (deux au départ). Voir [bucheron.md](bucheron.md).
 
 ## À définir
 

@@ -9,9 +9,13 @@ Chaque personnage a une **maison** avec un lit. C'est là qu'il dort, et qu'il r
 - Le joueur incarné peut se coucher près de son lit.
 - Il n'y a pas de mobilier ni d'amélioration pour l'instant.
 
+## En place : un coffre à côté de la maison
+
+Chaque lieu de travail a un **coffre** posé **dehors**, à côté du bâtiment : la mine, la cabane, la forge, la maison du paysan, et l'entrepôt central des [transporteurs](transporteur.md). La maison reste le lieu où l'on dort ; le stock est dans le coffre. Voir [ressources-et-stocks.md](ressources-et-stocks.md).
+
 ## Décidé : la maison sert d'entrepôt
 
-Pour certains métiers, la maison est aussi l'**entrepôt** du travailleur. C'est le cas du [mineur](mineur.md), dont la mine est à la fois sa maison et son stock de minerai. Voir [ressources-et-stocks.md](ressources-et-stocks.md).
+Pour certains métiers, la maison devait être aussi l'**entrepôt** du travailleur. C'est le cas du [mineur](mineur.md), dont la mine est à la fois sa maison et son stock de minerai. Aujourd'hui le stock est dans un coffre à côté ; le rapprocher de la maison reste possible.
 
 ## Décidé : les maisons s'améliorent
 

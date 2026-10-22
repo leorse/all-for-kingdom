@@ -22,9 +22,9 @@ On incarne tour à tour les habitants d'une cité médiévale. Ceux qu'on n'inca
 |---|---|---|
 | Paysan | [paysan.md](paysan.md) | en place |
 | Forgeron | [forgeron.md](forgeron.md) | en place, à étoffer |
-| Mineur | [mineur.md](mineur.md) | décidé, pas encore en jeu |
-| Bûcheron | [bucheron.md](bucheron.md) | décidé, pas encore en jeu |
-| Transporteur | [transporteur.md](transporteur.md) | décidé, pas encore en jeu |
+| Mineur | [mineur.md](mineur.md) | en place (version simplifiée : sans entrepôt limité) |
+| Bûcheron | [bucheron.md](bucheron.md) | en place (version simplifiée : sans entrepôt) |
+| Transporteur | [transporteur.md](transporteur.md) | en place (3 transporteurs, coffres limités à 200) |
 | Artisan | [artisan.md](artisan.md) | décidé, pas encore en jeu |
 | Garde | [garde.md](garde.md) | en place (rondes seulement) |
 | Roi | [roi.md](roi.md) | pas de travail propre encore |

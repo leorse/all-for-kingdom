@@ -79,7 +79,7 @@ fn main() {
                 PlotState::Ripe => counts[3] += 1,
             }
         }
-        let wheat = game.stock().get(Resource::Wheat);
+        let wheat = game.stock().get(Resource::Wheat) + game.in_hands(Resource::Wheat);
         if day == 2 {
             wheat_after_day2 = wheat;
         }
@@ -90,10 +90,23 @@ fn main() {
             work_by_kind[0] / n, work_by_kind[1] / n, work_by_kind[2] / n,
             empty_sum as f64 / samples.max(1) as f64,
         );
+        let trees: Vec<String> = game
+            .forests()
+            .iter()
+            .map(|f| format!("{}/{}", f.trees(game.map()).len(), f.w * f.h - ((f.w + 2) / 3) * f.h))
+            .collect();
+        println!(
+            "     bois {:>3} (arbres debout par foret : {})  fer {}  or {}  pierre {}",
+            game.stock().get(Resource::Wood),
+            trees.join(", "),
+            game.stock().get(Resource::Iron),
+            game.stock().get(Resource::Gold),
+            game.stock().get(Resource::Stone),
+        );
     }
 
     if days > 2 {
-        let final_wheat = game.stock().get(Resource::Wheat);
+        let final_wheat = game.stock().get(Resource::Wheat) + game.in_hands(Resource::Wheat);
         println!(
             "\nrécolte en régime établi (jours 3 à {days}) : {:.0} blé par jour",
             (final_wheat - wheat_after_day2) as f32 / (days - 2) as f32

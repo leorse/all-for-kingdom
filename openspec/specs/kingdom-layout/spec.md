@@ -36,3 +36,25 @@ La disposition du royaume SHALL rester une donnée du scénario, indépendante d
 #### Scenario: Changement de scénario
 - **WHEN** le scénario change de dimensions ou de coordonnées
 - **THEN** le rendu et la caméra s'adaptent sans modification de la logique de jeu
+
+### Requirement: Filons, mines et mineurs dans le royaume de départ
+Le royaume de départ SHALL contenir trois filons (fer, or et pierre), chacun avec sa mine accolée et exactement un mineur. Les filons, les mines et leurs postes de travail SHALL être définis par le scénario, sans chevaucher routes, champs ni bâtiments.
+
+#### Scenario: Trois natures présentes
+- **WHEN** la partie démarre
+- **THEN** la carte contient un filon de fer, un d'or et un de pierre, et trois mineurs
+
+#### Scenario: Mines accessibles
+- **WHEN** on cherche un chemin depuis le château jusqu'à chaque lit de mine et jusqu'à chaque case voisine d'un filon
+- **THEN** chacun est joignable à pied
+
+### Requirement: Forêts, cabanes et bûcherons dans le royaume de départ
+Le royaume de départ SHALL contenir deux forêts, chacune avec sa cabane proche et exactement un bûcheron. Les forêts, les cabanes et les postes de travail SHALL être définis par le scénario, sans chevaucher routes, champs, filons ni bâtiments.
+
+#### Scenario: Deux forêts présentes
+- **WHEN** la partie démarre
+- **THEN** la carte contient deux forêts dont les arbres sont abattables, et deux bûcherons
+
+#### Scenario: Forêts et cabanes accessibles
+- **WHEN** on cherche un chemin depuis le château jusqu'à chaque lit de cabane et jusqu'à la lisière de chaque forêt
+- **THEN** chacun est joignable à pied
