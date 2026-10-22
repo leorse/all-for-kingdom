@@ -26,6 +26,10 @@ Plus tard, on pourra améliorer une maison. Les améliorations prévues :
 
 L'idée « Mobilier et personnalisation de l'habitat » dans `IDEAS.md` va dans le même sens : le joueur ne peut aménager la maison que lorsqu'il possède le personnage, chaque meuble coûte de l'argent, et le mobilier influe sur le repos et le rendement. Les améliorations ci-dessus et le mobilier sont probablement deux faces du même système : à rapprocher.
 
+## Où habitent les nouveaux venus ?
+
+Les vagabonds arrivent à la [taverne](tavernier.md). Quand le roi leur donne un métier, ils ont besoin d'un lit : une maison à construire par l'[artisan](artisan.md), ou l'ajout de lits dans une maison existante. C'est à définir.
+
 ## À définir
 
 - Le **coût** des améliorations, et qui paie (le personnage, le roi).

@@ -1,0 +1,35 @@
+# L'artisan
+
+Il **construit** ce que le roi a décidé de bâtir. Ce métier est **décidé dans son principe, pas encore dans le jeu**.
+
+## Le principe — décidé
+
+1. Le **roi trace un plan** : un champ, une maison, une mine… (voir [roi.md](roi.md)).
+2. Un **artisan vient construire** ce plan sur place.
+3. La construction **consomme des ressources** : du **bois** et de la **pierre**.
+
+Sans artisan, un plan reste un plan. Sans ressources, l'artisan ne peut pas avancer.
+
+## D'où viennent le bois et la pierre — décidé
+
+- Le **bois** vient du [bûcheron](bucheron.md).
+- La **pierre** vient du [mineur](mineur.md) : c'est un minerai comme les autres, extrait d'un filon de pierre.
+- Les [transporteurs](transporteur.md) apportent ces ressources jusqu'au chantier.
+
+La chaîne complète d'une construction est donc : **roi (plan) → bûcheron et mineur (matière) → transporteur (livraison) → artisan (chantier)**.
+
+## Ce que ça change dans le jeu
+
+- Le royaume ne bouge plus tout seul : il **grandit selon les décisions du roi**.
+- Construire devient un coût en temps et en matières, ce qui oblige à équilibrer les métiers.
+- Les bâtiments aujourd'hui posés dans le scénario de départ deviendront, à terme, des choses qu'on construit.
+
+## À définir
+
+- Le **coût** de chaque bâtiment en bois et en pierre.
+- La **durée** d'un chantier, et si plusieurs artisans peuvent bâtir en même temps le même plan.
+- Que se passe-t-il quand il manque de la matière : l'artisan attend sur place, ou va faire autre chose ?
+- Les artisans **spécialisés** (maçon, charpentier) ou un seul métier pour tout ?
+- Est-ce que l'artisan **améliore** aussi les maisons (voir [habitat.md](habitat.md)), ou seulement les nouveaux bâtiments ?
+- Peut-on **démolir** ou déplacer un bâtiment ?
+- Le joueur qui incarne l'artisan travaille-t-il 2 fois plus vite, comme pour tous les métiers ?

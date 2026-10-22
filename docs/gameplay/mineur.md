@@ -6,10 +6,11 @@ Il extrait du **minerai** des filons du royaume. C'est lui qui alimente le [forg
 
 - Un filon est un **bloc de 2×2 tuiles** posé sur la carte.
 - Il est **infini** : il ne s'épuise jamais.
-- Il y en a de trois natures, reconnaissables au premier coup d'œil :
+- Il y en a de quatre natures, reconnaissables au premier coup d'œil :
   - **gris** : le fer ;
   - **cuivré** : le cuivre ;
-  - **doré** : l'or.
+  - **doré** : l'or ;
+  - **pierre** : la pierre, utilisée pour construire (voir [artisan.md](artisan.md)). Sa couleur reste à définir.
 - Sa **qualité** est indiquée par des **points** sur ses tuiles. Ces points sont les **impuretés** : plus il y en a, moins la roche est pure, et plus c'est long à extraire.
 
 La nature et la qualité sont donc visibles sans avoir à miner. Choisir où installer un mineur, c'est choisir un filon avec ses yeux.
@@ -45,6 +46,7 @@ La mine est attenante à son filon : on la construit contre lui.
 
 ## À définir
 
+- La **pierre** a-t-elle aussi des qualités (impuretés), ou est-elle toujours pareille ?
 - Le **nombre de niveaux de qualité**, et le nombre de coups pour chacun.
 - Le **cuivre** : à quoi sert-il ? Pour le fer et l'or, on sait que le forgeron en fait des lingots.
 - La **capacité de départ** d'un entrepôt de mine.

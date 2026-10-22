@@ -18,13 +18,13 @@ Le roi **donne des priorités au forgeron** : quoi fabriquer d'abord (armes, out
 
 Les stocks (minerai, blé, lingots…) devront être gérés. Le roi est le mieux placé pour cela. Voir [ressources-et-stocks.md](ressources-et-stocks.md).
 
-### Tracer les plans — idée
+### Tracer les plans — décidé
 
-Le roi **place lui-même les bâtiments** : champs, maisons, mines. Ce serait le gameplay du rôle de roi.
+Le roi **trace des plans** : champs, maisons, mines… Un [artisan](artisan.md) vient ensuite les construire, avec du bois et de la pierre. C'est le cœur du gameplay du roi : il décide où et quoi le royaume construit.
 
-### Accueillir les nouveaux arrivants — idée
+### Affecter les vagabonds — décidé
 
-Des gens arrivent de temps en temps dans le royaume. Ils ne servent à rien tant qu'ils n'ont pas de rôle : le roi les **affecte** à un métier (paysan, forgeron, mineur…).
+Des vagabonds arrivent dans la [taverne](tavernier.md). Ils ne servent à rien tant qu'ils n'ont pas de rôle : le roi les **affecte** à un métier (paysan, mineur, bûcheron, artisan, transporteur…). Si la taverne est pleine, plus personne n'arrive : il doit donc la vider.
 
 ### Les finances — idée
 

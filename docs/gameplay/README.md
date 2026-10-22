@@ -23,10 +23,13 @@ On incarne tour à tour les habitants d'une cité médiévale. Ceux qu'on n'inca
 | Paysan | [paysan.md](paysan.md) | en place |
 | Forgeron | [forgeron.md](forgeron.md) | en place, à étoffer |
 | Mineur | [mineur.md](mineur.md) | décidé, pas encore en jeu |
+| Bûcheron | [bucheron.md](bucheron.md) | décidé, pas encore en jeu |
+| Transporteur | [transporteur.md](transporteur.md) | décidé, pas encore en jeu |
+| Artisan | [artisan.md](artisan.md) | décidé, pas encore en jeu |
 | Garde | [garde.md](garde.md) | en place (rondes seulement) |
 | Roi | [roi.md](roi.md) | pas de travail propre encore |
 | Chef de guerre | [chef-de-guerre.md](chef-de-guerre.md) | pas de travail propre encore |
-| Tavernier | [tavernier.md](tavernier.md) | pas de travail propre encore |
+| Tavernier | [tavernier.md](tavernier.md) | rôle de la taverne décidé (accueillir les vagabonds) |
 
 **Les règles communes**
 

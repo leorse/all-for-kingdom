@@ -18,8 +18,13 @@ Des **filons** de 2×2 tuiles (fer, cuivre, or) seront répartis sur la carte, c
 
 Comme les maisons et les champs, ils seront **loin du centre**.
 
+## Décidé : le roi bâtit
+
+Le roi trace des plans, et un [artisan](artisan.md) les construit. Le royaume grandit donc selon ses décisions, et non plus seulement selon le scénario de départ. Voir [roi.md](roi.md).
+
 ## À définir
 
 - Où sont les premiers filons : au bord du royaume, regroupés dans une zone rocheuse ?
 - La carte s'agrandit-elle, et y a-t-il une notion de région autour du royaume (voir l'idée « Région et royaume ennemi » dans `IDEAS.md`) ?
-- Le roi pourra-t-il tracer lui-même les bâtiments (voir [roi.md](roi.md)) ?
+- Les bâtiments du scénario de départ seront-ils tous construits d'emblée, ou le royaume commence-t-il plus petit, avec le roi et l'[artisan](artisan.md) qui bâtissent le reste ?
+- Les **arbres** actuels deviennent la matière du [bûcheron](bucheron.md) : certains resteront-ils décoratifs ?
