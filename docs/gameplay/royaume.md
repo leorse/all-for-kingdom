@@ -14,7 +14,7 @@
 
 ## Décidé : les filons
 
-Des **filons** de 2×2 tuiles (fer, cuivre, or) seront répartis sur la carte, chacun avec une **mine** attenante qui sert de maison au mineur. Voir [mineur.md](mineur.md).
+Des **filons** de 2×2 tuiles (fer, cuivre, or, pierre) seront répartis sur la carte, chacun avec une **mine** attenante qui sert de maison au mineur. Voir [mineur.md](mineur.md).
 
 Comme les maisons et les champs, ils seront **loin du centre**.
 

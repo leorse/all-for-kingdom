@@ -14,9 +14,10 @@ Il n'y a pas de transport : une ressource apparaît dans le compteur dès que le
 
 ## Décidé : les ressources du mineur
 
-Le [mineur](mineur.md) apporte trois minerais, un par nature de filon :
+Le [mineur](mineur.md) apporte quatre minerais, un par nature de filon :
 
 - **fer** et **or** : le forgeron en fait des **lingots** ;
+- **pierre** : sert à construire (voir plus bas) ;
 - **cuivre** : usage à définir.
 
 ## Décidé : la construction consomme du bois et de la pierre
