@@ -13,15 +13,19 @@ Le jeu SHALL comporter le métier de mineur, incarnable comme les autres personn
 - **THEN** aucun travail ne démarre
 
 ### Requirement: Miner depuis une case voisine
-Un mineur SHALL donner ses coups de pioche sur le filon de sa mine depuis une case praticable voisine, en le regardant. Le joueur SHALL lancer le travail avec la touche d'action ; un mouvement ou une seconde pression l'annule, comme pour les autres métiers.
+Un mineur SHALL donner ses coups de pioche sur le filon de sa mine depuis une case praticable voisine, en le regardant, tant que le contenant de sa mine peut recevoir une unité de plus. Le joueur SHALL lancer le travail avec la touche d'action ; un mouvement ou une seconde pression l'annule, comme pour les autres métiers.
 
 #### Scenario: Le joueur mine
 - **WHEN** le mineur incarné se place contre son filon en le regardant et appuie sur la touche d'action
-- **THEN** une barre de progression s'affiche et, à la fin, une unité de minerai de la nature du filon est ajoutée au compteur global de cette nature
+- **THEN** une barre de progression s'affiche et, à la fin, une unité de minerai de la nature du filon est ajoutée au contenant de sa mine
 
 #### Scenario: Annuler
 - **WHEN** le joueur bouge pendant qu'il mine
 - **THEN** le travail est annulé et rien n'est déposé
+
+#### Scenario: Contenant plein
+- **WHEN** le joueur appuie sur la touche d'action devant son filon alors que le contenant de sa mine est plein de cette ressource
+- **THEN** aucun travail ne démarre
 
 ### Requirement: La qualité fixe la durée
 Chaque qualité de filon SHALL correspondre à un nombre de coups de pioche par unité de minerai ; la durée d'une unité est ce nombre multiplié par la durée d'un coup. Une roche pure SHALL demander moins de coups qu'une roche impure. Ces valeurs SHALL être des réglages de la configuration.
@@ -38,11 +42,15 @@ Le joueur SHALL miner deux fois plus vite que l'IA. La fatigue SHALL ralentir un
 - **THEN** le joueur met la moitié du temps de l'IA
 
 ### Requirement: Le mineur IA travaille le jour
-Un mineur IA SHALL, dans son horaire de travail, se placer contre son filon, le regarder et miner sans fin ; la nuit il SHALL rentrer dormir dans sa mine.
+Un mineur IA SHALL, dans son horaire de travail, se placer contre son filon, le regarder et miner tant que le contenant de sa mine peut recevoir du minerai ; quand il est plein il SHALL attendre, et reprendre dès qu'une place se libère. La nuit il SHALL rentrer dormir dans sa mine.
 
 #### Scenario: Journée sans joueur
 - **WHEN** la simulation tourne un jour entier sans personnage incarné
-- **THEN** chaque mineur produit du minerai de jour et dort dans sa mine la nuit
+- **THEN** chaque mineur produit du minerai de jour tant que son contenant n'est pas plein, et dort dans sa mine la nuit
+
+#### Scenario: Mine pleine
+- **WHEN** le contenant d'une mine atteint 200 unités
+- **THEN** le mineur IA cesse de miner et attend
 
 ### Requirement: Un poste par case voisine
 Jusqu'à huit mineurs SHALL pouvoir miner le même filon en même temps, un par case voisine. Deux mineurs ne SHALL pas viser la même case.
