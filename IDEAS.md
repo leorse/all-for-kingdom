@@ -11,7 +11,8 @@ Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une i
 - Le roi place lui-même les bâtiments : champs, maisons, etc. Un artisan vient les construire, avec du bois et de la pierre.
 - Remplace le placement codé en dur dans `scenario.rs` (voir `kingdom-layout`, qui précise que le scénario est une donnée pure).
 - Fait partie du gameplay du rôle de roi.
-- Détails dans `docs/gameplay/artisan.md` et `docs/gameplay/roi.md`.
+- À terme la carte est vide : le roi place des zones et les routes se tracent seules (inspiration *The Settlers*).
+- Détails dans `docs/gameplay/artisan.md`, `docs/gameplay/roi.md` et `docs/gameplay/royaume.md`.
 
 ## Bûcheron, transporteurs
 - Le bûcheron coupe des arbres et produit du bois pour la construction.
@@ -21,7 +22,9 @@ Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une i
 ## Nouveaux arrivants
 - De temps en temps, des vagabonds arrivent dans le royaume et sont accueillis à la taverne. Ils ne servent à rien tant qu'ils n'ont pas de rôle.
 - Le roi les affecte à un rôle (paysan, forgeron, etc.). Taverne pleine : plus de vagabonds.
-- Détails dans `docs/gameplay/tavernier.md`.
+- Les arrivants ont des compétences : bons paysans, bons forgerons, chevaliers… Une mauvaise affectation est contre-productive.
+- Améliorer la taverne donne plus de lits.
+- Détails dans `docs/gameplay/tavernier.md` et `docs/gameplay/competences.md`.
 
 ## Mineurs
 Décidé dans les grandes lignes : voir `docs/gameplay/mineur.md`. Reste à trancher le nombre de niveaux de qualité, l'usage du cuivre, la capacité des entrepôts.

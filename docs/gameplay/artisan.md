@@ -26,6 +26,7 @@ La chaîne complète d'une construction est donc : **roi (plan) → bûcheron et
 
 ## À définir
 
+- Il construit des **zones** que le roi place (champs, habitat…) : combien de tuiles à la fois ? Voir [royaume.md](royaume.md).
 - Le **coût** de chaque bâtiment en bois et en pierre.
 - La **durée** d'un chantier, et si plusieurs artisans peuvent bâtir en même temps le même plan.
 - Que se passe-t-il quand il manque de la matière : l'artisan attend sur place, ou va faire autre chose ?

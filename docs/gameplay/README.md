@@ -34,6 +34,7 @@ On incarne tour à tour les habitants d'une cité médiévale. Ceux qu'on n'inca
 **Les règles communes**
 
 - [Temps, repos et fatigue](temps-et-repos.md) : le cycle jour/nuit, la forme, le sommeil, l'incarnation.
+- [Compétences](competences.md) : bon paysan, bon forgeron, et pourquoi bien affecter les gens compte.
 - [Ressources et stocks](ressources-et-stocks.md) : ce que le royaume produit et stocke, et où.
 - [La maison et son entrepôt](habitat.md) : le logement de chaque personnage, et ce qu'il deviendra.
 - [Le royaume](royaume.md) : la carte et la disposition des lieux.
