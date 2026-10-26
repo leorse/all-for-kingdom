@@ -4,6 +4,7 @@
 use crate::character::Role;
 use crate::container::{place_crates, ContainerKind, ContainerSpec};
 use crate::forest::{Forest, LodgeSpec};
+use crate::habitat::{HabitatClass, HabitatSpec};
 use crate::map::{Tile, TileMap};
 use crate::math::TilePos;
 use crate::mine::{MineSpec, OreKind, Quality, Vein};
@@ -38,6 +39,8 @@ pub struct Scenario {
     pub lodges: Vec<LodgeSpec>,
     /// Les coffres, tous à l'extérieur des bâtiments.
     pub containers: Vec<ContainerSpec>,
+    /// Les habitats : bâtiments où l'on dort, à taille fixe (le château n'en fait pas partie).
+    pub habitats: Vec<HabitatSpec>,
     pub characters: Vec<CharacterSpec>,
 }
 
@@ -59,6 +62,37 @@ impl Scenario {
     /// Le village de départ : les bâtiments publics au centre, les maisons et les champs loin
     /// vers les bords, reliés par de longues routes (le royaume dépasse largement l'écran).
     pub fn village() -> Scenario {
+        Scenario::build(1)
+    }
+
+    /// Le village avec `farmers` paysans au total (au moins 1, au plus 6), pour tester la
+    /// main-d'œuvre agricole. La maison du paysan grandit avec leur nombre : petite pour un,
+    /// moyenne jusqu'à trois, grande jusqu'à six ; chaque paysan a son lit.
+    pub fn village_with_farmers(farmers: usize) -> Scenario {
+        assert!(farmers <= HabitatClass::Large.max_places(), "pas assez de lits pour {farmers} paysans");
+
+        let mut scenario = Scenario::build(farmers.max(1));
+        let first_home = scenario.characters.iter().find(|c| c.role == Role::Farmer).expect("le paysan").home;
+        let beds: Vec<TilePos> = scenario
+            .habitats
+            .iter()
+            .find(|h| h.beds.contains(&first_home))
+            .expect("la maison du paysan")
+            .beds
+            .clone();
+        for i in 1..farmers.max(1) {
+            scenario.characters.push(CharacterSpec {
+                name: format!("Paysan {}", i + 1),
+                role: Role::Farmer,
+                home: beds[i],
+                night_shift: false,
+                work_spots: vec![TilePos::new(3 + i as i32, 4)],
+            });
+        }
+        scenario
+    }
+
+    fn build(farmers: usize) -> Scenario {
         let (w, h) = (64, 40);
         let mut map = TileMap::new(w, h, Tile::Grass);
 
@@ -76,26 +110,21 @@ impl Scenario {
         map.fill_rect(3, 4, 8, 6, Tile::Field);
         map.fill_rect(7, 10, 1, 10, Tile::Path); // route des champs
 
-        // bâtiments publics, regroupés au centre : x, y, largeur, hauteur, porte
+        // bâtiments publics : x, y, largeur, hauteur, porte (le château a son propre fonctionnement,
+        // la forge et la taverne ne sont pas des habitats)
         map.add_building(28, 11, 7, 5, TilePos::new(31, 15)); // château
         map.add_building(36, 13, 6, 5, TilePos::new(38, 17)); // forge
-        map.add_building(19, 22, 6, 5, TilePos::new(21, 22)); // caserne
         map.add_building(36, 22, 6, 5, TilePos::new(38, 22)); // taverne
 
         // l'enclume, au milieu de la forge
         map.set(TilePos::new(39, 15), Tile::Anvil);
 
-        // maisons, loin du centre
-        map.add_building(10, 26, 5, 4, TilePos::new(12, 26)); // maison du paysan (sud-ouest)
-        map.add_building(54, 4, 5, 4, TilePos::new(56, 7)); // maison du forgeron (nord-est)
-        map.add_building(54, 28, 4, 4, TilePos::new(56, 28)); // maison du tavernier (sud-est)
-
         // chemins entre les portes et la grande route
         map.fill_rect(38, 18, 1, 2, Tile::Path);
         map.set(TilePos::new(21, 21), Tile::Path);
         map.set(TilePos::new(38, 21), Tile::Path);
-        map.fill_rect(12, 21, 1, 5, Tile::Path);
-        map.fill_rect(56, 8, 1, 12, Tile::Path);
+        map.fill_rect(8, 21, 1, 2, Tile::Path); // la maison du paysan
+        map.fill_rect(56, 9, 1, 11, Tile::Path);
         map.fill_rect(56, 21, 1, 7, Tile::Path);
 
         // mines : un bâtiment accolé à un filon de 2x2, relié à la route par un chemin
@@ -107,22 +136,52 @@ impl Scenario {
         for vein in &veins {
             vein.place(&mut map);
         }
-        map.add_building(44, 5, 5, 4, TilePos::new(46, 8)); // mine de fer (nord)
-        map.fill_rect(46, 9, 1, 11, Tile::Path);
-        map.add_building(24, 30, 5, 4, TilePos::new(28, 31)); // mine d'or (sud-ouest du château)
-        map.fill_rect(29, 31, 2, 1, Tile::Path);
-        map.add_building(46, 28, 5, 4, TilePos::new(48, 28)); // mine de pierre (sud-est)
-        map.fill_rect(48, 21, 1, 7, Tile::Path);
+        map.fill_rect(46, 10, 1, 10, Tile::Path);
+        map.set(TilePos::new(30, 31), Tile::Path);
+        map.fill_rect(48, 21, 1, 6, Tile::Path);
 
         // forêts : une zone d'arbres, avec la cabane du bûcheron à côté et un chemin vers la route
         let forests = vec![Forest::new(13, 2, 12, 7), Forest::new(8, 32, 12, 6)];
         for forest in &forests {
             forest.plant(&mut map);
         }
-        map.add_building(16, 10, 5, 4, TilePos::new(18, 13)); // cabane nord
-        map.fill_rect(18, 14, 1, 6, Tile::Path);
-        map.add_building(16, 27, 5, 4, TilePos::new(18, 27)); // cabane sud
         map.fill_rect(18, 21, 1, 6, Tile::Path);
+
+        // l'entrepôt central, près du château : le chemin de sa porte vers la route
+        map.fill_rect(28, 17, 3, 1, Tile::Path);
+
+        // les habitats : une taille fixe, un lit (2×1) par place, une table (2×1), une étagère (2×1) et un bac d'eau
+        // (voir `habitat.rs`)
+        use HabitatClass::{Large, Medium, Small};
+        let farmer_house = match farmers {
+            0..=1 => HabitatSpec::new(4, 23, Small, (8, 23), &[(5, 24)], (8, 26), (5, 26), (9, 24)),
+            2..=3 => HabitatSpec::new(4, 23, Medium, (8, 23), &[(5, 24), (10, 24), (5, 26)], (8, 26), (10, 26), (7, 24)),
+            _ => HabitatSpec::new(
+                4,
+                23,
+                Large,
+                (8, 23),
+                &[(5, 24), (10, 24), (5, 26), (10, 26), (5, 28), (10, 28)],
+                (7, 26),
+                (7, 28),
+                (9, 26),
+            ),
+        };
+        let habitats = vec![
+            farmer_house, // maison du paysan (sud-ouest)
+            HabitatSpec::new(54, 4, Small, (56, 8), &[(58, 5)], (55, 5), (58, 7), (55, 7)), // maison du forgeron (nord-est)
+            HabitatSpec::new(54, 28, Small, (56, 28), &[(58, 29)], (55, 31), (58, 31), (55, 29)), // maison du tavernier (sud-est)
+            HabitatSpec::new(19, 22, Medium, (21, 22), &[(22, 23), (24, 23), (22, 25)], (20, 25), (24, 25), (26, 25)), // caserne
+            HabitatSpec::new(43, 5, Small, (46, 9), &[(44, 6)], (47, 6), (47, 8), (44, 8)), // mine de fer (nord)
+            HabitatSpec::new(23, 29, Small, (29, 31), &[(24, 30)], (24, 32), (27, 32), (28, 30)), // mine d'or
+            HabitatSpec::new(45, 27, Small, (48, 27), &[(46, 28)], (49, 28), (49, 30), (46, 30)), // mine de pierre
+            HabitatSpec::new(8, 10, Small, (8, 12), &[(12, 11)], (9, 11), (9, 13), (13, 13)), // cabane nord
+            HabitatSpec::new(16, 27, Small, (18, 27), &[(20, 28)], (17, 30), (20, 30), (17, 28)), // cabane sud
+            HabitatSpec::new(19, 15, Medium, (27, 17), &[(20, 16), (22, 16), (24, 16)], (20, 18), (23, 18), (26, 16)), // entrepôt central
+        ];
+        for habitat in &habitats {
+            habitat.build(&mut map);
+        }
 
         // quelques arbres (seulement sur l'herbe)
         for &(x, y) in &[
@@ -138,28 +197,28 @@ impl Scenario {
         }
 
         let characters = vec![
-            spec("Paysan", Role::Farmer, (11, 28), &[(4, 5), (6, 5), (8, 5), (4, 7), (6, 7), (8, 7)]),
-            spec("Forgeron", Role::Blacksmith, (55, 5), &[(38, 15), (40, 15), (39, 16)]),
+            spec("Paysan", Role::Farmer, (5, 24), &[(4, 5), (6, 5), (8, 5), (4, 7), (6, 7), (8, 7)]),
+            spec("Forgeron", Role::Blacksmith, (58, 5), &[(38, 15), (40, 15), (39, 16)]),
             spec("Roi", Role::King, (33, 12), &[(31, 13), (29, 13), (33, 13)]),
-            spec("Chef de guerre", Role::Warlord, (20, 23), &[(21, 24), (23, 24), (22, 20), (26, 20)]),
-            spec("Tavernier", Role::Innkeeper, (56, 30), &[(38, 24), (40, 24), (38, 23)]),
+            spec("Chef de guerre", Role::Warlord, (22, 23), &[(20, 24), (22, 24), (22, 20), (26, 20)]),
+            spec("Tavernier", Role::Innkeeper, (58, 29), &[(38, 24), (40, 24), (38, 23)]),
             // les gardes dorment à la caserne et font des rondes sur les routes du royaume
             spec(
                 "Garde de jour",
                 Role::Guard,
-                (23, 23),
+                (24, 23),
                 &[(31, 19), (44, 20), (56, 19), (38, 21), (31, 25), (31, 37), (21, 21), (12, 20), (7, 19)],
             ),
             spec(
                 "Garde de nuit",
                 Role::Guard,
-                (23, 25),
+                (22, 25),
                 &[(31, 17), (56, 19), (31, 37), (7, 19), (38, 19)],
             )
             .on_night_shift(),
         ];
 
-        let mine_beds = [(47, 6), (25, 31), (47, 29)];
+        let mine_beds = [(44, 6), (24, 30), (46, 28)];
         let mut characters = characters;
         characters.push(spec("Mineur de fer", Role::Miner, mine_beds[0], &[(44, 3), (47, 3)]));
         characters.push(spec("Mineur d'or", Role::Miner, mine_beds[1], &[(24, 34), (27, 34)]));
@@ -170,66 +229,44 @@ impl Scenario {
             .map(|(vein, &(x, y))| MineSpec { vein, bed: TilePos::new(x, y) })
             .collect();
 
-        let lodge_beds = [(17, 11), (17, 28)];
+        let lodge_beds = [(12, 11), (20, 28)];
         characters.push(spec("Bucheron nord", Role::Lumberjack, lodge_beds[0], &[(15, 9), (20, 9)]));
-        characters.push(spec("Bucheron sud", Role::Lumberjack, lodge_beds[1], &[(9, 31), (14, 31)]));
+        characters.push(spec("Bucheron sud", Role::Lumberjack, lodge_beds[1], &[(12, 31), (14, 31)]));
         let lodges = lodge_beds
             .iter()
             .enumerate()
             .map(|(forest, &(x, y))| LodgeSpec { forest, bed: TilePos::new(x, y) })
             .collect();
 
-        // l'entrepôt central, près du château : trois lits dedans, son coffre dehors à côté de la porte
-        map.add_building(24, 16, 6, 4, TilePos::new(29, 18));
-        map.set(TilePos::new(30, 18), Tile::Path);
-        let depot_beds = [(25, 17), (26, 17), (27, 17)];
+        // les trois transporteurs dorment à l'entrepôt central
+        let depot_beds = [(20, 16), (22, 16), (24, 16)];
         for (i, bed) in depot_beds.iter().enumerate() {
             let name = format!("Transporteur {}", i + 1);
-            characters.push(spec(&name, Role::Transporter, *bed, &[(26 + i as i32, 18)]));
+            characters.push(spec(&name, Role::Transporter, *bed, &[(21 + i as i32, 17)]));
         }
 
-        // les coffres : toujours dehors, contre le bâtiment qu'ils servent
+        // les coffres : toujours dehors, au niveau de l'extraction de la ressource
         let crate_at = |kind, x, y| ContainerSpec { kind, tile: TilePos::new(x, y) };
         let containers = vec![
-            crate_at(ContainerKind::Farm, 13, 25),
-            crate_at(ContainerKind::Mine(0), 49, 7),
-            crate_at(ContainerKind::Mine(1), 30, 32),
-            crate_at(ContainerKind::Mine(2), 51, 29),
-            crate_at(ContainerKind::Lodge(0), 21, 11),
-            crate_at(ContainerKind::Lodge(1), 18, 31),
+            crate_at(ContainerKind::Farm, 11, 6),
+            crate_at(ContainerKind::Mine(0), 48, 4),
+            crate_at(ContainerKind::Mine(1), 28, 35),
+            crate_at(ContainerKind::Mine(2), 50, 33),
+            crate_at(ContainerKind::Lodge(0), 22, 9),
+            crate_at(ContainerKind::Lodge(1), 15, 31),
             crate_at(ContainerKind::Forge, 42, 15),
-            crate_at(ContainerKind::Depot, 30, 17),
+            crate_at(ContainerKind::Depot, 28, 18),
         ];
         place_crates(&mut map, &containers);
 
-        // les lits
+        // le lit du roi, au château : le château n'est pas un habitat
         for c in &characters {
-            map.set(c.home, Tile::Bed);
+            if !habitats.iter().any(|h| h.beds.contains(&c.home)) {
+                map.set(c.home, Tile::Bed);
+            }
         }
 
-        Scenario { map, veins, mines, forests, lodges, containers, characters }
-    }
-
-    /// Le village avec `farmers` paysans au total (au moins 1, au plus 6), pour tester la
-    /// main-d'œuvre agricole. Les paysans supplémentaires dorment dans la maison du paysan.
-    pub fn village_with_farmers(farmers: usize) -> Scenario {
-        const EXTRA_BEDS: [(i32, i32); 5] = [(12, 28), (13, 28), (11, 27), (12, 27), (13, 27)];
-        assert!(farmers <= 1 + EXTRA_BEDS.len(), "pas assez de lits pour {farmers} paysans");
-
-        let mut scenario = Scenario::village();
-        for i in 1..farmers.max(1) {
-            let (bx, by) = EXTRA_BEDS[i - 1];
-            let home = TilePos::new(bx, by);
-            scenario.map.set(home, Tile::Bed);
-            scenario.characters.push(CharacterSpec {
-                name: format!("Paysan {}", i + 1),
-                role: Role::Farmer,
-                home,
-                night_shift: false,
-                work_spots: vec![TilePos::new(3 + i as i32, 4)],
-            });
-        }
-        scenario
+        Scenario { map, veins, mines, forests, lodges, containers, habitats, characters }
     }
 }
 
@@ -316,6 +353,123 @@ mod tests {
                 assert!(near, "la cabane de {} est loin de sa forêt", lj.name);
                 for spot in &lj.work_spots {
                     assert!(!scenario.map.find_path(hub, *spot).is_empty());
+                }
+            }
+        }
+    }
+
+    /// Distance de Manhattan entre un coffre et la tuile la plus proche d'une zone.
+    fn distance_to(zone: impl IntoIterator<Item = TilePos>, chest: TilePos) -> i32 {
+        zone.into_iter().map(|t| (t.x - chest.x).abs() + (t.y - chest.y).abs()).min().expect("zone vide")
+    }
+
+    #[test]
+    fn production_chests_sit_where_the_resource_is_extracted() {
+        use crate::container::ContainerKind;
+        for scenario in [Scenario::village(), Scenario::village_with_farmers(6)] {
+            let fields = scenario.map.find_tiles(Tile::Field);
+            for spec in &scenario.containers {
+                let near = match spec.kind {
+                    ContainerKind::Farm => distance_to(fields.clone(), spec.tile),
+                    ContainerKind::Mine(i) => distance_to(scenario.veins[i].tiles(), spec.tile),
+                    ContainerKind::Lodge(i) => distance_to(scenario.forests[i].trees(&scenario.map), spec.tile),
+                    ContainerKind::Forge | ContainerKind::Depot => continue,
+                };
+                assert!(near <= 2, "le coffre {:?} est à {near} cases de son lieu d'extraction", spec.kind);
+                // il ne masque ni un poste de travail ni un poste de mineur
+                for c in &scenario.characters {
+                    assert!(!c.work_spots.contains(&spec.tile), "{} a un poste sur un coffre", c.name);
+                }
+                if let ContainerKind::Mine(i) = spec.kind {
+                    assert!(!scenario.veins[i].access_tiles(&scenario.map).contains(&spec.tile));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn every_habitat_is_valid_furnished_and_intact_on_the_map() {
+        for farmers in 1..=6 {
+            let scenario = Scenario::village_with_farmers(farmers);
+            for (i, h) in scenario.habitats.iter().enumerate() {
+                assert_eq!(h.validate(), Ok(()), "habitat {i} en ({}, {})", h.x, h.y);
+                // posé tel quel sur la carte : rien ne l'a écrasé après coup
+                for &bed in &h.beds {
+                    assert_eq!(scenario.map.get(bed), Tile::Bed, "tête du lit {bed:?}");
+                    assert_eq!(scenario.map.get(TilePos::new(bed.x + 1, bed.y)), Tile::BedFoot, "pied du lit {bed:?}");
+                }
+                assert_eq!(scenario.map.get(TilePos::new(h.shelf.x, h.shelf.y)), Tile::Shelf);
+                assert_eq!(scenario.map.get(TilePos::new(h.shelf.x + 1, h.shelf.y)), Tile::ShelfEnd);
+                assert_eq!(scenario.map.get(TilePos::new(h.table.x + 1, h.table.y)), Tile::TableEnd);
+                assert_eq!(scenario.map.get(h.table), Tile::Table);
+                assert_eq!(scenario.map.get(h.trough), Tile::Trough);
+                assert_eq!(scenario.map.get(h.door), Tile::Floor);
+                assert_eq!(scenario.map.get(TilePos::new(h.x, h.y)), Tile::Wall);
+                // pas deux habitats l'un sur l'autre
+                for other in &scenario.habitats[i + 1..] {
+                    let overlap = (h.x..h.x + h.width()).any(|x| {
+                        (h.y..h.y + h.height()).any(|y| other.covers(TilePos::new(x, y)))
+                    });
+                    assert!(!overlap, "deux habitats se chevauchent en ({}, {}) et ({}, {})", h.x, h.y, other.x, other.y);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn everyone_but_the_king_sleeps_in_an_habitat_and_beds_are_not_shared() {
+        for scenario in [Scenario::village(), Scenario::village_with_farmers(6)] {
+            let mut seen = std::collections::HashSet::new();
+            for c in &scenario.characters {
+                assert!(seen.insert(c.home), "{} partage un lit", c.name);
+                let habitat = scenario.habitats.iter().find(|h| h.beds.contains(&c.home));
+                if c.role == Role::King {
+                    assert!(habitat.is_none(), "le château n'est pas un habitat");
+                } else {
+                    assert!(habitat.is_some(), "{} ne dort pas dans un habitat", c.name);
+                }
+            }
+            // au départ : autant de lits que de dormeurs, donc aucune place libre
+            let beds: usize = scenario.habitats.iter().map(|h| h.beds.len()).sum();
+            let sleepers = scenario.characters.iter().filter(|c| c.role != Role::King).count();
+            assert_eq!(beds, sleepers);
+        }
+    }
+
+    #[test]
+    fn the_farmers_house_grows_with_the_number_of_farmers() {
+        let class_of = |farmers| {
+            let scenario = Scenario::village_with_farmers(farmers);
+            let farmer = scenario.characters.iter().find(|c| c.role == Role::Farmer).unwrap();
+            let house = scenario.habitats.iter().find(|h| h.beds.contains(&farmer.home)).unwrap();
+            (house.class, house.beds.len())
+        };
+        assert_eq!(class_of(1), (HabitatClass::Small, 1));
+        assert_eq!(class_of(2), (HabitatClass::Medium, 3));
+        assert_eq!(class_of(3), (HabitatClass::Medium, 3));
+        assert_eq!(class_of(4), (HabitatClass::Large, 6));
+        assert_eq!(class_of(6), (HabitatClass::Large, 6));
+    }
+
+    #[test]
+    fn habitats_have_the_expected_classes() {
+        let scenario = Scenario::village();
+        let class_at = |x, y| scenario.habitats.iter().find(|h| h.x == x && h.y == y).unwrap().class;
+        assert_eq!(class_at(19, 22), HabitatClass::Medium, "caserne");
+        assert_eq!(class_at(19, 15), HabitatClass::Medium, "entrepôt central");
+        for (x, y) in [(4, 23), (54, 4), (54, 28), (43, 5), (23, 29), (45, 27), (8, 10), (16, 27)] {
+            assert_eq!(class_at(x, y), HabitatClass::Small, "habitat en ({x}, {y})");
+        }
+        assert_eq!(scenario.habitats.len(), 10);
+    }
+
+    #[test]
+    fn every_bed_in_every_habitat_is_reachable_from_the_castle() {
+        for scenario in [Scenario::village(), Scenario::village_with_farmers(6)] {
+            let hub = scenario.characters.iter().find(|c| c.role == Role::King).unwrap().work_spots[0];
+            for h in &scenario.habitats {
+                for &bed in &h.beds {
+                    assert!(!scenario.map.find_path(hub, bed).is_empty(), "lit {bed:?} inaccessible depuis le château");
                 }
             }
         }

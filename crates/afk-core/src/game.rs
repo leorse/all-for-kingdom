@@ -16,6 +16,7 @@ use crate::config::Config;
 use crate::container::{container_at, place_crates, Container, ContainerKind};
 use crate::farm::Farm;
 use crate::forest::{Forest, LodgeSpec, Saplings};
+use crate::habitat::HabitatSpec;
 use crate::map::{Tile, TileMap};
 use crate::math::{TilePos, Vec2};
 use crate::mine::{MineSpec, Vein};
@@ -67,6 +68,7 @@ pub struct Game {
     mines: Vec<MineSpec>,
     forests: Vec<Forest>,
     lodges: Vec<LodgeSpec>,
+    habitats: Vec<HabitatSpec>,
     saplings: Saplings,
     /// Avancement (0 à 1) des arbres entamés, partagé entre les bûcherons qui s'y attaquent.
     tree_progress: HashMap<TilePos, f32>,
@@ -133,6 +135,7 @@ impl Game {
             mines: scenario.mines,
             forests: scenario.forests,
             lodges: scenario.lodges,
+            habitats: scenario.habitats,
             saplings: Saplings::new(),
             tree_progress: HashMap::new(),
             characters,
@@ -198,6 +201,26 @@ impl Game {
 
     pub fn lodges(&self) -> &[LodgeSpec] {
         &self.lodges
+    }
+
+    pub fn habitats(&self) -> &[HabitatSpec] {
+        &self.habitats
+    }
+
+    /// Places libres d'un habitat : ses lits que personne n'occupe comme logement (aucun personnage n'y a son lit).
+    pub fn free_places_in(&self, habitat: usize) -> u32 {
+        let Some(h) = self.habitats.get(habitat) else { return 0 };
+        h.beds.iter().filter(|&&bed| !self.characters.iter().any(|c| c.home == bed)).count() as u32
+    }
+
+    /// Places libres dans tout le royaume.
+    pub fn free_places(&self) -> u32 {
+        (0..self.habitats.len()).map(|i| self.free_places_in(i)).sum()
+    }
+
+    /// Peut-on embaucher un vagabond de la taverne ? Seulement s'il reste une place libre quelque part.
+    pub fn can_hire(&self) -> bool {
+        self.free_places() > 0
     }
 
     /// Avancement (0 à 1) de l'arbre entamé sur cette tuile, s'il y en a un.
@@ -701,7 +724,7 @@ use std::collections::HashSet;
     fn find_path_is_connected_and_walkable() {
         let scenario = Scenario::village();
         let map = &scenario.map;
-        let path = map.find_path(TilePos::new(38, 15), TilePos::new(21, 24));
+        let path = map.find_path(TilePos::new(38, 15), TilePos::new(22, 24));
         assert!(!path.is_empty(), "la forge doit être reliée à la caserne");
         let mut prev = TilePos::new(38, 15);
         for p in path {
@@ -709,7 +732,7 @@ use std::collections::HashSet;
             assert_eq!((p.x - prev.x).abs() + (p.y - prev.y).abs(), 1);
             prev = p;
         }
-        assert_eq!(prev, TilePos::new(21, 24));
+        assert_eq!(prev, TilePos::new(22, 24));
     }
 
     #[test]
@@ -1540,10 +1563,10 @@ use std::collections::HashSet;
         assert_eq!(game.available_work(lj), Some((WorkKind::Chop, TREE_NORTH)));
 
         // ... mais pas un arbre isolé hors de toute forêt ...
-        let decor = TilePos::new(14, 14);
+        let decor = TilePos::new(10, 16);
         assert_eq!(game.map().get(decor), Tile::Tree);
         assert!(game.forests().iter().all(|f| !f.contains(decor)));
-        game.characters[lj.0].pos = TilePos::new(14, 15).center();
+        game.characters[lj.0].pos = TilePos::new(10, 17).center();
         game.characters[lj.0].facing = Facing::Up;
         assert_eq!(game.available_work(lj), None);
 
@@ -1647,7 +1670,7 @@ use std::collections::HashSet;
         let mut game = new_game();
         run(&mut game, 120.0);
         assert!(game.stock().get(Resource::Wood) >= 6, "bois : {}", game.stock().get(Resource::Wood));
-        assert_eq!(game.stock().get(Resource::Wood) % 3, 0, "toujours des arbres entiers");
+        assert_eq!(everywhere(&game, Resource::Wood) % 3, 0, "toujours des arbres entiers (coffres et mains)");
         run_until(&mut game, 1, 23.0);
         for name in ["Bucheron nord", "Bucheron sud"] {
             let lj = &game.characters()[id_of(&game, name).0];
@@ -1696,6 +1719,60 @@ use std::collections::HashSet;
     }
 
     const TILE_REGROWN: TilePos = TilePos::new(19, 4);
+
+    // ------------------------------------------------------------ habitats
+
+    #[test]
+    fn the_start_has_no_free_place_so_nobody_can_be_hired() {
+        let game = new_game();
+        assert_eq!(game.habitats().len(), 10);
+        assert_eq!(game.free_places(), 0);
+        assert!(!game.can_hire());
+        for i in 0..game.habitats().len() {
+            assert_eq!(game.free_places_in(i), 0, "habitat {i}");
+        }
+    }
+
+    #[test]
+    fn a_bed_nobody_sleeps_in_is_a_free_place_and_allows_hiring() {
+        let mut scenario = Scenario::village();
+        scenario.characters.retain(|c| c.name != "Garde de nuit"); // la caserne a trois lits, deux occupants
+        let game = Game::new(scenario, 1, Config::default());
+        assert_eq!(game.free_places(), 1);
+        let barracks = game.habitats().iter().position(|h| h.x == 19 && h.y == 22).unwrap();
+        assert_eq!(game.free_places_in(barracks), 1);
+        assert!(game.can_hire());
+    }
+
+    #[test]
+    fn a_medium_house_with_two_farmers_has_one_free_place() {
+        let game = Game::new(Scenario::village_with_farmers(2), 1, Config::default());
+        assert_eq!(game.free_places(), 1);
+        let house = game.habitats().iter().position(|h| h.beds.len() == 3 && h.x == 4).unwrap();
+        assert_eq!(game.free_places_in(house), 1);
+        // six paysans dans la grande maison : plus aucune place
+        assert_eq!(Game::new(Scenario::village_with_farmers(6), 1, Config::default()).free_places(), 0);
+    }
+
+    #[test]
+    fn nobody_is_hired_when_all_places_are_taken_and_the_rule_follows_the_free_places() {
+        let mut game = Game::new(Scenario::village_with_farmers(2), 1, Config::default());
+        assert!(game.can_hire());
+        // un paysan de plus prend le dernier lit de la maison moyenne
+        let bed = game.habitats().iter().find(|h| h.x == 4 && h.beds.len() == 3).unwrap().beds[2];
+        let taken = game.free_places();
+        game.characters.push(crate::character::Character::new(
+            CharacterId(game.characters.len()),
+            "Nouveau".into(),
+            Role::Farmer,
+            bed,
+            false,
+            vec![TilePos::new(4, 5)],
+        ));
+        assert_eq!(game.free_places(), taken - 1);
+        assert!(!game.can_hire());
+        assert_eq!(game.free_places_in(99), 0, "habitat inconnu");
+    }
 
     // ------------------------------------------------------------ contenants
 
@@ -1811,8 +1888,8 @@ use std::collections::HashSet;
         // devant le coffre : il dépose ce qui rentre (5 sur 8)
         game.containers[farm].add(Resource::Wheat, 195);
         game.characters[FARMER.0].cargo = Some((Resource::Wheat, 8));
-        game.characters[FARMER.0].pos = TilePos::new(13, 24).center();
-        game.characters[FARMER.0].facing = Facing::Down;
+        game.characters[FARMER.0].pos = TilePos::new(12, 6).center();
+        game.characters[FARMER.0].facing = Facing::Left;
         game.apply(Command::Interact { player: P0 });
         assert_eq!(game.characters[FARMER.0].cargo, Some((Resource::Wheat, 3)));
         assert_eq!(game.containers[farm].get(Resource::Wheat), 200);
@@ -2032,12 +2109,12 @@ use std::collections::HashSet;
             game.characters[t1.0].facing = face;
         };
         // charger : jusqu'à 10 de ce que la mine donne
-        stand(&mut game, TilePos::new(49, 6), Facing::Down);
+        stand(&mut game, TilePos::new(49, 4), Facing::Left);
         game.apply(Command::Interact { player: P0 });
         assert_eq!(game.characters[t1.0].cargo, Some((Resource::Iron, 10)));
         assert_eq!(game.containers[mine].get(Resource::Iron), 20);
         // la mine d'or n'accepte pas le fer
-        stand(&mut game, TilePos::new(30, 31), Facing::Down);
+        stand(&mut game, TilePos::new(29, 35), Facing::Left);
         game.apply(Command::Interact { player: P0 });
         assert_eq!(game.characters[t1.0].cargo, Some((Resource::Iron, 10)));
         assert_eq!(game.containers[gold].get(Resource::Iron), 0);
@@ -2124,8 +2201,8 @@ use std::collections::HashSet;
         game.containers[lodge].add(Resource::Wood, 198);
         let lj = id_of(&game, "Bucheron nord");
         game.apply(Command::Possess { player: P0, character: lj });
-        game.characters[lj.0].pos = TilePos::new(21, 10).center();
-        game.characters[lj.0].facing = Facing::Down;
+        game.characters[lj.0].pos = TilePos::new(22, 10).center();
+        game.characters[lj.0].facing = Facing::Up;
         game.characters[lj.0].cargo = Some((Resource::Wood, 5));
         game.apply(Command::Interact { player: P0 });
         assert_eq!(game.characters[lj.0].cargo, Some((Resource::Wood, 3)));

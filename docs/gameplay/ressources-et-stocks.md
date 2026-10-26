@@ -14,11 +14,11 @@ Ce que le mineur et le forgeron produisent entre dans le coffre de leur lieu de 
 
 ## En place : le bois du bûcheron
 
-Le [bûcheron](bucheron.md) coupe des arbres (3 bûches chacun), porte ses bûches à la main (9 au plus) et les dépose dans le coffre de sa cabane.
+Le [bûcheron](bucheron.md) coupe des arbres (3 bûches chacun), porte ses bûches à la main (9 au plus) et les dépose dans le coffre de sa forêt, en lisière.
 
 ## En place : le minerai des mineurs
 
-Les mineurs alimentent des compteurs globaux de **fer**, d'**or** et de **pierre** (le **cuivre** existe, mais aucun filon n'en fournit). Il n'y a pas encore d'entrepôt ni de limite : le minerai arrive tout de suite dans le compteur.
+Les mineurs déposent leur minerai (fer, or, pierre ; le cuivre n'a pas de filon) dans le coffre posé au pied de leur filon, sans marcher jusqu'à lui, tant que le coffre n'est pas plein (200).
 
 ## Décidé : les ressources du mineur
 

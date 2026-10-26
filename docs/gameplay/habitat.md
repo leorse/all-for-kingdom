@@ -7,11 +7,33 @@ Chaque personnage a une **maison** avec un lit. C'est là qu'il dort, et qu'il r
 - Les maisons sont **loin du centre**, vers les bords du royaume : maison du paysan au sud-ouest, du forgeron au nord-est, du tavernier au sud-est. Les gardes et le chef de guerre dorment à la caserne, le roi au château.
 - Se coucher dans son lit fait récupérer la forme. Voir [temps-et-repos.md](temps-et-repos.md).
 - Le joueur incarné peut se coucher près de son lit.
-- Il n'y a pas de mobilier ni d'amélioration pour l'instant.
+- Le **château** a son propre fonctionnement : il n'entre pas dans ce qui suit.
 
-## En place : un coffre à côté de la maison
+## En place : des habitats à taille fixe
 
-Chaque lieu de travail a un **coffre** posé **dehors**, à côté du bâtiment : la mine, la cabane, la forge, la maison du paysan, et l'entrepôt central des [transporteurs](transporteur.md). La maison reste le lieu où l'on dort ; le stock est dans le coffre. Voir [ressources-et-stocks.md](ressources-et-stocks.md).
+Tout bâtiment où l'on dort (sauf le château) est un **habitat** de l'une de ces trois tailles, murs compris :
+
+| Classe | Taille | Places (lits) |
+|---|---|---|
+| Petite maison | 7×5 (intérieur 5×3) | 1 |
+| Maison moyenne | 9×5 (intérieur 7×3) | jusqu'à 3 |
+| Grande maison | 9×7 (intérieur 7×5) | jusqu'à 6 |
+
+- Chaque habitat contient **au moins un lit, une table, une étagère et un bac d'eau**, dans son intérieur. **Le lit, la table et l'étagère font 2×1 tuiles, le bac 1×1.** La table, l'étagère et le bac sont infranchissables ; les lits se traversent. Tous les lits restent accessibles depuis la porte.
+- Une **place**, c'est un lit (sa tête, à gauche, désigne la place). Dans un habitat à plusieurs places, les lits se partagent **la même table, la même étagère et le même bac** (pièce commune).
+- **Chaque personne a son lit**, jamais deux dans le même. Les mines, les cabanes et les maisons du paysan, du forgeron et du tavernier sont des petites maisons ; la caserne (chef de guerre et gardes) et l'entrepôt central (transporteurs) sont des maisons moyennes. La maison du paysan grandit avec leur nombre : petite pour un, moyenne jusqu'à trois, grande jusqu'à six.
+- La table, l'étagère et le bac ne servent à rien d'autre pour l'instant (repas, soif, rangement et confort viendront plus tard) : ils comptent déjà dans la place qu'il faut prévoir.
+
+### Places libres, embauche, agrandissement
+
+- Le jeu sait compter les **places libres** : les lits que personne n'occupe. Au départ il n'y en a aucune.
+- **On ne peut embaucher un vagabond de la taverne que s'il reste une place libre** quelque part dans le royaume.
+- Un habitat pourra être **agrandi** (petite → moyenne → grande), mais seulement si l'espace autour est libre : l'emprise de la classe suivante, depuis le même coin haut-gauche, ne doit couvrir que de l'herbe ou des chemins (un arbre, de l'eau, un mur, un coffre, un champ ou un filon l'interdit). Le jeu sait vérifier cette place ; **l'action d'agrandir n'existe pas encore**.
+- Quand le **roi** posera un nouvel habitat, ce sera le logement d'un nouvel arrivant (pas encore dans le jeu, comme l'arrivée des vagabonds à la taverne).
+
+## En place : des coffres au lieu d'extraction
+
+Chaque lieu de travail a un **coffre** posé **dehors**, au niveau de l'extraction de la ressource : au pied de chaque filon, en lisière de chaque forêt, à côté du champ du paysan, contre la forge, et à côté de la porte de l'entrepôt central des [transporteurs](transporteur.md). La maison reste le lieu où l'on dort ; le stock est dans le coffre. Voir [ressources-et-stocks.md](ressources-et-stocks.md).
 
 ## Décidé : la maison sert d'entrepôt
 
@@ -32,7 +54,7 @@ L'idée « Mobilier et personnalisation de l'habitat » dans `IDEAS.md` va dans 
 
 ## Où habitent les nouveaux venus ?
 
-Les vagabonds arrivent à la [taverne](tavernier.md). Quand le roi leur donne un métier, ils ont besoin d'un lit : une maison à construire par l'[artisan](artisan.md), ou l'ajout de lits dans une maison existante. C'est à définir.
+Les vagabonds arrivent à la [taverne](tavernier.md). On ne peut en embaucher un que s'il reste une **place libre** quelque part (voir plus haut). Quand le roi posera un nouvel habitat, ce sera le logement d'un nouvel arrivant ; une maison à construire par l'[artisan](artisan.md) ou un agrandissement. Tout cela reste à brancher.
 
 ## À définir
 

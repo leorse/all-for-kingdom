@@ -93,7 +93,7 @@ glissement, marge de suivi, paliers de zoom) est dans `crates/afk-game/src/camer
 - Le fer extrait est porté à la forge par les transporteurs : le fer n'est plus fini.
 
 **Le bûcheron**
-- Deux forêts (zones d'arbres avec des couloirs), chacune avec sa cabane et son bûcheron. On abat un arbre depuis une case voisine en le regardant, puis `E` : 6 s pour l'IA, 3 s pour le joueur (`chop_secs`), 3 bûches par arbre (`logs_per_tree`), que le bûcheron porte lui-même (9 au plus) jusqu'au coffre de sa cabane.
+- Deux forêts (zones d'arbres avec des couloirs), chacune avec sa cabane et son bûcheron. On abat un arbre depuis une case voisine en le regardant, puis `E` : 6 s pour l'IA, 3 s pour le joueur (`chop_secs`), 3 bûches par arbre (`logs_per_tree`), que le bûcheron porte lui-même (9 au plus) jusqu'au coffre de sa forêt.
 - Un arbre abattu laisse une pousse, qui redevient un arbre après 24 h de jeu (`tree_regrow_hours`). Les forêts ne s'étendent pas : on peut les vider en coupant plus vite que la repousse.
 - Plusieurs bûcherons peuvent abattre le même arbre : leurs coups s'additionnent, mais seul celui qui porte le dernier coup reçoit le bois. L'IA coupe l'arbre le plus proche de sa forêt. Les arbres isolés hors forêt restent du décor.
 
@@ -103,6 +103,11 @@ glissement, marge de suivi, paliers de zoom) est dans `crates/afk-game/src/camer
 - Incarné, un transporteur charge et décharge avec `E` devant un coffre ; le bûcheron dépose son bois et le paysan son blé de la même façon. `C` vide l'entrepôt central.
 - Le paysan porte lui-même son blé (20 au plus, `farmer_carry`) jusqu'au coffre du champ, comme le bûcheron son bois.
 - Les compteurs en haut à droite sont le total de tous les coffres. Réglages dans `config.rs` : `container_capacity`, `transport_load`, `transporter_speed_factor`, `lumberjack_carry`, `farmer_carry`.
+
+**Les habitats**
+- Tout bâtiment où l'on dort (sauf le château) a une taille fixe : petite maison 7×5 (1 lit), moyenne 9×5 (jusqu'à 3), grande 9×7 (jusqu'à 6). Chaque habitat a au moins un lit, une table, une étagère et un bac d'eau ; le lit, la table et l'étagère font 2×1 tuiles, le bac 1×1 ; les lits d'un même habitat se partagent table, étagère et bac.
+- Chaque personne a son lit. Le jeu compte les places libres (`Game::free_places`) ; embaucher n'est permis que s'il en reste (`Game::can_hire`). Un habitat ne peut grandir que si l'espace autour est libre (`HabitatSpec::can_expand`) ; poser un habitat et embaucher viendront avec le roi et la taverne.
+- La maison du paysan grandit avec le nombre de paysans de `Scenario::village_with_farmers`.
 
 **Les gardes**
 - Deux gardes dorment à la caserne et font des rondes dans l'ordre le long des routes, avec une pause à chaque

@@ -7,7 +7,7 @@ Il extrait du **minerai** des filons du royaume. C'est lui qui alimente le [forg
 - Trois filons sur la carte (fer, or, pierre), chacun avec sa mine accolée et son mineur. Le cuivre existe comme nature mais n'est pas posé.
 - Qualité en **trois niveaux** (1, 2 ou 3 points par tuile) : **3, 5 ou 8 coups de pioche** d'une seconde par unité de minerai, pour la roche pure, moyenne ou impure. La pierre suit les mêmes règles.
 - Un mineur a **un filon attitré** : celui de sa mine. Jusqu'à 8 mineurs peuvent se placer autour d'un même filon, un par case.
-- Une unité extraite va **tout de suite dans le coffre de la mine**, posé **à côté du bâtiment** (le mineur n'a pas à y aller). Le coffre contient au plus **200** unités de son minerai : **une fois plein, le mineur ne mine plus** et attend qu'un [transporteur](transporteur.md) en emporte. Les transporteurs portent le fer à la forge, le reste à l'entrepôt central.
+- Une unité extraite va **tout de suite dans le coffre de la mine**, posé **au pied du filon** (le mineur n'a pas à y aller). Le coffre contient au plus **200** unités de son minerai : **une fois plein, le mineur ne mine plus** et attend qu'un [transporteur](transporteur.md) en emporte. Les transporteurs portent le fer à la forge, le reste à l'entrepôt central.
 - La mine est pour l'instant seulement la **maison** du mineur (son lit).
 - Le fer de départ (60) est conservé.
 

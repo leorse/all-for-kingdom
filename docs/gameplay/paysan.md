@@ -40,7 +40,7 @@ Pour 48 parcelles :
 
 ## Où va le blé — en place, à faire évoluer
 
-Le blé récolté est pris **en main** par le paysan (20 au plus, soit cinq récoltes) : il doit le **porter** jusqu'au **coffre du champ**, posé à côté de la porte de sa maison, jusqu'à 200. Mains pleines, il va livrer ; si le coffre est plein, il garde son blé et continue de labourer et de semer, mais ne récolte plus (les parcelles mûres attendent). Couché avec du blé, il le livre à son réveil. On voit un bloc jaune et la quantité sur lui. Les transporteurs emportent ensuite le blé à l'entrepôt central.
+Le blé récolté est pris **en main** par le paysan (20 au plus, soit cinq récoltes) : il doit le **porter** jusqu'au **coffre du champ**, posé **à côté du champ**, jusqu'à 200. Mains pleines, il va livrer ; si le coffre est plein, il garde son blé et continue de labourer et de semer, mais ne récolte plus (les parcelles mûres attendent). Couché avec du blé, il le livre à son réveil. On voit un bloc jaune et la quantité sur lui. Les transporteurs emportent ensuite le blé à l'entrepôt central.
 
 ## Décidé
 
