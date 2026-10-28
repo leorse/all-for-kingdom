@@ -7,7 +7,7 @@ Le dépôt SHALL contenir l'image de référence `docs/images/image_maison.jpg`,
 - **WHEN** on ouvre le dossier `docs`
 - **THEN** on y trouve `art-direction.md` qui cite les images de référence et décrit la palette, la taille de base, le gabarit des personnages et les règles de dessin
 
-### Requirement: Tuile de base de 16 pixels, affichage net
+### Requirement: Tuile de base de 32 pixels, affichage net
 Le dessin SHALL partir d'une tuile de base de 32×32 pixels. Il SHALL être affiché sans aucun lissage, à une échelle entière de cette base, de sorte que chaque pixel du dessin devienne un carré net de pixels d'écran. Les dessins faits sur l'ancienne tuile de 16 pixels SHALL être affichés à une échelle double de celle des dessins de 32 pixels, pour occuper la même place, et rester nets jusqu'à ce qu'ils soient redessinés.
 
 #### Scenario: Pixels nets
@@ -43,3 +43,8 @@ Le style SHALL devenir celui de tout le jeu, élément par élément. Les habita
 #### Scenario: Pas de bâtiment mixte
 - **WHEN** on regarde un habitat
 - **THEN** son toit, ses murs, son sol et ses meubles sont tous dans le nouveau style
+
+## RENAMED Requirements
+
+- FROM: `### Requirement: Tuile de base de 16 pixels, affichage net`
+- TO: `### Requirement: Tuile de base de 32 pixels, affichage net`

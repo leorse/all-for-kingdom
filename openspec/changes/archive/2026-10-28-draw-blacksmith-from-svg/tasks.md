@@ -22,7 +22,7 @@
 - [x] 4.1 Dessiner dans `assets/characters/forgeron.svg` les poses debout (bas, haut, droite) et le repos : un homme de ~1,7 tuile, barbe courte, tablier de cuir, manches retroussées, d'après la référence ; vérifier sur l'aperçu que le visage est symétrique et identique d'une image de face à l'autre, à part le clignement
 - [x] 4.2 Dessiner les marches bas, haut et droite en 4 images (contact gauche, croisé, contact droit, croisé), avec les bras opposés aux jambes ; vérifier sur l'aperçu que les images 1 et 3 avancent des jambes différentes et que les pieds restent sur l'ancre
 - [x] 4.3 Dessiner le sommeil (2 images, tête en haut, couverture rouge), la forge (6 images : marteau bas, lever, haut, descente, impact, rebond, avec la pince dans l'autre main) et l'enclume avec le métal chaud ; vérifier sur l'aperçu que le marteau passe au-dessus de la tête et touche le métal à l'image d'impact
-- [ ] 4.4 Générer `forgeron.png` avec `sprites.bat` et commiter le SVG et le PNG ; vérifier que `cargo test` passe, test de concordance compris
+- [x] 4.4 Générer `forgeron.png` avec `sprites.bat` et commiter le SVG et le PNG ; vérifier que `cargo test` passe, test de concordance compris
 
 ## 5. Forger par le nord de l'enclume (cœur)
 
