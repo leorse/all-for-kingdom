@@ -10,6 +10,9 @@
 //!   cargo run -- --speed 20           journée normale vue en accéléré (30 s)
 
 mod camera;
+#[allow(dead_code)] // une partie du gabarit ne sert qu'à l'outil `spritegen`
+mod character_sprites;
+mod character_view;
 mod habitat_view;
 mod input;
 mod render;
@@ -49,6 +52,7 @@ async fn main() {
     let mut view = render::View::new();
     // les sprites des habitats : construits une fois, la fenêtre étant ouverte
     let art = habitat_view::Art::new();
+    let sheets = character_view::Sheets::new();
     // Le personnage que la caméra suit : le dernier incarné (elle continue de le suivre en mode AFK).
     let mut followed: Option<CharacterId> = None;
 
@@ -114,7 +118,7 @@ async fn main() {
         let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
         view.update(&game, target, recenter, get_frame_time());
 
-        render::draw(&game, &view, &art, me, speed);
+        render::draw(&game, &view, &art, &sheets, me, speed);
         next_frame().await;
     }
 }

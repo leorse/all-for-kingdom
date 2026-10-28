@@ -64,6 +64,8 @@ pub(crate) enum Outcome {
     Take { container: usize, resource: Resource, amount: u32 },
     /// Déposer sa cargaison dans un contenant.
     Drop { container: usize },
+    /// Le joueur, conduit jusqu'au poste de forge de cette enclume, vient d'y arriver (ou s'est arrêté en route).
+    Arrived { anvil: TilePos },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -115,6 +117,11 @@ fn is_adjacent(a: TilePos, b: TilePos) -> bool {
     (a.x - b.x).abs() + (a.y - b.y).abs() == 1
 }
 
+/// Le poste de forge d'une enclume : la case juste au nord. On n'y forge que de là, en regardant vers le bas.
+pub fn forge_spot(anvil: TilePos) -> TilePos {
+    TilePos::new(anvil.x, anvil.y - 1)
+}
+
 pub struct Character {
     pub id: CharacterId,
     pub name: String,
@@ -161,6 +168,8 @@ pub struct Character {
     deliver_first: bool,
     /// Chargement ou déchargement demandé pendant ce pas : c'est `Game` qui l'applique.
     outcome: Option<Outcome>,
+    /// Le joueur a demandé de forger depuis le côté de cette enclume : le personnage marche seul jusqu'à son poste.
+    approach: Option<TilePos>,
 }
 
 impl Character {
@@ -192,6 +201,7 @@ impl Character {
             job: None,
             deliver_first: false,
             outcome: None,
+            approach: None,
             chop_delta: 0.0,
             work_spots,
             path: VecDeque::new(),
@@ -292,6 +302,7 @@ impl Character {
         self.activity = Activity::Sleeping;
         self.facing = Facing::Down;
         self.work = None;
+        self.approach = None;
         self.path.clear();
         self.goal = None;
         self.work_target = None;
@@ -339,6 +350,25 @@ impl Character {
 
     pub(crate) fn cancel_work(&mut self) {
         self.work = None;
+    }
+
+    /// Part seul vers le poste de forge de `anvil` par `path` (voir `drive`). L'enclume est réservée en route.
+    pub(crate) fn start_approach(&mut self, anvil: TilePos, path: VecDeque<TilePos>) {
+        self.approach = Some(anvil);
+        self.path = path;
+        self.work_target = Some(anvil);
+    }
+
+    pub(crate) fn cancel_approach(&mut self) {
+        self.approach = None;
+        self.path.clear();
+        self.work_target = None;
+        self.stuck = 0.0;
+    }
+
+    /// Est-il en route vers un poste de forge, à la demande du joueur ?
+    pub fn is_approaching(&self) -> bool {
+        self.approach.is_some()
     }
 
     /// Part d'arbre que ce bûcheron a abattue pendant le dernier pas (0 s'il ne coupe pas).
@@ -399,6 +429,19 @@ impl Character {
     /// Contrôle direct par un joueur. Bouger interrompt le travail en cours.
     fn drive(&mut self, dir: Vec2, env: &Env) {
         let dir = dir.normalized_or_zero();
+        if let Some(anvil) = self.approach {
+            if dir == Vec2::ZERO {
+                // conduit à son poste de forge ; à l'arrivée, c'est `Game` qui lance la forge
+                if self.path.is_empty() || self.follow_path(env) {
+                    self.approach = None;
+                    self.work_target = None;
+                    self.activity = Activity::Idle;
+                    self.outcome = Some(Outcome::Arrived { anvil });
+                }
+                return;
+            }
+            self.cancel_approach(); // le joueur reprend la main
+        }
         self.work_target = None; // le joueur décide : plus de tuile réservée par l'IA
         if self.work.is_some() {
             if dir == Vec2::ZERO {
@@ -419,6 +462,7 @@ impl Character {
     /// Le joueur quitte ce personnage : l'IA reprend depuis l'endroit où il se trouve.
     /// S'il dormait, il continue de dormir ; s'il travaillait, il termine son travail.
     pub(crate) fn release_to_ai(&mut self) {
+        self.approach = None;
         self.path.clear();
         self.goal = None;
         self.work_target = None;
@@ -569,7 +613,8 @@ impl Character {
         self.wander_routine(env, rng); // rien à faire : tout pousse
     }
 
-    /// Le forgeron : tant qu'il y a du fer, va se placer à côté d'une enclume libre, la regarde et forge.
+    /// Le forgeron : tant qu'il y a du fer, va se placer au poste d'une enclume libre (la case au nord), regarde
+    /// vers l'enclume et forge.
     /// Sans fer, il traîne dans sa forge en attendant.
     fn forge_routine(&mut self, env: &Env, rng: &mut Rng) {
         if self.wait > 0.0 {
@@ -597,17 +642,17 @@ impl Character {
                 .filter(|a| !env.claimed.contains(a))
                 .collect();
 
-            // déjà à côté d'une enclume libre : on la regarde et on forge
-            if let Some(&anvil) = anvils.iter().find(|&&a| is_adjacent(here, a)) {
-                self.facing = Facing::from_dir(anvil.center() - self.pos);
+            // déjà au poste d'une enclume libre : on la regarde et on forge
+            if let Some(&anvil) = anvils.iter().find(|&&a| here == forge_spot(a)) {
+                self.facing = Facing::Down;
                 self.start_work(WorkKind::Forge, anvil, WorkKind::Forge.duration_secs(env.cfg));
                 return;
             }
 
-            // sinon : on marche jusqu'à la case libre la plus proche d'une enclume libre
+            // sinon : on marche jusqu'au poste de forge libre le plus proche
             let best = anvils
                 .iter()
-                .flat_map(|&a| env.map.walkable_neighbors(a).into_iter().map(move |n| (a, n)))
+                .map(|&a| (a, forge_spot(a)))
                 .filter_map(|(a, n)| {
                     let path = env.map.find_path(here, n);
                     (!path.is_empty()).then(|| (path.len(), a, path))

@@ -3,6 +3,7 @@
 //! Changer de bibliothèque de rendu = réécrire ce fichier, pas la logique du jeu.
 
 use crate::camera::{step_zoom, zoom_center, Camera, DEFAULT_ZOOM, ZOOM_LEVELS};
+use crate::character_view::Sheets;
 use afk_core::{Activity, Character, Game, OreKind, PlayerId, PlotState, Resource, Role, Tile, TilePos, Vec2, WorkKind};
 use macroquad::prelude::*;
 
@@ -228,14 +229,14 @@ fn fitness_color(fitness: f32) -> Color {
 
 // ---------------------------------------------------------------- dessin
 
-pub fn draw(game: &Game, view: &View, art: &crate::habitat_view::Art, me: PlayerId, speed: f32) {
+pub fn draw(game: &Game, view: &View, art: &crate::habitat_view::Art, sheets: &Sheets, me: PlayerId, speed: f32) {
     clear_background(Color::from_rgba(20, 24, 30, 255));
     draw_map(game, view);
     draw_veins(game, view);
     draw_farm(game, view);
     crate::habitat_view::draw_habitats(game, view, art);
     draw_target(game, view, me);
-    draw_characters(game, view, me);
+    draw_characters(game, view, sheets, me);
     draw_containers(game, view);
     draw_forge_sparks(game, view);
     draw_daylight(game, view);
@@ -279,13 +280,6 @@ fn draw_map(game: &Game, view: &View) {
                     draw_rectangle(px + 3.0 * s, py + 6.0 * s, 26.0 * s, 20.0 * s, Color::from_rgba(104, 68, 40, 255)); // cadre
                     draw_rectangle(px + 5.0 * s, py + 8.0 * s, 22.0 * s, 16.0 * s, Color::from_rgba(196, 74, 74, 255)); // couverture
                     draw_rectangle(px + 5.0 * s, py + 8.0 * s, 7.0 * s, 16.0 * s, Color::from_rgba(236, 234, 222, 255)); // oreiller
-                }
-                Tile::Anvil => {
-                    draw_rectangle(px + 8.0 * s, py + 22.0 * s, 16.0 * s, 6.0 * s, Color::from_rgba(52, 52, 58, 255)); // pied
-                    draw_rectangle(px + 11.0 * s, py + 16.0 * s, 10.0 * s, 7.0 * s, Color::from_rgba(70, 70, 78, 255)); // taille
-                    draw_rectangle(px + 5.0 * s, py + 9.0 * s, 22.0 * s, 8.0 * s, Color::from_rgba(96, 96, 106, 255)); // table
-                    draw_rectangle(px + 2.0 * s, py + 11.0 * s, 5.0 * s, 4.0 * s, Color::from_rgba(96, 96, 106, 255)); // corne
-                    draw_rectangle(px + 7.0 * s, py + 9.0 * s, 18.0 * s, 2.0 * s, Color::from_rgba(150, 150, 162, 255)); // reflet
                 }
                 _ => {}
             }
@@ -393,23 +387,41 @@ fn sleep_direction(game: &Game, c: &Character) -> (f32, f32) {
     (1.0, 0.0)
 }
 
-fn draw_characters(game: &Game, view: &View, me: PlayerId) {
+fn draw_characters(game: &Game, view: &View, sheets: &Sheets, me: PlayerId) {
     let s = view.tile_px / 32.0;
+    let t = game.time();
     let possessed = game.possessed_by(me);
 
-    // les personnages plus bas à l'écran passent devant
-    let mut order: Vec<&Character> = game.characters().iter().collect();
-    order.sort_by(|a, b| a.pos.y.partial_cmp(&b.pos.y).unwrap_or(std::cmp::Ordering::Equal));
+    // personnages et enclumes, triés par profondeur : ce qui est plus bas à l'écran passe devant (l'enclume, sur la
+    // case au sud du forgeron, cache le bas de son corps)
+    enum Body<'a> {
+        Character(&'a Character),
+        Anvil(TilePos),
+    }
+    let mut bodies: Vec<(f32, Body)> = game.characters().iter().map(|c| (c.pos.y, Body::Character(c))).collect();
+    bodies.extend(game.map().find_tiles(Tile::Anvil).into_iter().map(|a| (a.y as f32 + 0.99, Body::Anvil(a))));
+    bodies.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
-    for c in order {
+    for (_, body) in &bodies {
+        let c = match body {
+            Body::Anvil(anvil) => {
+                if view.point_visible(anvil.center(), 2.0) {
+                    sheets.blacksmith.draw_extra("enclume", anvil.center(), view);
+                }
+                continue;
+            }
+            Body::Character(c) => *c,
+        };
         if !view.point_visible(c.pos, 2.0) {
             continue;
         }
+        if let Some(sheet) = sheets.for_role(c.role) {
+            sheet.draw_character(c, view, t, sleep_direction(game, c));
+            continue;
+        }
         let (x, y) = view.to_screen(c.pos);
-        let active = Some(c.id) == possessed;
 
         if c.activity == Activity::Sleeping {
-            // couché dans le lit : tête sur l'oreiller, un "z" qui flotte
             // couché dans le sens de son lit : la tête sur l'oreiller, le corps vers le pied
             let (fx, fy) = sleep_direction(game, c);
             let (bw, bh) = if fx != 0.0 { (16.0, 10.0) } else { (10.0, 16.0) };
@@ -417,22 +429,12 @@ fn draw_characters(game: &Game, view: &View, me: PlayerId) {
             draw_rectangle(bx - bw * s / 2.0, by - bh * s / 2.0, bw * s, bh * s, role_color(c.role));
             let (hx, hy) = (x - fx * 6.0 * s, y - fy * 6.0 * s);
             draw_rectangle(hx - 4.0 * s, hy - 4.0 * s, 8.0 * s, 8.0 * s, Color::from_rgba(240, 200, 160, 255));
-            let float = (game.time() * 2.0).sin() * 2.0 * s;
-            draw_text("z", x + 6.0 * s, y - 12.0 * s + float, 22.0 * s, WHITE);
-            if active {
-                draw_rectangle(x - 4.0 * s, y - 28.0 * s, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255));
-            }
             continue;
         }
 
-        let work_bob = if c.work.is_some() {
-            (game.time() * 8.0).sin() * 1.5 * s
-        } else {
-            0.0
-        };
-
+        let work_bob = if c.work.is_some() { (t * 8.0).sin() * 1.5 * s } else { 0.0 };
         draw_rectangle(x - 10.0 * s, y + 8.0 * s, 20.0 * s, 6.0 * s, Color::from_rgba(40, 60, 40, 255)); // ombre
-        if active {
+        if Some(c.id) == possessed {
             draw_rectangle(x - 11.0 * s, y - 14.0 * s, 22.0 * s, 26.0 * s, WHITE); // contour
         }
         draw_rectangle(x - 9.0 * s, y - 12.0 * s + work_bob, 18.0 * s, 22.0 * s, role_color(c.role)); // corps
@@ -440,28 +442,52 @@ fn draw_characters(game: &Game, view: &View, me: PlayerId) {
         if c.role == Role::Guard {
             draw_rectangle(x - 6.0 * s, y - 20.0 * s + work_bob, 12.0 * s, 5.0 * s, Color::from_rgba(160, 166, 184, 255)); // casque
         }
+    }
+
+    // par-dessus tout le monde : le « z » des dormeurs, ce qu'on porte, le marqueur du personnage incarné et la barre
+    // de travail
+    for c in game.characters() {
+        if !view.point_visible(c.pos, 2.0) {
+            continue;
+        }
+        let (x, y) = view.to_screen(c.pos);
+        let drawn = sheets.for_role(c.role).is_some();
+        // le haut de la tête et le bas des pieds, à l'écran
+        let (head, feet) = if drawn { (y - 54.0 * s, y + 4.0 * s) } else { (y - 17.0 * s, y + 16.0 * s) };
+        let active = Some(c.id) == possessed;
+
+        if c.activity == Activity::Sleeping {
+            let float = (t * 2.0).sin() * 2.0 * s;
+            draw_text("z", x + 6.0 * s, y - 12.0 * s + float, 22.0 * s, WHITE);
+            if active {
+                draw_rectangle(x - 4.0 * s, y - 28.0 * s, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255));
+            }
+            continue;
+        }
+
         // ce qu'il porte : un bloc de la couleur de la ressource dans les bras, la quantité au-dessus de la tête
         if let Some((resource, amount)) = c.cargo {
-            draw_rectangle(x - 7.0 * s, y - 3.0 * s + work_bob, 14.0 * s, 10.0 * s, Color::from_rgba(30, 30, 30, 255)); // contour
-            draw_rectangle(x - 6.0 * s, y - 2.0 * s + work_bob, 12.0 * s, 8.0 * s, resource_color(resource));
+            let chest = if drawn { y - 24.0 * s } else { y - 3.0 * s };
+            draw_rectangle(x - 7.0 * s, chest, 14.0 * s, 10.0 * s, Color::from_rgba(30, 30, 30, 255)); // contour
+            draw_rectangle(x - 6.0 * s, chest + 1.0 * s, 12.0 * s, 8.0 * s, resource_color(resource));
             let size = (16.0 * s).clamp(12.0, 24.0);
             let label = amount.to_string();
             let w = measure_text(&label, None, size as u16, 1.0).width;
-            draw_text(&label, x - w / 2.0 + 1.0, y - 21.0 * s + work_bob + 1.0, size, BLACK);
-            draw_text(&label, x - w / 2.0, y - 21.0 * s + work_bob, size, WHITE);
+            draw_text(&label, x - w / 2.0 + 1.0, head - 4.0 * s + 1.0, size, BLACK);
+            draw_text(&label, x - w / 2.0, head - 4.0 * s, size, WHITE);
         }
         if active {
-            let bob = (game.time() * 6.0).sin() * 3.0 * s;
-            draw_rectangle(x - 4.0 * s, y - 30.0 * s + bob, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255)); // marqueur
+            let bob = (t * 6.0).sin() * 3.0 * s;
+            draw_rectangle(x - 4.0 * s, head - 13.0 * s + bob, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255)); // marqueur
         }
 
         // barre de progression du travail, sous les pieds
         if let Some(work) = c.work {
             let (bw, bh) = (26.0 * s, 5.0 * s);
-            draw_rectangle(x - bw / 2.0, y + 16.0 * s, bw, bh, Color::from_rgba(20, 20, 20, 255));
+            draw_rectangle(x - bw / 2.0, feet, bw, bh, Color::from_rgba(20, 20, 20, 255));
             draw_rectangle(
                 x - bw / 2.0 + 1.0,
-                y + 16.0 * s + 1.0,
+                feet + 1.0,
                 (bw - 2.0) * work.progress.clamp(0.0, 1.0),
                 bh - 2.0,
                 Color::from_rgba(250, 220, 80, 255),
@@ -497,28 +523,29 @@ fn draw_containers(game: &Game, view: &View) {
     }
 }
 
-/// Métal chauffé à blanc sur l'enclume et étincelles, pendant qu'on forge.
+/// Durée d'une gerbe d'étincelles, en secondes, à partir du coup de marteau.
+const SPARKS_SECS: f32 = 0.35;
+
+/// Les étincelles qui jaillissent du métal chaud quand le marteau le frappe (le métal lui-même est dans le dessin).
 fn draw_forge_sparks(game: &Game, view: &View) {
-    let s = view.tile_px / 32.0;
-    let t = game.time();
+    let s = crate::character_view::scale(view);
     for c in game.characters() {
-        let Some(work) = c.work.filter(|w| w.kind == WorkKind::Forge) else { continue };
-        if !view.point_visible(work.tile.center(), 1.0) {
+        if !c.work.is_some_and(|w| w.kind == WorkKind::Forge) || !view.point_visible(c.pos, 2.0) {
             continue;
         }
-        let (px, py) = view.tile_origin(work.tile);
-        draw_rectangle(px + 9.0 * s, py + 7.0 * s, 14.0 * s, 3.0 * s, Color::from_rgba(255, 150, 40, 255));
-        for i in 0..4 {
-            let phase = (t * 6.0 + i as f32 * 1.7).fract();
-            let dx = (i as f32 - 1.5) * 9.0 * phase;
-            let dy = -16.0 * phase * (1.1 - phase);
-            draw_rectangle(
-                px + (15.0 + dx) * s,
-                py + (7.0 + dy) * s,
-                2.5 * s,
-                2.5 * s,
-                Color::new(1.0, 0.85, 0.3, 1.0 - phase),
-            );
+        let since = crate::character_sprites::since_impact(&crate::character_sprites::BLACKSMITH, game.time(), c.id.0);
+        if since > SPARKS_SECS {
+            continue;
+        }
+        let phase = since / SPARKS_SECS;
+        // le métal sur l'enclume : juste au-dessus des pieds du forgeron, dans son dessin
+        let (x, y) = view.to_screen(c.pos);
+        let (mx, my) = (x + 2.0 * s, y - 2.0 * s);
+        for i in 0..6 {
+            let spread = i as f32 - 2.5;
+            let dx = spread * 5.0 * phase;
+            let dy = -(10.0 + (i % 3) as f32 * 3.0) * phase * (1.2 - phase);
+            draw_rectangle((mx + dx * s).round(), (my + dy * s).round(), s, s, Color::new(1.0, 0.85, 0.3, 1.0 - phase));
         }
     }
 }
@@ -720,26 +747,26 @@ mod tests {
         let cursor = (700.0, 200.0);
         let before = v.to_world(cursor);
         v.zoom(1, cursor);
-        assert_eq!(v.tile_px, 48.0);
+        assert_eq!(v.tile_px, 96.0);
         let after = v.to_world(cursor);
         // l'origine est arrondie au pixel : au plus un pixel d'écart
-        assert!((before.x - after.x).abs() < 1.0 / 48.0 + 1e-3 && (before.y - after.y).abs() < 1.0 / 48.0 + 1e-3);
+        assert!((before.x - after.x).abs() < 1.0 / 96.0 + 1e-3 && (before.y - after.y).abs() < 1.0 / 96.0 + 1e-3);
         assert!(!v.is_free(), "zoomer ne déclenche pas la vue libre");
     }
 
     #[test]
-    fn zoom_stops_at_both_ends_and_the_whole_map_fits_at_the_smallest() {
+    fn zoom_stops_at_both_ends_and_a_quarter_of_the_map_shows_at_the_smallest() {
         let mut v = view_on(Vec2::new(32.0, 20.0));
         for _ in 0..20 {
             v.zoom(1, (512.0, 320.0));
         }
-        assert_eq!(v.tile_px, 64.0);
+        assert_eq!(v.tile_px, 128.0);
         for _ in 0..20 {
             v.zoom(-1, (512.0, 320.0));
         }
-        assert_eq!(v.tile_px, 16.0);
-        let (tl, br) = (v.to_screen(Vec2::ZERO), v.to_screen(Vec2::new(64.0, 40.0)));
-        assert!(tl.0 >= 0.0 && tl.1 >= 0.0 && br.0 <= 1024.0 && br.1 <= 640.0, "{tl:?} {br:?}");
+        assert_eq!(v.tile_px, 32.0);
+        let size = v.view_size();
+        assert!(size.x * size.y >= 64.0 * 40.0 / 4.0, "{size:?}");
     }
 
     #[test]

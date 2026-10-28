@@ -127,9 +127,10 @@ pub fn is_habitat_tile(game: &Game, tile: TilePos) -> bool {
     game.habitats().iter().any(|h| h.covers(tile))
 }
 
-/// L'échelle d'affichage : la taille d'une tuile à l'écran divisée par la tuile de base de 16 pixels (un entier).
+/// L'échelle d'affichage : la taille d'une tuile à l'écran divisée par la tuile de 16 pixels sur laquelle les habitats
+/// sont dessinés (un entier, deux fois celui des dessins sur la tuile de base de 32 pixels).
 fn scale(view: &View) -> f32 {
-    view.tile_px / crate::camera::BASE_TILE_PX
+    view.tile_px / sprites::LEGACY_TILE_PX
 }
 
 /// L'une des quatre variantes de sol, choisie par la position pour que les planches ne se répètent pas.
@@ -329,8 +330,10 @@ mod tests {
     #[test]
     fn the_scale_is_a_whole_number_at_every_zoom_level() {
         for z in crate::camera::ZOOM_LEVELS {
-            let s = z / crate::camera::BASE_TILE_PX;
+            let s = z / sprites::LEGACY_TILE_PX;
             assert_eq!(s.fract(), 0.0);
+            // un dessin de 16 px occupe exactement la place d'une tuile, comme un dessin de 32 px à l'échelle moitié
+            assert_eq!(sprites::LEGACY_TILE_PX * s, crate::camera::BASE_TILE_PX * (z / crate::camera::BASE_TILE_PX));
         }
     }
 

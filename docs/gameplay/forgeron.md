@@ -4,17 +4,17 @@ Il transforme les matières premières en objets. Aujourd'hui il ne sait faire q
 
 ## Forger — en place
 
-- Il travaille à une **enclume**, dans la forge. L'enclume est un obstacle : on forge depuis une case voisine, en la regardant.
+- Il travaille à une **enclume**, dans la forge. L'enclume est un obstacle : on forge **uniquement depuis la case au nord** (le poste de forge), en regardant vers le bas. On le voit ainsi de face, derrière l'enclume, lever et abattre le marteau.
 - Chaque coup de forge dure 8 secondes (4 pour le joueur), consomme **2 de fer** et produit **1 outil**.
 - Si le fer vient à manquer pendant un coup, le coup est perdu.
 
 ## Le joueur — en place
 
-Il se place à côté de l'enclume en la regardant, puis appuie sur la touche d'action. Il forge 2 fois plus vite que l'IA.
+Il se place à côté de l'enclume en la regardant, de n'importe quel côté, puis appuie sur la touche d'action (un appui suffit). S'il n'est pas au poste de forge, le forgeron y marche seul, se tourne vers l'enclume et forge. Un déplacement ou un nouvel appui pendant le trajet l'annulent. Il forge 2 fois plus vite que l'IA.
 
 ## L'IA — en place
 
-- Elle va se placer à côté d'une enclume libre et forge tant qu'il reste du fer.
+- Elle va se placer au poste de forge d'une enclume libre (la case au nord) et forge tant qu'il reste du fer.
 - Quand il n'y a plus de fer, elle traîne dans la forge en attendant.
 - Plusieurs forgerons ne se disputent pas la même enclume : celle qui est prise est évitée.
 

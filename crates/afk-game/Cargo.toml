@@ -2,6 +2,7 @@
 name = "afk-game"
 version = "0.1.0"
 edition = "2021"
+default-run = "all-for-kingdom"
 description = "All For Kingdom : frontend macroquad (rendu + entrées). Seul crate qui connaît macroquad."
 
 [[bin]]
@@ -11,3 +12,13 @@ path = "src/main.rs"
 [dependencies]
 afk-core = { path = "../afk-core" }
 macroquad = "0.4"
+resvg = { version = "0.45", optional = true }
+
+[features]
+# L'outil qui convertit les dessins SVG des personnages en planches PNG (voir `sprites.bat`).
+spritegen = ["dep:resvg"]
+
+[[bin]]
+name = "spritegen"
+path = "src/bin/spritegen.rs"
+required-features = ["spritegen"]
