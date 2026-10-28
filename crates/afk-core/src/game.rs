@@ -17,7 +17,7 @@ use crate::container::{container_at, place_crates, Container, ContainerKind};
 use crate::farm::Farm;
 use crate::forest::{Forest, LodgeSpec, Saplings};
 use crate::habitat::HabitatSpec;
-use crate::map::{Tile, TileMap};
+use crate::map::{PathMode, Tile, TileMap};
 use crate::math::{TilePos, Vec2};
 use crate::mine::{MineSpec, Vein};
 use crate::resources::{Resource, Stock};
@@ -417,7 +417,7 @@ impl Game {
                     let c = &self.characters[id.0];
                     if kind == WorkKind::Forge && c.tile() != forge_spot(tile) {
                         // on ne forge que depuis le poste au nord de l'enclume : il y va seul
-                        let path = self.map.find_path(c.tile(), forge_spot(tile));
+                        let path = self.map.find_path_mode(c.tile(), forge_spot(tile), PathMode::Roads(self.config.grass_cost));
                         if !path.is_empty() {
                             self.characters[id.0].start_approach(tile, path);
                         }
@@ -754,7 +754,14 @@ use std::collections::HashSet;
         let mut prev = TilePos::new(38, 15);
         for p in path {
             assert!(!map.get(p).is_solid());
-            assert_eq!((p.x - prev.x).abs() + (p.y - prev.y).abs(), 1);
+            let (dx, dy) = ((p.x - prev.x).abs(), (p.y - prev.y).abs());
+            assert!(dx <= 1 && dy <= 1 && dx + dy >= 1, "pas d'une case, diagonale permise");
+            if dx == 1 && dy == 1 {
+                assert!(
+                    !map.get(TilePos::new(p.x, prev.y)).is_solid() && !map.get(TilePos::new(prev.x, p.y)).is_solid(),
+                    "pas de coin coupé"
+                );
+            }
             prev = p;
         }
         assert_eq!(prev, TilePos::new(20, 24));

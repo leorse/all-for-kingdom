@@ -5,6 +5,7 @@ Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une i
 ## Bandits
 - Ils circulent dans le royaume, peuvent voler et attaquer.
 - Seuls les gardes peuvent se défendre.
+- Un voleur qui s'enfuit prend le plus court chemin vers la sortie du château, sans suivre les routes ; les gardes le poursuivent de même (voir `docs/gameplay/garde.md`).
 - À définir : ce qu'ils volent, d'où ils viennent, ce que ça coûte au royaume.
 
 ## Le roi trace les plans

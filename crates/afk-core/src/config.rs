@@ -79,6 +79,11 @@ pub struct Config {
     pub lumberjack_carry: u32,
     /// Blé qu'un paysan peut porter à la main.
     pub farmer_carry: u32,
+
+    // --- déplacements
+    /// Surcoût de l'herbe par rapport à la route pour les trajets ordinaires (la route coûte 1) :
+    /// plus il est haut, plus les habitants s'accrochent aux routes.
+    pub grass_cost: f32,
 }
 
 impl Default for Config {
@@ -114,6 +119,7 @@ impl Default for Config {
             transporter_speed_factor: 1.5,
             lumberjack_carry: 9,
             farmer_carry: 20,
+            grass_cost: crate::map::DEFAULT_GRASS_COST,
         }
     }
 }

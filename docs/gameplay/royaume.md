@@ -12,6 +12,13 @@
 - Tout est **relié par des routes**. Chaque personnage doit pouvoir atteindre son lit et ses postes de travail.
 - Il y a quelques arbres isolés, qui bloquent le passage, et deux forêts dont on peut couper les arbres.
 
+## Les déplacements — en place
+
+- Les habitants **suivent les routes** : à distance proche, ils préfèrent la route à l'herbe, et ne la quittent que pour atteindre un but qui n'y est pas (champ, coffre, filon, arbre). Le surcoût de l'herbe est un réglage (`grass_cost`).
+- Ils marchent **en diagonale** (sans couper le coin d'un mur ou d'un coffre) et arrondissent leurs virages : le tracé est une courbe, pas un escalier.
+- Une personne qui **va se coucher** emprunte les routes.
+- Le **plus court chemin sans les routes** existe aussi, réservé à la fuite d'un voleur vers la sortie du château et à ses poursuivants (les gardes) : voir [garde.md](garde.md). Les voleurs n'existent pas encore.
+
 ## Décidé : les filons
 
 Des **filons** de 2×2 tuiles (fer, cuivre, or, pierre) seront répartis sur la carte, chacun avec une **mine** attenante qui sert de maison au mineur. Voir [mineur.md](mineur.md).
