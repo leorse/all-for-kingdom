@@ -42,7 +42,7 @@ incarné : elle glisse rapidement vers lui quand on change de personnage, puis n
 s'approche du bord de l'écran. En mode AFK, elle continue de suivre le dernier personnage incarné.
 
 **À la souris** : en maintenant le bouton droit, on tire la carte (elle reste bornée à ses bords) ; la molette
-change de palier de zoom (16, 20, 24, 32, 40, 48 ou 64 px par tuile) autour du curseur, et à 16 px le royaume
+change de palier de zoom (×1, ×2, ×3 ou ×4 : 16, 32, 48 ou 64 px par tuile, des échelles entières pour que le pixel art reste net ; départ ×2) autour du curseur, et à 16 px le royaume
 entier tient dans la fenêtre par défaut. Déplacer la vue ainsi la rend **libre** : la caméra ne suit plus le
 personnage, même s'il sort de l'écran. Elle le reprend (par un glissement) dès qu'on le déplace avec le
 clavier, qu'on incarne un autre personnage (Tab, 1-9, clic) ou qu'on reprend la main avec Espace. Zoomer ne
@@ -50,6 +50,10 @@ rend pas la vue libre.
 
 La disposition est définie dans `crates/afk-core/src/scenario.rs` ; le réglage de la caméra (durée du
 glissement, marge de suivi, paliers de zoom) est dans `crates/afk-game/src/camera.rs`.
+
+## Direction artistique
+
+Le jeu s'habille d'un **pixel art net et chaleureux** (bois, chaume, pierre, lumière ambrée), dont la référence est `docs/images/image_maison.jpg` et le guide `docs/art-direction.md` : tuile de base de 16×16 pixels, palette commune, affichage sans lissage à une échelle entière. Les **habitats** sont les premiers redessinés (coupe de la maison : toit de chaume, mur de rondins, fenêtres qui s'éclairent la nuit, cheminée au feu animé, sol en planches, paillasson, lits, table, étagère et baquet) ; tout le reste (terrain, arbres, champs, forge, personnages, interface) suivra, un élément à la fois. Les meubles se posent dans quatre rotations (`Rotation`, `Furniture` dans `crates/afk-core/src/habitat.rs`). Les sprites sont dessinés dans `crates/afk-game/src/sprites.rs` ; un aperçu des maisons se génère avec `PREVIEW_OUT=maisons.bmp cargo test -p afk-game preview_houses -- --ignored`.
 
 ## Règles actuelles
 

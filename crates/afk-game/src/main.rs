@@ -10,8 +10,10 @@
 //!   cargo run -- --speed 20           journée normale vue en accéléré (30 s)
 
 mod camera;
+mod habitat_view;
 mod input;
 mod render;
+mod sprites;
 
 use afk_core::{CharacterId, Command, Config, Game, PlayerId, Scenario, TICK};
 use macroquad::prelude::*;
@@ -45,6 +47,8 @@ async fn main() {
     game.apply(Command::Possess { player: me, character: CharacterId(0) });
 
     let mut view = render::View::new();
+    // les sprites des habitats : construits une fois, la fenêtre étant ouverte
+    let art = habitat_view::Art::new();
     // Le personnage que la caméra suit : le dernier incarné (elle continue de le suivre en mode AFK).
     let mut followed: Option<CharacterId> = None;
 
@@ -110,7 +114,7 @@ async fn main() {
         let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
         view.update(&game, target, recenter, get_frame_time());
 
-        render::draw(&game, &view, me, speed);
+        render::draw(&game, &view, &art, me, speed);
         next_frame().await;
     }
 }

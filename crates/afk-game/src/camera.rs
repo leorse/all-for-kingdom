@@ -6,11 +6,14 @@
 
 use afk_core::Vec2;
 
-/// Les paliers de zoom : taille d'une tuile à l'écran, en pixels. Des entiers, pour éviter les coutures entre
-/// rectangles au dessin. À 16 px la carte 64×40 tient dans la fenêtre par défaut (1024×640).
-pub const ZOOM_LEVELS: [f32; 7] = [16.0, 20.0, 24.0, 32.0, 40.0, 48.0, 64.0];
+/// La tuile de base du dessin, en pixels : le pixel art est dessiné sur une grille de 16×16 par tuile.
+pub const BASE_TILE_PX: f32 = 16.0;
+/// Les paliers de zoom : taille d'une tuile à l'écran, en pixels. Des multiples entiers de la tuile de base (×1 à ×4),
+/// pour que chaque pixel du dessin devienne un carré net. À 16 px la carte 64×40 tient dans la fenêtre par défaut
+/// (1024×640).
+pub const ZOOM_LEVELS: [f32; 4] = [16.0, 32.0, 48.0, 64.0];
 /// Le palier de départ (32 px par tuile).
-pub const DEFAULT_ZOOM: usize = 3;
+pub const DEFAULT_ZOOM: usize = 1;
 /// Durée du glissement vers un personnage qu'on vient d'incarner, en secondes réelles.
 pub const SLIDE_SECS: f32 = 0.35;
 /// Part de l'écran, de chaque côté, où le personnage peut bouger sans faire défiler la carte.
@@ -263,6 +266,9 @@ mod tests {
         assert_eq!(step_zoom(0, -1), 0);
         assert!(ZOOM_LEVELS.windows(2).all(|w| w[0] < w[1]));
         assert!(ZOOM_LEVELS.iter().all(|z| z.fract() == 0.0));
+        // des échelles entières de la tuile de base : ×1, ×2, ×3, ×4
+        let scales: Vec<f32> = ZOOM_LEVELS.iter().map(|z| z / BASE_TILE_PX).collect();
+        assert_eq!(scales, vec![1.0, 2.0, 3.0, 4.0]);
     }
 
     #[test]

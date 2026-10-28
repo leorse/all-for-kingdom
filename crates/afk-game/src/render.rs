@@ -98,7 +98,7 @@ impl View {
     }
 
     /// Coin haut-gauche d'une tuile, en pixels.
-    fn tile_origin(&self, t: TilePos) -> (f32, f32) {
+    pub(crate) fn tile_origin(&self, t: TilePos) -> (f32, f32) {
         self.to_screen(Vec2::new(t.x as f32, t.y as f32))
     }
 
@@ -115,7 +115,7 @@ impl View {
     }
 
     /// Ce point du monde est-il (à peu près) à l'écran ? `margin` en tuiles, pour les éléments qui débordent.
-    fn point_visible(&self, p: Vec2, margin: f32) -> bool {
+    pub(crate) fn point_visible(&self, p: Vec2, margin: f32) -> bool {
         let (x, y) = self.to_screen(p);
         let m = margin * self.tile_px;
         x >= -m && y >= -m && x <= self.screen.0 + m && y <= self.screen.1 + m
@@ -133,12 +133,12 @@ fn tile_color(tile: Tile, x: i32, y: i32) -> Color {
         Tile::Water => Color::from_rgba(52, 96 + v, 168, 255),
         Tile::Field => Color::from_rgba(130 + v, 96, 58, 255),
         Tile::Wall => Color::from_rgba(96, 90, 100, 255),
-        Tile::Floor | Tile::Bed | Tile::BedFoot | Tile::Anvil => Color::from_rgba(150 + v, 120 + v, 90, 255),
+        Tile::Floor | Tile::Bed | Tile::Anvil => Color::from_rgba(150 + v, 120 + v, 90, 255),
         Tile::Tree => Color::from_rgba(40, 98 + v, 52, 255),
         Tile::Ore => Color::from_rgba(120, 118, 124, 255), // recouvert par `draw_veins`, qui connaît la nature
         Tile::Sapling => Color::from_rgba(88 + v, 140 + v, 70, 255), // de l'herbe, la tige est dessinée par `draw_map`
         Tile::Crate => Color::from_rgba(88 + v, 140 + v, 70, 255), // de l'herbe, le coffre est dessiné par `draw_map`
-        Tile::Table | Tile::TableEnd | Tile::Shelf | Tile::ShelfEnd | Tile::Trough => Color::from_rgba(150 + v, 120 + v, 90, 255), // le sol de la maison ; le meuble est dessiné par `draw_map`
+        Tile::Furniture => Color::from_rgba(150 + v, 120 + v, 90, 255), // le sol ; les meubles des habitats sont dessinés par `habitat_view`
     }
 }
 
@@ -228,16 +228,18 @@ fn fitness_color(fitness: f32) -> Color {
 
 // ---------------------------------------------------------------- dessin
 
-pub fn draw(game: &Game, view: &View, me: PlayerId, speed: f32) {
+pub fn draw(game: &Game, view: &View, art: &crate::habitat_view::Art, me: PlayerId, speed: f32) {
     clear_background(Color::from_rgba(20, 24, 30, 255));
     draw_map(game, view);
     draw_veins(game, view);
     draw_farm(game, view);
+    crate::habitat_view::draw_habitats(game, view, art);
     draw_target(game, view, me);
     draw_characters(game, view, me);
     draw_containers(game, view);
     draw_forge_sparks(game, view);
     draw_daylight(game, view);
+    crate::habitat_view::draw_habitat_lights(game, view);
     draw_hud(game, view, me, speed);
 }
 
@@ -249,45 +251,13 @@ fn draw_map(game: &Game, view: &View) {
     for y in y0..y1 {
         for x in x0..x1 {
             let tile = map.get(TilePos::new(x, y));
+            if crate::habitat_view::is_habitat_tile(game, TilePos::new(x, y)) {
+                continue; // les habitats se dessinent à part (voir `habitat_view`)
+            }
             let (px, py) = view.tile_origin(TilePos::new(x, y));
             draw_rectangle(px, py, t, t, tile_color(tile, x, y));
             match tile {
                 Tile::Wall => draw_rectangle(px, py, t, 4.0 * s, Color::from_rgba(120, 114, 124, 255)),
-                // une table de 2×1 : la moitié gauche (`Table`) et la moitié droite (`TableEnd`)
-                Tile::Table | Tile::TableEnd => {
-                    let left = tile == Tile::Table;
-                    let (x0, w) = if left { (3.0, 29.0) } else { (0.0, 29.0) }; // le plateau déborde vers le milieu
-                    draw_rectangle(px + x0 * s, py + 24.0 * s, w * s, 4.0 * s, Color::from_rgba(70, 52, 34, 255)); // ombre
-                    let leg_x = if left { 5.0 } else { 23.0 };
-                    draw_rectangle(px + leg_x * s, py + 14.0 * s, 4.0 * s, 12.0 * s, Color::from_rgba(96, 66, 38, 255)); // pied
-                    draw_rectangle(px + x0 * s, py + 8.0 * s, w * s, 8.0 * s, Color::from_rgba(176, 130, 78, 255)); // plateau
-                    draw_rectangle(px + x0 * s, py + 8.0 * s, w * s, 2.0 * s, Color::from_rgba(206, 164, 108, 255)); // reflet
-                    if left {
-                        draw_rectangle(px + 18.0 * s, py + 3.0 * s, 8.0 * s, 6.0 * s, Color::from_rgba(214, 214, 200, 255)); // un bol
-                    }
-                }
-                // une étagère de 2×1 : deux montants, trois planches, des objets
-                Tile::Shelf | Tile::ShelfEnd => {
-                    let left = tile == Tile::Shelf;
-                    let (x0, w) = if left { (3.0, 29.0) } else { (0.0, 29.0) };
-                    draw_rectangle(px + x0 * s, py + 3.0 * s, w * s, 26.0 * s, Color::from_rgba(96, 66, 38, 255)); // dos
-                    for row in 0..3 {
-                        let y = 5.0 + row as f32 * 8.0;
-                        draw_rectangle(px + x0 * s, py + (y + 6.0) * s, w * s, 2.0 * s, Color::from_rgba(150, 108, 64, 255)); // planche
-                        let ix = if left { 8.0 } else { 6.0 };
-                        let color = [Color::from_rgba(180, 70, 60, 255), Color::from_rgba(70, 120, 170, 255), Color::from_rgba(214, 190, 90, 255)][row];
-                        draw_rectangle(px + ix * s, py + y * s, 5.0 * s, 6.0 * s, color); // un pot ou un livre
-                        draw_rectangle(px + (ix + 10.0) * s, py + (y + 2.0) * s, 4.0 * s, 4.0 * s, Color::from_rgba(214, 214, 200, 255));
-                    }
-                    let post_x = if left { 3.0 } else { 27.0 };
-                    draw_rectangle(px + post_x * s, py + 3.0 * s, 2.0 * s, 26.0 * s, Color::from_rgba(70, 48, 28, 255)); // montant
-                }
-                Tile::Trough => {
-                    draw_rectangle(px + 2.0 * s, py + 22.0 * s, 28.0 * s, 4.0 * s, Color::from_rgba(70, 52, 34, 255)); // ombre
-                    draw_rectangle(px + 2.0 * s, py + 10.0 * s, 28.0 * s, 14.0 * s, Color::from_rgba(110, 76, 44, 255)); // auge
-                    draw_rectangle(px + 5.0 * s, py + 12.0 * s, 22.0 * s, 8.0 * s, Color::from_rgba(70, 130, 200, 255)); // eau
-                    draw_rectangle(px + 7.0 * s, py + 13.0 * s, 8.0 * s, 2.0 * s, Color::from_rgba(150, 196, 240, 255)); // reflet
-                }
                 Tile::Crate => {
                     draw_rectangle(px + 4.0 * s, py + 22.0 * s, 24.0 * s, 5.0 * s, Color::from_rgba(40, 60, 40, 255)); // ombre
                     draw_rectangle(px + 4.0 * s, py + 8.0 * s, 24.0 * s, 17.0 * s, Color::from_rgba(120, 84, 48, 255)); // caisse
@@ -303,19 +273,6 @@ fn draw_map(game: &Game, view: &View) {
                 Tile::Tree => draw_rectangle(px + 4.0 * s, py + 4.0 * s, 24.0 * s, 24.0 * s, Color::from_rgba(30, 78, 40, 255)),
                 Tile::Field if (x + y) % 2 == 0 => {
                     draw_rectangle(px, py + 14.0 * s, t, 4.0 * s, Color::from_rgba(110, 80, 48, 255))
-                }
-                // un lit de 2×1 : la tête (`Bed`, suivie d'un `BedFoot`) puis le pied (`BedFoot`)
-                Tile::Bed if map.get(TilePos::new(x + 1, y)) == Tile::BedFoot => {
-                    draw_rectangle(px + 3.0 * s, py + 6.0 * s, 29.0 * s, 20.0 * s, Color::from_rgba(104, 68, 40, 255)); // cadre
-                    draw_rectangle(px + 3.0 * s, py + 3.0 * s, 4.0 * s, 24.0 * s, Color::from_rgba(80, 52, 30, 255)); // tête de lit
-                    draw_rectangle(px + 7.0 * s, py + 8.0 * s, 25.0 * s, 16.0 * s, Color::from_rgba(196, 74, 74, 255)); // couverture
-                    draw_rectangle(px + 7.0 * s, py + 8.0 * s, 12.0 * s, 16.0 * s, Color::from_rgba(236, 234, 222, 255)); // oreiller
-                }
-                Tile::BedFoot => {
-                    draw_rectangle(px, py + 6.0 * s, 29.0 * s, 20.0 * s, Color::from_rgba(104, 68, 40, 255)); // cadre
-                    draw_rectangle(px, py + 8.0 * s, 27.0 * s, 16.0 * s, Color::from_rgba(196, 74, 74, 255)); // couverture
-                    draw_rectangle(px + 4.0 * s, py + 8.0 * s, 2.0 * s, 16.0 * s, Color::from_rgba(150, 40, 40, 255)); // pli
-                    draw_rectangle(px + 27.0 * s, py + 5.0 * s, 3.0 * s, 22.0 * s, Color::from_rgba(80, 52, 30, 255)); // pied de lit
                 }
                 // le lit d'une seule tuile (celui du château)
                 Tile::Bed => {
@@ -419,6 +376,23 @@ fn draw_target(game: &Game, view: &View, me: PlayerId) {
     draw_rectangle_lines(px, py, view.tile_px, view.tile_px, 3.0, Color::new(1.0, 1.0, 1.0, pulse));
 }
 
+/// Vers où s'étend un dormeur depuis sa tête : le pied de son lit (à droite pour un lit de base, en bas pour un lit
+/// vertical tête en haut). Hors habitat (le château), le lit est horizontal.
+fn sleep_direction(game: &Game, c: &Character) -> (f32, f32) {
+    use afk_core::Rotation;
+    for h in game.habitats() {
+        if let Some(bed) = h.beds.iter().find(|b| b.head() == c.home) {
+            return match bed.rotation {
+                Rotation::Deg0 => (1.0, 0.0),
+                Rotation::Deg90 => (0.0, 1.0),
+                Rotation::Deg180 => (-1.0, 0.0),
+                Rotation::Deg270 => (0.0, -1.0),
+            };
+        }
+    }
+    (1.0, 0.0)
+}
+
 fn draw_characters(game: &Game, view: &View, me: PlayerId) {
     let s = view.tile_px / 32.0;
     let possessed = game.possessed_by(me);
@@ -436,8 +410,13 @@ fn draw_characters(game: &Game, view: &View, me: PlayerId) {
 
         if c.activity == Activity::Sleeping {
             // couché dans le lit : tête sur l'oreiller, un "z" qui flotte
-            draw_rectangle(x - 4.0 * s, y - 5.0 * s, 16.0 * s, 10.0 * s, role_color(c.role));
-            draw_rectangle(x - 10.0 * s, y - 6.0 * s, 8.0 * s, 9.0 * s, Color::from_rgba(240, 200, 160, 255));
+            // couché dans le sens de son lit : la tête sur l'oreiller, le corps vers le pied
+            let (fx, fy) = sleep_direction(game, c);
+            let (bw, bh) = if fx != 0.0 { (16.0, 10.0) } else { (10.0, 16.0) };
+            let (bx, by) = (x + fx * 4.0 * s, y + fy * 4.0 * s);
+            draw_rectangle(bx - bw * s / 2.0, by - bh * s / 2.0, bw * s, bh * s, role_color(c.role));
+            let (hx, hy) = (x - fx * 6.0 * s, y - fy * 6.0 * s);
+            draw_rectangle(hx - 4.0 * s, hy - 4.0 * s, 8.0 * s, 8.0 * s, Color::from_rgba(240, 200, 160, 255));
             let float = (game.time() * 2.0).sin() * 2.0 * s;
             draw_text("z", x + 6.0 * s, y - 12.0 * s + float, 22.0 * s, WHITE);
             if active {
@@ -741,10 +720,10 @@ mod tests {
         let cursor = (700.0, 200.0);
         let before = v.to_world(cursor);
         v.zoom(1, cursor);
-        assert_eq!(v.tile_px, 40.0);
+        assert_eq!(v.tile_px, 48.0);
         let after = v.to_world(cursor);
         // l'origine est arrondie au pixel : au plus un pixel d'écart
-        assert!((before.x - after.x).abs() < 1.0 / 40.0 + 1e-3 && (before.y - after.y).abs() < 1.0 / 40.0 + 1e-3);
+        assert!((before.x - after.x).abs() < 1.0 / 48.0 + 1e-3 && (before.y - after.y).abs() < 1.0 / 48.0 + 1e-3);
         assert!(!v.is_free(), "zoomer ne déclenche pas la vue libre");
     }
 

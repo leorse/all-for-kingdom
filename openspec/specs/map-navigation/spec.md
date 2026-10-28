@@ -21,7 +21,7 @@ Tant que le bouton droit de la souris est maintenu, la carte SHALL suivre le mou
 - **THEN** la vue s'arrête au bord de la carte et n'affiche aucune zone hors de la carte
 
 ### Requirement: Zoom à la molette
-La molette SHALL zoomer d'un palier par cran : vers l'avant pour agrandir les tuiles, vers l'arrière pour les réduire. Les paliers SHALL être des tailles de tuile entières, bornées de façon que le royaume entier tienne à l'écran au plus petit et qu'une tuile reste bien lisible au plus grand. Le zoom SHALL se faire autour du point de la carte situé sous le curseur, qui reste sous le curseur tant que la carte le permet.
+La molette SHALL zoomer d'un palier par cran : vers l'avant pour agrandir les tuiles, vers l'arrière pour les réduire. Les paliers SHALL être les multiples entiers de la tuile de base de 16 pixels : ×1, ×2, ×3 et ×4, soit 16, 32, 48 et 64 pixels par tuile, de façon que le dessin reste net (voir la capacité `art-direction`). Le palier de départ est ×2. Le royaume entier SHALL tenir à l'écran au plus petit palier, et une tuile rester bien lisible au plus grand. Le zoom SHALL se faire autour du point de la carte situé sous le curseur, qui reste sous le curseur tant que la carte le permet.
 
 #### Scenario: Zoomer
 - **WHEN** le joueur tourne la molette d'un cran vers l'avant
@@ -38,6 +38,10 @@ La molette SHALL zoomer d'un palier par cran : vers l'avant pour agrandir les tu
 #### Scenario: Taille de la carte au zoom minimal
 - **WHEN** le zoom est au palier minimal dans la fenêtre par défaut
 - **THEN** la carte entière est visible, centrée si elle est plus petite que la fenêtre
+
+#### Scenario: Seulement des échelles entières
+- **WHEN** le joueur parcourt tous les paliers de zoom
+- **THEN** la taille d'une tuile vaut successivement 16, 32, 48 puis 64 pixels, jamais une valeur intermédiaire
 
 ### Requirement: Vue libre
 Dès que le joueur déplace la vue avec le bouton droit, la caméra SHALL cesser de suivre le personnage incarné : elle reste où le joueur l'a mise, même si le personnage bouge ou sort de l'écran. Le suivi SHALL reprendre dès que le joueur commande ce personnage : il le déplace (ZQSD, flèches) ou il incarne un personnage (Tab, 1 à 9, clic, Espace). Zoomer SHALL ne PAS déclencher la vue libre.

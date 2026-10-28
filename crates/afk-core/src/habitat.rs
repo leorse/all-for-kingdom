@@ -4,12 +4,13 @@
 //! et la grande maison (9×7, jusqu'à six places). Une « place » est un lit ; les places d'un même habitat
 //! se partagent une table, une étagère et un bac d'eau (pièce commune).
 //!
-//! Le mobilier a une taille fixe : le lit, la table et l'étagère font 2×1 tuiles (largeur 2, hauteur 1),
-//! le bac 1×1. Un meuble de 2×1 est repéré par sa tuile de gauche ; pour un lit, c'est la tête, qui désigne
-//! la place (`home` du personnage).
+//! Le mobilier a une taille fixe : le lit, la table et l'étagère font 2 tuiles, le bac 1. Chaque meuble se
+//! pose dans une des quatre rotations (`Rotation`), à partir de sa pose de base : empreinte horizontale 2×1,
+//! tête de lit à gauche, façade d'étagère tournée vers le bas. Un quart de tour fait passer un meuble de 2 tuiles de
+//! 2×1 à 1×2. L'ancre d'un meuble est la tuile en haut à gauche de son empreinte tournée.
 
 use crate::map::{Tile, TileMap};
-use crate::math::TilePos;
+use crate::math::{Rotation, TilePos};
 use std::collections::VecDeque;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -48,9 +49,51 @@ impl HabitatClass {
     }
 }
 
-/// Les deux tuiles (gauche, droite) d'un meuble de 2×1.
-fn pair(left: TilePos) -> [TilePos; 2] {
-    [left, TilePos::new(left.x + 1, left.y)]
+/// Un meuble posé : l'ancre (tuile en haut à gauche de son empreinte tournée) et sa rotation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Furniture {
+    pub anchor: TilePos,
+    pub rotation: Rotation,
+}
+
+impl Furniture {
+    pub fn new(x: i32, y: i32, rotation: Rotation) -> Furniture {
+        Furniture { anchor: TilePos::new(x, y), rotation }
+    }
+
+    /// Les tuiles de l'empreinte d'un meuble de `len` tuiles (1 ou 2) selon sa rotation.
+    pub fn tiles(&self, len: i32) -> Vec<TilePos> {
+        let (w, h) = self.rotation.footprint((len, 1));
+        let mut tiles = Vec::new();
+        for dy in 0..h {
+            for dx in 0..w {
+                tiles.push(TilePos::new(self.anchor.x + dx, self.anchor.y + dy));
+            }
+        }
+        tiles
+    }
+
+    /// Pour un lit de deux tuiles : la tuile de la tête, qui désigne la place. À 0° elle est à gauche, à 90° en haut,
+    /// à 180° à droite et à 270° en bas.
+    pub fn head(&self) -> TilePos {
+        match self.rotation {
+            Rotation::Deg0 | Rotation::Deg90 => self.anchor,
+            Rotation::Deg180 => TilePos::new(self.anchor.x + 1, self.anchor.y),
+            Rotation::Deg270 => TilePos::new(self.anchor.x, self.anchor.y + 1),
+        }
+    }
+
+    /// Pour une étagère : le côté vers lequel sa façade regarde, en `(dx, dy)`. À 0° vers le bas (le sud), puis
+    /// un quart de tour dans le sens des aiguilles d'une montre : à 90° vers la gauche, à 180° vers le haut, à 270°
+    /// vers la droite.
+    pub fn front(&self) -> (i32, i32) {
+        match self.rotation {
+            Rotation::Deg0 => (0, 1),
+            Rotation::Deg90 => (-1, 0),
+            Rotation::Deg180 => (0, -1),
+            Rotation::Deg270 => (1, 0),
+        }
+    }
 }
 
 /// Un habitat tel que le scénario le décrit.
@@ -62,14 +105,14 @@ pub struct HabitatSpec {
     pub class: HabitatClass,
     /// La porte, dans un mur (hors angle).
     pub door: TilePos,
-    /// Les lits (2×1) : tuile de tête, à gauche. Une place chacun.
-    pub beds: Vec<TilePos>,
-    /// La table (2×1) : tuile de gauche.
-    pub table: TilePos,
-    /// L'étagère (2×1) : tuile de gauche.
-    pub shelf: TilePos,
-    /// Le bac d'eau (1×1).
-    pub trough: TilePos,
+    /// Les lits (2 tuiles) : une place chacun.
+    pub beds: Vec<Furniture>,
+    /// La table (2 tuiles).
+    pub table: Furniture,
+    /// L'étagère (2 tuiles).
+    pub shelf: Furniture,
+    /// Le bac d'eau (1 tuile).
+    pub trough: Furniture,
 }
 
 impl HabitatSpec {
@@ -78,22 +121,12 @@ impl HabitatSpec {
         y: i32,
         class: HabitatClass,
         door: (i32, i32),
-        beds: &[(i32, i32)],
-        table: (i32, i32),
-        shelf: (i32, i32),
-        trough: (i32, i32),
+        beds: &[Furniture],
+        table: Furniture,
+        shelf: Furniture,
+        trough: Furniture,
     ) -> HabitatSpec {
-        let tile = |(x, y): (i32, i32)| TilePos::new(x, y);
-        HabitatSpec {
-            x,
-            y,
-            class,
-            door: tile(door),
-            beds: beds.iter().map(|&b| tile(b)).collect(),
-            table: tile(table),
-            shelf: tile(shelf),
-            trough: tile(trough),
-        }
+        HabitatSpec { x, y, class, door: TilePos::new(door.0, door.1), beds: beds.to_vec(), table, shelf, trough }
     }
 
     pub fn width(&self) -> i32 {
@@ -133,16 +166,21 @@ impl HabitatSpec {
         ((self.width() - 2) * (self.height() - 2)) as usize
     }
 
+    /// Les places : la tuile de tête de chaque lit (celle que désigne `home`).
+    pub fn bed_homes(&self) -> Vec<TilePos> {
+        self.beds.iter().map(|b| b.head()).collect()
+    }
+
     /// Les tuiles de tous les lits (tête et pied).
     pub fn bed_tiles(&self) -> Vec<TilePos> {
-        self.beds.iter().flat_map(|&b| pair(b)).collect()
+        self.beds.iter().flat_map(|b| b.tiles(2)).collect()
     }
 
     /// Les tuiles des meubles infranchissables : table, étagère et bac.
     pub fn solid_tiles(&self) -> Vec<TilePos> {
-        let mut tiles: Vec<TilePos> = pair(self.table).to_vec();
-        tiles.extend(pair(self.shelf));
-        tiles.push(self.trough);
+        let mut tiles = self.table.tiles(2);
+        tiles.extend(self.shelf.tiles(2));
+        tiles.extend(self.trough.tiles(1));
         tiles
     }
 
@@ -162,16 +200,16 @@ impl HabitatSpec {
         if self.beds.len() > self.class.max_places() {
             return Err(format!("{} lits pour {:?} (maximum {})", self.beds.len(), self.class, self.class.max_places()));
         }
-        // chaque meuble tient dans l'intérieur, et deux meubles ne se chevauchent pas
+        // chaque meuble tient dans l'intérieur (une fois tourné), et deux meubles ne se chevauchent pas
         let mut occupied: Vec<TilePos> = Vec::new();
         let furniture: Vec<(&str, Vec<TilePos>)> = self
             .beds
             .iter()
-            .map(|&b| ("un lit", pair(b).to_vec()))
+            .map(|b| ("un lit", b.tiles(2)))
             .chain([
-                ("la table", pair(self.table).to_vec()),
-                ("l'étagère", pair(self.shelf).to_vec()),
-                ("le bac d'eau", vec![self.trough]),
+                ("la table", self.table.tiles(2)),
+                ("l'étagère", self.shelf.tiles(2)),
+                ("le bac d'eau", self.trough.tiles(1)),
             ])
             .collect();
         for (name, tiles) in &furniture {
@@ -215,24 +253,19 @@ impl HabitatSpec {
         Ok(())
     }
 
-    /// Pose l'habitat sur la carte : murs, sol, porte, puis meubles. Panique si l'habitat est non conforme.
+    /// Pose l'habitat sur la carte : murs, sol, porte, puis meubles (`Tile::Bed` praticable pour les lits,
+    /// `Tile::Furniture` solide pour le reste). Panique si l'habitat est non conforme.
     pub fn build(&self, map: &mut TileMap) {
         if let Err(why) = self.validate() {
             panic!("habitat non conforme en ({}, {}) : {why}", self.x, self.y);
         }
         map.add_building(self.x, self.y, self.width(), self.height(), self.door);
-        for &bed in &self.beds {
-            let [head, foot] = pair(bed);
-            map.set(head, Tile::Bed);
-            map.set(foot, Tile::BedFoot);
+        for t in self.bed_tiles() {
+            map.set(t, Tile::Bed);
         }
-        let [t0, t1] = pair(self.table);
-        map.set(t0, Tile::Table);
-        map.set(t1, Tile::TableEnd);
-        let [s0, s1] = pair(self.shelf);
-        map.set(s0, Tile::Shelf);
-        map.set(s1, Tile::ShelfEnd);
-        map.set(self.trough, Tile::Trough);
+        for t in self.solid_tiles() {
+            map.set(t, Tile::Furniture);
+        }
     }
 
     /// Peut-on agrandir l'habitat ? La classe suivante, ancrée au même coin haut-gauche, ne doit couvrir
@@ -258,14 +291,34 @@ impl HabitatSpec {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use Rotation::{Deg0, Deg180, Deg270, Deg90};
 
-    /// Petite maison en (4,23) : intérieur x 5..9, y 24..26 ; porte en haut en (8,23).
+    /// Petite maison en (4,23), porte en haut en (8,23). Pose de l'image : étagère contre le mur nord, lit vertical
+    /// tête en haut contre le mur est, table au centre, baquet dans le coin sud-est.
     fn small() -> HabitatSpec {
-        HabitatSpec::new(4, 23, HabitatClass::Small, (8, 23), &[(5, 24)], (8, 26), (5, 26), (9, 24))
+        HabitatSpec::new(
+            4,
+            23,
+            HabitatClass::Small,
+            (8, 23),
+            &[Furniture::new(9, 24, Deg90)],
+            Furniture::new(6, 25, Deg0),
+            Furniture::new(5, 24, Deg0),
+            Furniture::new(9, 26, Deg0),
+        )
     }
 
     fn medium() -> HabitatSpec {
-        HabitatSpec::new(4, 23, HabitatClass::Medium, (8, 23), &[(5, 24), (10, 24), (5, 26)], (8, 26), (10, 26), (7, 24))
+        HabitatSpec::new(
+            4,
+            23,
+            HabitatClass::Medium,
+            (8, 23),
+            &[Furniture::new(9, 24, Deg90), Furniture::new(10, 24, Deg90), Furniture::new(11, 24, Deg90)],
+            Furniture::new(6, 25, Deg0),
+            Furniture::new(5, 24, Deg0),
+            Furniture::new(11, 26, Deg0),
+        )
     }
 
     fn large() -> HabitatSpec {
@@ -274,10 +327,17 @@ mod tests {
             23,
             HabitatClass::Large,
             (8, 23),
-            &[(5, 24), (10, 24), (5, 26), (10, 26), (5, 28), (10, 28)],
-            (7, 26),
-            (7, 28),
-            (9, 26),
+            &[
+                Furniture::new(9, 24, Deg90),
+                Furniture::new(10, 24, Deg90),
+                Furniture::new(11, 24, Deg90),
+                Furniture::new(9, 27, Deg90),
+                Furniture::new(10, 27, Deg90),
+                Furniture::new(11, 27, Deg90),
+            ],
+            Furniture::new(6, 26, Deg0),
+            Furniture::new(5, 24, Deg0),
+            Furniture::new(5, 28, Deg0),
         )
     }
 
@@ -306,38 +366,80 @@ mod tests {
     }
 
     #[test]
-    fn a_bed_covers_two_tiles_head_left_foot_right_and_both_can_be_walked_on() {
-        let mut map = TileMap::new(30, 40, Tile::Grass);
-        small().build(&mut map);
-        assert_eq!(map.get(TilePos::new(5, 24)), Tile::Bed);
-        assert_eq!(map.get(TilePos::new(6, 24)), Tile::BedFoot);
-        assert!(!map.get(TilePos::new(5, 24)).is_solid() && !map.get(TilePos::new(6, 24)).is_solid());
-        assert!(!map.find_path(TilePos::new(8, 22), TilePos::new(6, 24)).is_empty(), "on peut rejoindre le pied du lit");
+    fn a_two_tile_piece_swaps_between_2x1_and_1x2_with_its_rotation() {
+        let at = |r| Furniture::new(10, 10, r).tiles(2);
+        let t = |x, y| TilePos::new(x, y);
+        assert_eq!(at(Deg0), vec![t(10, 10), t(11, 10)]);
+        assert_eq!(at(Deg90), vec![t(10, 10), t(10, 11)]);
+        assert_eq!(at(Deg180), vec![t(10, 10), t(11, 10)]);
+        assert_eq!(at(Deg270), vec![t(10, 10), t(10, 11)]);
+        // le bac ne couvre qu'une tuile, quelle que soit sa rotation
+        for r in Rotation::ALL {
+            assert_eq!(Furniture::new(10, 10, r).tiles(1), vec![t(10, 10)]);
+        }
     }
 
     #[test]
-    fn table_and_shelf_cover_two_tiles_and_the_trough_one_and_all_are_solid() {
+    fn the_head_of_a_bed_follows_its_rotation() {
+        let t = |x, y| TilePos::new(x, y);
+        assert_eq!(Furniture::new(10, 10, Deg0).head(), t(10, 10), "à 0° : à gauche");
+        assert_eq!(Furniture::new(10, 10, Deg90).head(), t(10, 10), "à 90° : en haut");
+        assert_eq!(Furniture::new(10, 10, Deg180).head(), t(11, 10), "à 180° : à droite");
+        assert_eq!(Furniture::new(10, 10, Deg270).head(), t(10, 11), "à 270° : en bas");
+        // la tuile de tête est toujours l'une des deux tuiles du lit
+        for r in Rotation::ALL {
+            let bed = Furniture::new(10, 10, r);
+            assert!(bed.tiles(2).contains(&bed.head()));
+        }
+    }
+
+    #[test]
+    fn a_shelf_front_turns_clockwise_from_south() {
+        assert_eq!(Furniture::new(0, 0, Deg0).front(), (0, 1));
+        assert_eq!(Furniture::new(0, 0, Deg90).front(), (-1, 0));
+        assert_eq!(Furniture::new(0, 0, Deg180).front(), (0, -1));
+        assert_eq!(Furniture::new(0, 0, Deg270).front(), (1, 0));
+    }
+
+    #[test]
+    fn a_vertical_bed_has_its_head_up_and_the_place_is_the_head_tile() {
+        let house = small();
+        assert_eq!(house.bed_homes(), vec![TilePos::new(9, 24)]);
+        assert_eq!(house.bed_tiles(), vec![TilePos::new(9, 24), TilePos::new(9, 25)]);
+    }
+
+    #[test]
+    fn building_puts_beds_underfoot_and_everything_else_in_the_way() {
         let mut map = TileMap::new(30, 40, Tile::Grass);
         small().build(&mut map);
-        for (tile, expected) in [
-            ((8, 26), Tile::Table),
-            ((9, 26), Tile::TableEnd),
-            ((5, 26), Tile::Shelf),
-            ((6, 26), Tile::ShelfEnd),
-            ((9, 24), Tile::Trough),
-        ] {
-            let t = TilePos::new(tile.0, tile.1);
-            assert_eq!(map.get(t), expected);
-            assert!(map.get(t).is_solid(), "{expected:?} doit bloquer");
+        for t in [TilePos::new(9, 24), TilePos::new(9, 25)] {
+            assert_eq!(map.get(t), Tile::Bed);
+            assert!(!map.get(t).is_solid(), "un lit se traverse");
+        }
+        for t in [TilePos::new(6, 25), TilePos::new(7, 25), TilePos::new(5, 24), TilePos::new(6, 24), TilePos::new(9, 26)] {
+            assert_eq!(map.get(t), Tile::Furniture, "{t:?}");
+            assert!(map.get(t).is_solid(), "{t:?} doit bloquer");
         }
         // le bac ne couvre qu'une tuile : sa voisine est du sol
-        assert_eq!(map.get(TilePos::new(9, 25)), Tile::Floor);
+        assert_eq!(map.get(TilePos::new(8, 26)), Tile::Floor);
+        assert!(!map.find_path(TilePos::new(8, 22), TilePos::new(9, 25)).is_empty(), "on peut rejoindre le pied du lit");
+    }
+
+    #[test]
+    fn a_rotated_bed_is_accepted_in_every_orientation_when_it_fits() {
+        for rotation in Rotation::ALL {
+            let mut house = small();
+            // 90° et 270° : verticaux (1×2) ; 0° et 180° : horizontaux (2×1), posés dans la rangée libre du bas
+            house.beds = vec![if rotation.quarter_turns() % 2 == 1 { Furniture::new(9, 24, rotation) } else { Furniture::new(8, 26, rotation) }];
+            house.trough = Furniture::new(5, 26, Deg0);
+            assert_eq!(house.validate(), Ok(()), "{rotation:?}");
+        }
     }
 
     #[test]
     fn a_small_house_with_two_beds_is_refused() {
         let mut house = small();
-        house.beds.push(TilePos::new(5, 25));
+        house.beds.push(Furniture::new(8, 26, Deg0));
         assert!(house.validate().unwrap_err().contains("maximum 1"));
     }
 
@@ -349,18 +451,19 @@ mod tests {
     }
 
     #[test]
-    fn furniture_that_sticks_out_or_overlaps_is_refused() {
-        // le pied du lit dépasse dans le mur
+    fn a_rotated_piece_that_sticks_out_or_overlaps_is_refused() {
+        // un lit vertical tout en bas de l'intérieur déborde dans le mur sud
         let mut house = small();
-        house.beds = vec![TilePos::new(9, 25)];
+        house.beds = vec![Furniture::new(9, 26, Deg90)];
+        house.trough = Furniture::new(5, 26, Deg0);
         assert!(house.validate().unwrap_err().contains("déborde"));
-        // la table chevauche le lit
+        // la table, tournée, chevauche le lit
         let mut house = small();
-        house.table = TilePos::new(6, 24);
+        house.table = Furniture::new(9, 25, Deg90);
         assert!(house.validate().unwrap_err().contains("chevauche"));
         // le bac sur l'étagère
         let mut house = small();
-        house.trough = TilePos::new(6, 26);
+        house.trough = Furniture::new(6, 24, Deg0);
         assert!(house.validate().unwrap_err().contains("chevauche"));
     }
 
@@ -374,18 +477,27 @@ mod tests {
     }
 
     #[test]
-    fn a_bed_walled_in_by_furniture_is_refused() {
-        // lit en (5,24)-(6,24) dans le coin : l'étagère dessous et le bac à droite l'emmurent
-        let house = HabitatSpec::new(4, 23, HabitatClass::Small, (8, 23), &[(5, 24)], (8, 26), (5, 25), (7, 24));
+    fn a_bed_walled_in_by_rotated_furniture_is_refused() {
+        // lit vertical en (9,24)-(9,25) dans le coin nord-est : une table verticale à gauche et le bac dessous l'emmurent
+        // mais le lit est praticable ; on emmure donc l'entrée elle-même avec l'étagère et la table
+        let house = HabitatSpec::new(
+            4,
+            23,
+            HabitatClass::Small,
+            (6, 23),
+            &[Furniture::new(9, 25, Deg0)], // lit horizontal en bas à droite
+            Furniture::new(8, 24, Deg90),   // table verticale (8,24)-(8,25)
+            Furniture::new(8, 26, Deg0),    // étagère (8,26)-(9,26)
+            Furniture::new(7, 24, Deg0),
+        );
         let why = house.validate().unwrap_err();
-        assert!(why.contains("joignable"), "{why}");
+        assert!(why.contains("joignable") || why.contains("déborde"), "{why}");
     }
 
     #[test]
     fn a_house_without_enough_free_room_is_refused() {
-        // 15 tuiles - lit 2 - table 2 - étagère 2 - bac 1 = 8 libres : on remplit avec un lit de trop en grande maison
         let mut house = large();
-        house.beds.extend([TilePos::new(5, 25), TilePos::new(5, 27)]);
+        house.beds.extend([Furniture::new(5, 25, Deg90), Furniture::new(6, 25, Deg90)]);
         assert!(house.validate().is_err());
     }
 

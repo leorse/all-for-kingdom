@@ -22,25 +22,16 @@ pub enum Tile {
     /// Un coffre (contenant de ressources), posé à l'extérieur des bâtiments : solide, on y accède
     /// depuis une case voisine.
     Crate,
-    /// Le pied d'un lit de 2×1 (la tête est une `Bed`) : praticable.
-    BedFoot,
-    /// La moitié gauche d'une table de 2×1 : meuble solide.
-    Table,
-    /// La moitié droite d'une table : meuble solide.
-    TableEnd,
-    /// La moitié gauche d'une étagère de 2×1 : meuble solide.
-    Shelf,
-    /// La moitié droite d'une étagère : meuble solide.
-    ShelfEnd,
-    /// Un bac d'eau d'habitat (1×1) : meuble solide.
-    Trough,
+    /// Un meuble d'habitat solide (table, étagère ou bac d'eau) : le dessin retrouve le meuble et son
+    /// orientation dans la description de l'habitat.
+    Furniture,
     /// Une pousse d'arbre : praticable, redevient un arbre après un délai.
     Sapling,
 }
 
 impl Tile {
     pub fn is_solid(self) -> bool {
-        matches!(self, Tile::Water | Tile::Wall | Tile::Tree | Tile::Anvil | Tile::Ore | Tile::Crate | Tile::Table | Tile::TableEnd | Tile::Shelf | Tile::ShelfEnd | Tile::Trough)
+        matches!(self, Tile::Water | Tile::Wall | Tile::Tree | Tile::Anvil | Tile::Ore | Tile::Crate | Tile::Furniture)
     }
 }
 

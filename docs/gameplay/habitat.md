@@ -19,7 +19,7 @@ Tout bâtiment où l'on dort (sauf le château) est un **habitat** de l'une de c
 | Maison moyenne | 9×5 (intérieur 7×3) | jusqu'à 3 |
 | Grande maison | 9×7 (intérieur 7×5) | jusqu'à 6 |
 
-- Chaque habitat contient **au moins un lit, une table, une étagère et un bac d'eau**, dans son intérieur. **Le lit, la table et l'étagère font 2×1 tuiles, le bac 1×1.** La table, l'étagère et le bac sont infranchissables ; les lits se traversent. Tous les lits restent accessibles depuis la porte.
+- Chaque habitat contient **au moins un lit, une table, une étagère et un bac d'eau**, dans son intérieur. **Le lit, la table et l'étagère font 2 tuiles (2×1, ou 1×2 une fois tournés), le bac 1.** Tout meuble se pose dans quatre rotations : un lit peut être vertical, tête en haut, comme sur l'image de référence ([art-direction.md](../art-direction.md)). La table, l'étagère et le bac sont infranchissables ; les lits se traversent. Tous les lits restent accessibles depuis la porte.
 - Une **place**, c'est un lit (sa tête, à gauche, désigne la place). Dans un habitat à plusieurs places, les lits se partagent **la même table, la même étagère et le même bac** (pièce commune).
 - **Chaque personne a son lit**, jamais deux dans le même. Les mines, les cabanes et les maisons du paysan, du forgeron et du tavernier sont des petites maisons ; la caserne (chef de guerre et gardes) et l'entrepôt central (transporteurs) sont des maisons moyennes. La maison du paysan grandit avec leur nombre : petite pour un, moyenne jusqu'à trois, grande jusqu'à six.
 - La table, l'étagère et le bac ne servent à rien d'autre pour l'instant (repas, soif, rangement et confort viendront plus tard) : ils comptent déjà dans la place qu'il faut prévoir.
@@ -61,3 +61,7 @@ Les vagabonds arrivent à la [taverne](tavernier.md). On ne peut en embaucher un
 - Le **coût** des améliorations, et qui paie (le personnage, le roi).
 - Est-ce que **toutes les maisons** s'améliorent, ou seulement celles des métiers de production ?
 - Comment se combinent le confort, les meubles et les améliorations ?
+
+## En place : l'aspect des maisons
+
+Les habitats sont dessinés **en coupe**, comme sur l'image de référence (voir [la direction artistique](../art-direction.md)) : une bande de toit de chaume et un mur de rondins au nord, avec des **fenêtres** (une, deux ou trois selon la taille) qui s'éclairent la nuit et une **cheminée de pierre** au feu animé ; des murs de bois sur les côtés ; un mur sud bas avec la porte ; un sol en **planches** ; un **paillasson** derrière la porte. Les meubles sont reconnaissables : lit à oreiller blanc et couverture rouge, table avec assiette et tasse, étagère à livres et flacons, baquet d'eau cerclé avec sa louche. Le dormeur est couché dans le sens de son lit. La cheminée et les fenêtres sont des décors du mur : ils ne prennent aucune place au sol. Le château garde son ancien aspect.

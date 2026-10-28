@@ -210,7 +210,7 @@ impl Game {
     /// Places libres d'un habitat : ses lits que personne n'occupe comme logement (aucun personnage n'y a son lit).
     pub fn free_places_in(&self, habitat: usize) -> u32 {
         let Some(h) = self.habitats.get(habitat) else { return 0 };
-        h.beds.iter().filter(|&&bed| !self.characters.iter().any(|c| c.home == bed)).count() as u32
+        h.bed_homes().iter().filter(|&&bed| !self.characters.iter().any(|c| c.home == bed)).count() as u32
     }
 
     /// Places libres dans tout le royaume.
@@ -724,7 +724,7 @@ use std::collections::HashSet;
     fn find_path_is_connected_and_walkable() {
         let scenario = Scenario::village();
         let map = &scenario.map;
-        let path = map.find_path(TilePos::new(38, 15), TilePos::new(22, 24));
+        let path = map.find_path(TilePos::new(38, 15), TilePos::new(20, 24));
         assert!(!path.is_empty(), "la forge doit être reliée à la caserne");
         let mut prev = TilePos::new(38, 15);
         for p in path {
@@ -732,7 +732,7 @@ use std::collections::HashSet;
             assert_eq!((p.x - prev.x).abs() + (p.y - prev.y).abs(), 1);
             prev = p;
         }
-        assert_eq!(prev, TilePos::new(22, 24));
+        assert_eq!(prev, TilePos::new(20, 24));
     }
 
     #[test]
@@ -879,7 +879,7 @@ use std::collections::HashSet;
     fn exhausted_character_naps_in_daytime_then_wakes_when_rested() {
         let mut game = fast_day_game();
         game.characters[WARLORD.0].fatigue = 95.0;
-        run(&mut game, 6.0); // le lit est à 2 tuiles
+        run(&mut game, 10.0); // le lit est à cinq tuiles, et il est épuisé : il marche à moitié vitesse
         assert!(game.characters[WARLORD.0].asleep, "le chef de guerre épuisé devrait faire la sieste");
         run(&mut game, 80.0); // ~8 h de jeu : réveillé reposé vers 13 h 40, puis retourné au travail
         let c = &game.characters[WARLORD.0];
@@ -1759,7 +1759,7 @@ use std::collections::HashSet;
         let mut game = Game::new(Scenario::village_with_farmers(2), 1, Config::default());
         assert!(game.can_hire());
         // un paysan de plus prend le dernier lit de la maison moyenne
-        let bed = game.habitats().iter().find(|h| h.x == 4 && h.beds.len() == 3).unwrap().beds[2];
+        let bed = game.habitats().iter().find(|h| h.x == 4 && h.beds.len() == 3).unwrap().bed_homes()[2];
         let taken = game.free_places();
         game.characters.push(crate::character::Character::new(
             CharacterId(game.characters.len()),

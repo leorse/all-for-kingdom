@@ -78,3 +78,66 @@ impl TilePos {
         Vec2::new(self.x as f32 + 0.5, self.y as f32 + 0.5)
     }
 }
+
+/// Un quart de tour dans le sens des aiguilles d'une montre, à partir de la pose de base d'un meuble ou d'un
+/// bâtiment : empreinte horizontale (2×1 pour une pièce de deux tuiles), tête de lit à gauche, façade d'étagère
+/// tournée vers le bas (le sud). Tout ce qui se pose dans le jeu peut se tourner de la même façon.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Rotation {
+    Deg0,
+    Deg90,
+    Deg180,
+    Deg270,
+}
+
+impl Rotation {
+    pub const ALL: [Rotation; 4] = [Rotation::Deg0, Rotation::Deg90, Rotation::Deg180, Rotation::Deg270];
+
+    /// Un quart de tour de plus, dans le sens des aiguilles d'une montre.
+    pub fn clockwise(self) -> Rotation {
+        match self {
+            Rotation::Deg0 => Rotation::Deg90,
+            Rotation::Deg90 => Rotation::Deg180,
+            Rotation::Deg180 => Rotation::Deg270,
+            Rotation::Deg270 => Rotation::Deg0,
+        }
+    }
+
+    /// Le nombre de quarts de tour (0 à 3).
+    pub fn quarter_turns(self) -> u8 {
+        match self {
+            Rotation::Deg0 => 0,
+            Rotation::Deg90 => 1,
+            Rotation::Deg180 => 2,
+            Rotation::Deg270 => 3,
+        }
+    }
+
+    /// Largeur et hauteur d'une pièce de base `(w, h)` une fois tournée : les deux échangent aux quarts de tour impairs.
+    pub fn footprint(self, (w, h): (i32, i32)) -> (i32, i32) {
+        if self.quarter_turns() % 2 == 1 {
+            (h, w)
+        } else {
+            (w, h)
+        }
+    }
+}
+
+#[cfg(test)]
+mod rotation_tests {
+    use super::*;
+
+    #[test]
+    fn four_quarter_turns_make_a_full_turn_and_two_tile_pieces_swap_their_footprint() {
+        let mut r = Rotation::Deg0;
+        for _ in 0..4 {
+            r = r.clockwise();
+        }
+        assert_eq!(r, Rotation::Deg0);
+        assert_eq!(Rotation::Deg0.footprint((2, 1)), (2, 1));
+        assert_eq!(Rotation::Deg90.footprint((2, 1)), (1, 2));
+        assert_eq!(Rotation::Deg180.footprint((2, 1)), (2, 1));
+        assert_eq!(Rotation::Deg270.footprint((2, 1)), (1, 2));
+        assert_eq!(Rotation::Deg90.footprint((1, 1)), (1, 1));
+    }
+}
