@@ -53,6 +53,10 @@ impl Tile {
     }
 }
 
+/// Part nord de la case d'une enclume (en tuiles) où l'on peut se tenir : l'enclume, vue de trois-quarts, n'occupe
+/// que le bas de sa case. C'est là que les pieds du forgeron se posent quand il forge (voir `forge_post`).
+pub const ANVIL_BACK: f32 = 0.22;
+
 pub struct TileMap {
     width: i32,
     height: i32,
@@ -135,9 +139,15 @@ impl TileMap {
 
     /// Une boîte carrée centrée sur `center` (demi-côté `half`, en tuiles) touche-t-elle un obstacle ?
     pub fn is_box_blocked(&self, center: Vec2, half: f32) -> bool {
-        [(-half, -half), (half, -half), (-half, half), (half, half)]
-            .iter()
-            .any(|&(dx, dy)| self.get(Vec2::new(center.x + dx, center.y + dy).tile()).is_solid())
+        [(-half, -half), (half, -half), (-half, half), (half, half)].iter().any(|&(dx, dy)| {
+            let p = Vec2::new(center.x + dx, center.y + dy);
+            let tile = p.tile();
+            match self.get(tile) {
+                // le haut de la case de l'enclume est derrière elle : le forgeron s'y tient pour forger
+                Tile::Anvil => p.y - tile.y as f32 >= ANVIL_BACK,
+                t => t.is_solid(),
+            }
+        })
     }
 
     /// Une boîte de demi-côté `half` peut-elle aller en ligne droite de `a` à `b` sans toucher d'obstacle ?

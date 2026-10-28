@@ -538,9 +538,9 @@ fn draw_forge_sparks(game: &Game, view: &View) {
             continue;
         }
         let phase = since / SPARKS_SECS;
-        // le métal sur l'enclume : juste au-dessus des pieds du forgeron, dans son dessin
+        // le métal chaud sur l'enclume, dans son dessin : 16 px au-dessus de ses pieds (posés au poste de forge)
         let (x, y) = view.to_screen(c.pos);
-        let (mx, my) = (x + 2.0 * s, y - 2.0 * s);
+        let (mx, my) = (x + 2.0 * s, y - 16.0 * s);
         for i in 0..6 {
             let spread = i as f32 - 2.5;
             let dx = spread * 5.0 * phase;

@@ -147,6 +147,18 @@ pub fn forge_spot(anvil: TilePos) -> TilePos {
     TilePos::new(anvil.x, anvil.y - 1)
 }
 
+/// Le point exact où le forgeron se tient pour forger, dans la case `forge_spot` : centré sur l'enclume et collé
+/// contre elle (ses pieds 2 pixels de dessin au-dessus de sa case, son corps derrière elle, voir `ANVIL_BACK`).
+/// Debout ou au travail, il y est dessiné à la même hauteur.
+pub fn forge_post(anvil: TilePos) -> Vec2 {
+    Vec2::new(anvil.x as f32 + 0.5, anvil.y as f32 - 2.0 / 32.0)
+}
+
+/// Le personnage est-il au poste de forge de `anvil` (au point près, pas seulement sur la bonne case) ?
+pub fn at_forge_post(pos: Vec2, anvil: TilePos) -> bool {
+    pos.distance(forge_post(anvil)) < 0.02
+}
+
 pub struct Character {
     pub id: CharacterId,
     pub name: String,
@@ -459,11 +471,18 @@ impl Character {
         let dir = dir.normalized_or_zero();
         if let Some(anvil) = self.approach {
             if dir == Vec2::ZERO {
-                // conduit à son poste de forge ; à l'arrivée, c'est `Game` qui lance la forge
-                if self.path.is_empty() || self.follow_path(env) {
+                // conduit à son poste de forge : le chemin jusqu'à la case, puis le dernier pas jusqu'au point exact ;
+                // à l'arrivée, c'est `Game` qui lance la forge
+                if !self.path.is_empty() {
+                    self.follow_path(env);
+                } else if self.tile() != forge_spot(anvil) {
+                    self.cancel_approach(); // chemin abandonné en route (bloqué) : il s'arrête là
+                    self.activity = Activity::Idle;
+                } else if self.step_to_point(forge_post(anvil), env) {
                     self.approach = None;
                     self.work_target = None;
                     self.activity = Activity::Idle;
+                    self.facing = Facing::Down;
                     self.outcome = Some(Outcome::Arrived { anvil });
                 }
                 return;
@@ -552,6 +571,23 @@ impl Character {
         } else {
             self.stuck = 0.0;
         }
+        false
+    }
+
+    /// Dernier pas, en ligne droite, jusqu'à `target` dans la case où il se trouve déjà (sans obstacle à contourner).
+    /// Renvoie `true` à l'arrivée.
+    fn step_to_point(&mut self, target: Vec2, env: &Env) -> bool {
+        let to_target = target - self.pos;
+        let dist = to_target.length();
+        let step = AI_SPEED * self.speed_factor(env.cfg) * self.efficiency() * env.dt;
+        if dist <= step.max(0.005) {
+            self.pos = target;
+            return true;
+        }
+        let dir = to_target * (1.0 / dist);
+        self.pos = self.pos + dir * step;
+        self.facing = Facing::from_dir(dir);
+        self.activity = Activity::Walking;
         false
     }
 
@@ -657,7 +693,7 @@ impl Character {
         self.wander_routine(env, rng); // rien à faire : tout pousse
     }
 
-    /// Le forgeron : tant qu'il y a du fer, va se placer au poste d'une enclume libre (la case au nord), regarde
+    /// Le forgeron : tant qu'il y a du fer, va se placer au poste d'une enclume libre (au nord, contre elle), regarde
     /// vers l'enclume et forge.
     /// Sans fer, il traîne dans sa forge en attendant.
     fn forge_routine(&mut self, env: &Env, rng: &mut Rng) {
@@ -686,8 +722,12 @@ impl Character {
                 .filter(|a| !env.claimed.contains(a))
                 .collect();
 
-            // déjà au poste d'une enclume libre : on la regarde et on forge
+            // déjà sur la case du poste d'une enclume libre : on se place au point exact, on la regarde et on forge
             if let Some(&anvil) = anvils.iter().find(|&&a| here == forge_spot(a)) {
+                if !self.step_to_point(forge_post(anvil), env) {
+                    self.work_target = Some(anvil);
+                    return;
+                }
                 self.facing = Facing::Down;
                 self.start_work(WorkKind::Forge, anvil, WorkKind::Forge.duration_secs(env.cfg));
                 return;

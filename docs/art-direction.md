@@ -45,7 +45,7 @@ Tous les personnages suivent le même gabarit, défini une fois dans `crates/afk
 - **Une marche bien décomposée** : jamais la même jambe en avant sur deux pas qui se suivent, les bras à l'opposé des jambes.
 - **Un visage soigné et constant** : le même sur toutes les images de face (seul le clignement change). Dans le SVG, la tête est une pièce commune réutilisée par chaque image.
 - **L'ombre au sol** n'est pas dans le dessin : le jeu la pose sous les pieds.
-- **Le forgeron forge de face**, sur la case au nord de l'enclume. Il est dessiné 16 pixels plus bas dans ses images de forge : l'enclume, sur la case au sud et dessinée devant lui, cache ses jambes.
+- **Le forgeron forge de face**, à son poste, juste derrière l'enclume : ses pieds sont 2 pixels au-dessus de la case de l'enclume, qui est dessinée devant lui et cache ses jambes. Ses images de forge ont le corps à la même hauteur que l'image debout : rien ne saute quand il se met à forger.
 
 ### Le dessin : un SVG, des PNG générés
 

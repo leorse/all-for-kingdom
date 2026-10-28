@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 
-use crate::character::{forge_spot, Character, Env, Facing, Outcome, Role, BODY_HALF};
+use crate::character::{at_forge_post, forge_spot, Character, Env, Facing, Outcome, Role, BODY_HALF};
 use crate::clock::Clock;
 use crate::config::Config;
 use crate::container::{container_at, place_crates, Container, ContainerKind};
@@ -415,11 +415,16 @@ impl Game {
                     self.characters[id.0].cancel_work();
                 } else if let Some((kind, tile)) = self.available_work(id) {
                     let c = &self.characters[id.0];
-                    if kind == WorkKind::Forge && c.tile() != forge_spot(tile) {
-                        // on ne forge que depuis le poste au nord de l'enclume : il y va seul
-                        let path = self.map.find_path_mode(c.tile(), forge_spot(tile), PathMode::Roads(self.config.grass_cost));
-                        if !path.is_empty() {
-                            self.characters[id.0].start_approach(tile, path);
+                    if kind == WorkKind::Forge && !at_forge_post(c.pos, tile) {
+                        // on ne forge que depuis le poste au nord de l'enclume : il y va seul (déjà sur la bonne case,
+                        // il ne fait que le dernier pas pour se centrer)
+                        if c.tile() == forge_spot(tile) {
+                            self.characters[id.0].start_approach(tile, std::collections::VecDeque::new());
+                        } else {
+                            let path = self.map.find_path_mode(c.tile(), forge_spot(tile), PathMode::Roads(self.config.grass_cost));
+                            if !path.is_empty() {
+                                self.characters[id.0].start_approach(tile, path);
+                            }
                         }
                     } else {
                         let secs = work_secs(kind, tile, &self.config, &self.veins);
@@ -528,6 +533,12 @@ impl Game {
                         forge.add(Resource::Tools, tools);
                     }
                 }
+                // il enchaîne aussitôt l'outil suivant, incarné ou non : pas un seul pas sans travail entre deux
+                let c = &self.characters[who];
+                if !c.asleep && c.work.is_none() && at_forge_post(c.pos, done.tile) && self.can_produce(c, WorkKind::Forge, done.tile) {
+                    let secs = work_secs(WorkKind::Forge, done.tile, &self.config, &self.veins);
+                    self.characters[who].start_work(WorkKind::Forge, done.tile, secs);
+                }
             }
             WorkKind::Chop => {} // jamais émis : `Game` décide seul de la chute des arbres
             WorkKind::Mine => {
@@ -554,7 +565,7 @@ impl Game {
     /// Le joueur conduit au poste de forge de `anvil` y est arrivé : il se tourne vers l'enclume et forge, si c'est
     /// encore possible (du fer, de la place pour l'outil, l'enclume libre). Arrêté en route, il ne forge pas.
     fn arrive_at_forge(&mut self, who: usize, anvil: TilePos) {
-        if self.characters[who].tile() != forge_spot(anvil) {
+        if !at_forge_post(self.characters[who].pos, anvil) {
             return;
         }
         self.characters[who].facing = Facing::Down;
@@ -1220,7 +1231,7 @@ use std::collections::HashSet;
 
     // ------------------------------------------------------------ le forgeron
 
-    use crate::character::forge_spot;
+    use crate::character::{at_forge_post, forge_post, forge_spot};
 
     const SMITH: CharacterId = CharacterId(1);
     const ANVIL: TilePos = TilePos::new(39, 15);
@@ -1242,11 +1253,23 @@ use std::collections::HashSet;
     }
 
     #[test]
+    fn the_forge_post_is_centered_on_the_anvil_and_against_it() {
+        let scenario = Scenario::village();
+        let post = forge_post(ANVIL);
+        assert_eq!(post.tile(), forge_spot(ANVIL), "le point est dans la case au nord");
+        assert_eq!(post.x, ANVIL.center().x, "centré sur l'enclume");
+        assert!(post.y > forge_spot(ANVIL).center().y, "plus près de l'enclume que le centre de la case");
+        assert!(!scenario.map.is_box_blocked(post, BODY_HALF), "le corps y tient sans toucher l'enclume");
+        // collé contre elle : un pas de plus vers le sud et le corps la touche
+        assert!(scenario.map.is_box_blocked(Vec2::new(post.x, post.y + 0.02), BODY_HALF));
+    }
+
+    #[test]
     fn ai_blacksmith_forges_only_from_the_north_of_the_anvil_facing_down() {
         let mut game = new_game();
         ticks_until(&mut game, 10.0, |g| g.characters[SMITH.0].work.is_some());
         let smith = &game.characters[SMITH.0];
-        assert_eq!(smith.tile(), forge_spot(ANVIL));
+        assert!(at_forge_post(smith.pos, ANVIL), "il forge depuis {:?}, pas depuis le poste", smith.pos);
         assert_eq!(smith.facing, Facing::Down);
         assert_eq!(smith.work.unwrap().tile, ANVIL);
     }
@@ -1269,7 +1292,7 @@ use std::collections::HashSet;
         assert!(game.characters[SMITH.0].is_approaching());
         ticks_until(&mut game, 5.0, |g| g.characters[SMITH.0].work.is_some());
         let smith = &game.characters[SMITH.0];
-        assert_eq!(smith.tile(), forge_spot(ANVIL));
+        assert!(at_forge_post(smith.pos, ANVIL), "il forge depuis {:?}, pas depuis le poste", smith.pos);
         assert_eq!(smith.facing, Facing::Down);
         assert!(!smith.is_approaching());
         // et il forge pour de bon : un outil sort
@@ -1304,13 +1327,80 @@ use std::collections::HashSet;
     }
 
     #[test]
-    fn at_the_forge_spot_one_press_forges_at_once() {
+    fn at_the_forge_post_one_press_forges_at_once() {
         let mut game = new_game();
         game.apply(Command::Possess { player: P0, character: SMITH });
-        game.characters[SMITH.0].pos = forge_spot(ANVIL).center();
+        game.characters[SMITH.0].pos = forge_post(ANVIL);
         game.characters[SMITH.0].facing = Facing::Down;
         game.apply(Command::Interact { player: P0 });
         assert_eq!(game.characters[SMITH.0].work.map(|w| w.kind), Some(WorkKind::Forge));
+        run(&mut game, 0.5);
+        assert_eq!(game.characters[SMITH.0].pos, forge_post(ANVIL), "il n'a pas bougé");
+    }
+
+    #[test]
+    fn off_center_on_the_forge_tile_one_press_recenters_then_forges() {
+        // sur la bonne case, mais décalé vers l'ouest et loin de l'enclume
+        let mut game = new_game();
+        game.apply(Command::Possess { player: P0, character: SMITH });
+        let spot = forge_spot(ANVIL).center();
+        game.characters[SMITH.0].pos = Vec2::new(spot.x - 0.2, spot.y - 0.1);
+        game.characters[SMITH.0].facing = Facing::Down;
+        assert_eq!(game.available_work(SMITH), Some((WorkKind::Forge, ANVIL)));
+        game.apply(Command::Interact { player: P0 });
+        assert!(game.characters[SMITH.0].work.is_none(), "pas décalé");
+        assert!(game.characters[SMITH.0].is_approaching());
+        ticks_until(&mut game, 2.0, |g| g.characters[SMITH.0].work.is_some());
+        let smith = &game.characters[SMITH.0];
+        assert!(at_forge_post(smith.pos, ANVIL), "il forge depuis {:?}, pas depuis le poste", smith.pos);
+        assert_eq!(smith.facing, Facing::Down);
+    }
+
+    /// Fait avancer `game` jusqu'à ce que `tools` outils soient sortis, en vérifiant à chaque pas que le forgeron
+    /// n'a jamais cessé de forger entre deux outils.
+    fn forges_without_a_gap(game: &mut Game, tools: u32) {
+        let target = game.stock().get(Resource::Tools) + tools;
+        let mut t = 0.0;
+        while game.stock().get(Resource::Tools) < target {
+            assert!(game.characters[SMITH.0].work.is_some(), "un pas sans forge entre deux outils");
+            game.step(TICK);
+            t += TICK;
+            assert!(t < 60.0, "pas assez d'outils forgés");
+        }
+        assert!(game.characters[SMITH.0].work.is_some(), "il s'est arrêté après le dernier outil");
+    }
+
+    #[test]
+    fn the_ai_blacksmith_chains_tools_without_a_gap() {
+        let mut game = new_game();
+        ticks_until(&mut game, 10.0, |g| g.characters[SMITH.0].work.is_some());
+        forges_without_a_gap(&mut game, 2);
+    }
+
+    #[test]
+    fn one_press_makes_the_player_blacksmith_chain_tools_until_stopped() {
+        let mut game = new_game();
+        game.apply(Command::Possess { player: P0, character: SMITH });
+        game.characters[SMITH.0].pos = forge_post(ANVIL);
+        game.characters[SMITH.0].facing = Facing::Down;
+        game.apply(Command::Interact { player: P0 });
+        forges_without_a_gap(&mut game, 2);
+
+        // un nouvel appui arrête la série
+        game.apply(Command::Interact { player: P0 });
+        assert!(game.characters[SMITH.0].work.is_none());
+        let tools = game.stock().get(Resource::Tools);
+        run(&mut game, 5.0);
+        assert_eq!(game.stock().get(Resource::Tools), tools, "il ne doit plus forger");
+
+        // un déplacement aussi
+        game.apply(Command::Interact { player: P0 });
+        assert!(game.characters[SMITH.0].work.is_some());
+        game.apply(Command::Move { player: P0, dir: Vec2::new(0.0, -1.0) });
+        run(&mut game, 0.1);
+        game.apply(Command::Move { player: P0, dir: Vec2::ZERO });
+        run(&mut game, 5.0);
+        assert!(game.characters[SMITH.0].work.is_none());
     }
 
     #[test]
@@ -1355,17 +1445,18 @@ use std::collections::HashSet;
         // les deux partent du poste de forge, pour ne comparer que la forge
         // IA : elle se met seule au travail
         let mut ai = new_game();
-        ai.characters[SMITH.0].pos = forge_spot(ANVIL).center();
+        ai.characters[SMITH.0].pos = forge_post(ANVIL);
         let t_ai = ticks_until(&mut ai, 30.0, |g| g.stock().get(Resource::Tools) >= 1);
 
         // joueur : il se tourne vers l'enclume (en bas) puis appuie sur E
         let mut player = new_game();
         player.apply(Command::Possess { player: P0, character: SMITH });
-        player.characters[SMITH.0].pos = forge_spot(ANVIL).center();
+        player.characters[SMITH.0].pos = forge_post(ANVIL);
         player.apply(Command::Move { player: P0, dir: Vec2::new(0.0, 1.0) });
         run(&mut player, 0.1); // l'enclume bloque : il ne bouge pas mais la regarde
         player.apply(Command::Move { player: P0, dir: Vec2::ZERO });
         run(&mut player, 0.05);
+        assert_eq!(player.characters[SMITH.0].pos, forge_post(ANVIL), "collé à l'enclume, il ne bouge pas");
         assert_eq!(player.available_work(SMITH), Some((WorkKind::Forge, ANVIL)));
         player.apply(Command::Interact { player: P0 });
         let t_player = ticks_until(&mut player, 30.0, |g| g.stock().get(Resource::Tools) >= 1);
