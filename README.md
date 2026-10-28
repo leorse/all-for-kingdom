@@ -65,9 +65,11 @@ glissement, marge de suivi, zoom) est dans `crates/afk-game/src/camera.rs`.
   (sans ça, tous se ruaient sur la même et en avoir 4 ne rapportait pas plus qu'en avoir 1).
 
 **Le forgeron**
-- L'enclume est un obstacle : on forge depuis une case voisine en la regardant (bouger vers elle suffit à la
-  regarder), puis `E`. Chaque coup de forge dure 8 s (4 s pour le joueur), consomme 2 de fer et produit 1 outil.
-- L'IA va seule à côté de l'enclume et forge tant qu'il reste du fer, puis traîne dans sa forge.
+- L'enclume est un obstacle, et on forge **depuis une seule place : juste au-dessus d'elle, face à elle**. Le joueur
+  n'a pas à s'y mettre lui-même : il s'approche de l'enclume, la regarde (bouger vers elle suffit), et `E` le
+  place automatiquement à son poste et lance le coup de forge. Chaque coup dure 8 s (4 s pour le joueur),
+  consomme 2 de fer et produit 1 outil.
+- L'IA va seule à son poste au-dessus de l'enclume et forge tant qu'il reste du fer, puis traîne dans sa forge.
 - **Le fer est fini** (60 au départ, aucune mine pour l'instant) : l'IA le transforme en outils en moins d'un jour.
   Réglable avec `starting_iron`, `iron_per_tool`, `forge_secs` dans `config.rs`.
 
@@ -106,8 +108,21 @@ Règles à garder :
 5. La simulation avance par pas fixes (`Game::step(TICK)`), indépendamment de la fréquence d'affichage.
 6. Lecture de l'état par accesseurs en lecture seule ; seules `apply` et `step` le modifient.
 
-Changer de bibliothèque de rendu = réécrire `render.rs`, `input.rs` et `main.rs` dans `afk-game`.
+Changer de bibliothèque de rendu = réécrire `render.rs`, `sprites.rs`, `input.rs` et `main.rs` dans `afk-game`.
 Rien dans `afk-core` ne bouge.
+
+## Sprites
+
+Le forgeron et les lits sont dessinés avec des sprites vectoriels (vue inclinée, comme Zelda sur SNES : les
+personnages dépassent de leur tuile). Les autres personnages gardent leurs formes simples en attendant.
+Les sources sont dans `crates/afk-game/assets/blacksmith/` :
+
+    gen_blacksmith.py   le "rig" du forgeron : pièces dessinées une fois, posées à chaque image (marche, forge, sommeil)
+    blacksmith.svg      l'atlas en SVG (généré)
+    blacksmith.png      l'atlas rendu à 2x, embarqué dans le jeu (généré)
+    build.sh            régénère les deux (python3, node, playwright et Chromium)
+
+Après avoir changé le style, lancer `crates/afk-game/assets/blacksmith/build.sh` et commiter le SVG et le PNG.
 
 ## Feuille de route
 
@@ -116,4 +131,4 @@ Rien dans `afk-core` ne bouge.
 - [x] Jalon 3 : forgeron (forger, consomme du fer) et gardes (patrouilles, quart de jour et de nuit)
 - À venir : une source de fer (mine ou commerce), décrets du roi qui orientent les priorités de l'IA
   (que forger, combien de paysans), roi / chef de guerre / tavernier avec un vrai travail
-- Plus tard : sprites en atlas, vraie lumière (carte de lumière), coop réseau
+- Plus tard : sprites pour les autres personnages et les bâtiments, vraie lumière (carte de lumière), coop réseau

@@ -25,4 +25,4 @@ pub use map::{Tile, TileMap};
 pub use math::{TilePos, Vec2};
 pub use resources::{Resource, Stock};
 pub use scenario::Scenario;
-pub use work::{Work, WorkDone, WorkKind};
+pub use work::{forge_station, Work, WorkDone, WorkKind};

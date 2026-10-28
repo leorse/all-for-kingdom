@@ -12,6 +12,7 @@
 mod camera;
 mod input;
 mod render;
+mod sprites;
 
 use afk_core::{CharacterId, Command, Config, Game, PlayerId, Scenario, TICK};
 use macroquad::prelude::*;
@@ -45,6 +46,7 @@ async fn main() {
     game.apply(Command::Possess { player: me, character: CharacterId(0) });
 
     let mut view = render::View::new();
+    let sprites = sprites::Sprites::load();
     // Le personnage que la caméra suit : le dernier incarné (elle continue de le suivre en mode AFK).
     let mut followed: Option<CharacterId> = None;
 
@@ -84,7 +86,7 @@ async fn main() {
         let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
         view.update(&game, target, recenter, get_frame_time());
 
-        render::draw(&game, &view, me, speed);
+        render::draw(&game, &view, me, speed, &sprites);
         next_frame().await;
     }
 }

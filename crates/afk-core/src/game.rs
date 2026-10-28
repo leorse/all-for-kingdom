@@ -17,7 +17,7 @@ use crate::math::{TilePos, Vec2};
 use crate::resources::{Resource, Stock};
 use crate::rng::Rng;
 use crate::scenario::Scenario;
-use crate::work::WorkKind;
+use crate::work::{forge_station, WorkKind};
 
 /// Durée d'un pas de simulation (60 par seconde).
 pub const TICK: f32 = 1.0 / 60.0;
@@ -165,7 +165,8 @@ impl Game {
             return Some(kind);
         }
         let has_iron = self.stock.get(Resource::Iron) >= self.config.iron_per_tool;
-        (self.map.get(tile) == Tile::Anvil && has_iron).then_some(WorkKind::Forge)
+        let has_station = !self.map.get(forge_station(tile)).is_solid();
+        (self.map.get(tile) == Tile::Anvil && has_iron && has_station).then_some(WorkKind::Forge)
     }
 
     /// Le travail que ce personnage pourrait lancer maintenant avec `Interact`, et sur quelle tuile :
@@ -249,6 +250,10 @@ impl Game {
                 } else if self.characters[id.0].work.is_some() {
                     self.characters[id.0].cancel_work();
                 } else if let Some((kind, tile)) = self.available_work(id) {
+                    if kind == WorkKind::Forge {
+                        // proche de l'enclume : le forgeron est placé automatiquement à son poste
+                        self.characters[id.0].take_forge_station(tile);
+                    }
                     self.characters[id.0].start_work(kind, tile);
                 }
             }
@@ -879,6 +884,8 @@ mod tests {
 
     const SMITH: CharacterId = CharacterId(1);
     const ANVIL: TilePos = TilePos::new(39, 15);
+    /// Là où se tient le forgeron pour forger : juste au-dessus de l'enclume.
+    const STATION: TilePos = TilePos::new(39, 14);
 
     #[test]
     fn scenario_has_one_anvil_and_beds_are_distinct() {
@@ -886,9 +893,12 @@ mod tests {
         assert_eq!(scenario.map.find_tiles(Tile::Anvil), vec![ANVIL]);
         let homes: HashSet<TilePos> = scenario.characters.iter().map(|c| c.home).collect();
         assert_eq!(homes.len(), scenario.characters.len(), "deux personnages se partagent un lit");
-        // l'enclume est un obstacle, mais on peut l'atteindre depuis une case voisine
+        // l'enclume est un obstacle, mais son poste (juste au-dessus) est praticable et relié à la forge
         assert!(scenario.map.get(ANVIL).is_solid());
-        assert!(!scenario.map.walkable_neighbors(ANVIL).is_empty());
+        let station = forge_station(ANVIL);
+        assert_eq!(station, STATION);
+        assert!(!scenario.map.get(station).is_solid());
+        assert!(!scenario.map.find_path(TilePos::new(38, 15), station).is_empty());
     }
 
     #[test]
@@ -904,6 +914,52 @@ mod tests {
             start_iron,
             "le fer a disparu ou été créé"
         );
+    }
+
+    #[test]
+    fn ai_blacksmith_forges_from_his_station_facing_the_anvil() {
+        use crate::character::Facing;
+        let mut game = new_game();
+        ticks_until(&mut game, 10.0, |g| g.characters[SMITH.0].work.is_some());
+        let smith = &game.characters[SMITH.0];
+        assert_eq!(smith.tile(), STATION, "il doit forger depuis le poste, au-dessus de l'enclume");
+        assert_eq!(smith.facing, Facing::Down, "face à l'enclume");
+        assert_eq!(smith.work.unwrap().tile, ANVIL);
+    }
+
+    #[test]
+    fn player_blacksmith_is_placed_at_the_station_when_he_starts_forging() {
+        use crate::character::Facing;
+        // depuis la case à gauche de l'enclume, puis depuis celle de droite
+        for (from, dir) in [((38, 15), 1.0), ((40, 15), -1.0)] {
+            let mut game = new_game();
+            game.apply(Command::Possess { player: P0, character: SMITH });
+            game.characters[SMITH.0].pos = TilePos::new(from.0, from.1).center();
+            game.apply(Command::Move { player: P0, dir: Vec2::new(dir, 0.0) });
+            run(&mut game, 0.1); // l'enclume bloque : il la regarde
+            game.apply(Command::Move { player: P0, dir: Vec2::ZERO });
+            run(&mut game, 0.05);
+            assert_eq!(game.available_work(SMITH), Some((WorkKind::Forge, ANVIL)), "depuis {from:?}");
+            game.apply(Command::Interact { player: P0 });
+            let smith = &game.characters[SMITH.0];
+            assert_eq!(smith.pos, STATION.center(), "il est déplacé à son poste, depuis {from:?}");
+            assert_eq!(smith.facing, Facing::Down);
+            assert_eq!(smith.work.map(|w| w.tile), Some(ANVIL));
+        }
+    }
+
+    #[test]
+    fn an_anvil_without_a_free_station_cannot_be_used() {
+        let mut game = new_game();
+        game.map.set(STATION, Tile::Wall);
+        game.apply(Command::Possess { player: P0, character: SMITH });
+        game.characters[SMITH.0].pos = TilePos::new(38, 15).center();
+        game.characters[SMITH.0].facing = crate::character::Facing::Right;
+        assert_eq!(game.available_work(SMITH), None);
+        run(&mut game, 30.0);
+        game.apply(Command::ToggleIdle { player: P0 });
+        run(&mut game, 30.0);
+        assert_eq!(game.stock().get(Resource::Tools), 0, "l'IA non plus ne peut pas forger");
     }
 
     #[test]
@@ -926,8 +982,9 @@ mod tests {
 
     #[test]
     fn player_blacksmith_forges_twice_as_fast() {
-        // IA : il se met seul au travail, à côté de l'enclume
+        // IA : il se met seul au travail, à son poste ; on compte à partir du premier coup
         let mut ai = new_game();
+        ticks_until(&mut ai, 10.0, |g| g.characters[SMITH.0].work.is_some());
         let t_ai = ticks_until(&mut ai, 30.0, |g| g.stock().get(Resource::Tools) >= 1);
 
         // joueur : il se tourne vers l'enclume (à sa droite) puis appuie sur E
@@ -976,7 +1033,7 @@ mod tests {
             work_spots: vec![TilePos::new(40, 15)],
         });
         let mut game = Game::new(scenario, 1, Config::default());
-        run(&mut game, 1.0); // le premier forgeron (IA) est déjà au travail sur l'enclume
+        ticks_until(&mut game, 10.0, |g| g.characters[SMITH.0].work.is_some()); // le premier (IA) forge
         assert_eq!(game.characters[SMITH.0].claimed_tile(), Some(ANVIL));
 
         // le second forgeron, joueur, juste de l'autre côté de l'enclume, la regarde : c'est occupé

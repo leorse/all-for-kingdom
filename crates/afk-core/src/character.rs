@@ -12,7 +12,7 @@ use crate::map::{Tile, TileMap};
 use crate::math::{TilePos, Vec2};
 use crate::resources::{Resource, Stock};
 use crate::rng::Rng;
-use crate::work::{Work, WorkDone, WorkKind};
+use crate::work::{forge_station, Work, WorkDone, WorkKind};
 use std::collections::VecDeque;
 
 /// Vitesse d'un personnage dirigé par le joueur (tuiles par seconde).
@@ -77,10 +77,6 @@ impl Facing {
             Facing::Down
         }
     }
-}
-
-fn is_adjacent(a: TilePos, b: TilePos) -> bool {
-    (a.x - b.x).abs() + (a.y - b.y).abs() == 1
 }
 
 pub struct Character {
@@ -264,6 +260,14 @@ impl Character {
         self.work = Some(Work { kind, tile, progress: 0.0 });
         self.activity = Activity::Working;
         true
+    }
+
+    /// Place le personnage à son poste de forge, face à l'enclume (voir `forge_station`), avant de forger.
+    pub(crate) fn take_forge_station(&mut self, anvil: TilePos) {
+        self.pos = forge_station(anvil).center();
+        self.facing = Facing::Down;
+        self.path.clear();
+        self.goal = None;
     }
 
     pub(crate) fn cancel_work(&mut self) {
@@ -463,8 +467,8 @@ impl Character {
         self.wander_routine(env, rng); // rien à faire : tout pousse
     }
 
-    /// Le forgeron : tant qu'il y a du fer, va se placer à côté d'une enclume libre, la regarde et forge.
-    /// Sans fer, il traîne dans sa forge en attendant.
+    /// Le forgeron : tant qu'il y a du fer, va se placer à son poste, juste au-dessus d'une enclume libre
+    /// (voir `forge_station`), face à elle, et forge. Sans fer, il traîne dans sa forge en attendant.
     fn forge_routine(&mut self, env: &Env, rng: &mut Rng) {
         if self.wait > 0.0 {
             self.wait -= env.dt;
@@ -487,21 +491,21 @@ impl Character {
                 .find_tiles(Tile::Anvil)
                 .into_iter()
                 .filter(|a| !env.claimed.contains(a))
+                .filter(|&a| !env.map.get(forge_station(a)).is_solid())
                 .collect();
 
-            // déjà à côté d'une enclume libre : on la regarde et on forge
-            if let Some(&anvil) = anvils.iter().find(|&&a| is_adjacent(here, a)) {
-                self.facing = Facing::from_dir(anvil.center() - self.pos);
+            // déjà à son poste devant une enclume libre : il se tourne vers elle et forge
+            if let Some(&anvil) = anvils.iter().find(|&&a| forge_station(a) == here) {
+                self.facing = Facing::Down;
                 self.start_work(WorkKind::Forge, anvil);
                 return;
             }
 
-            // sinon : on marche jusqu'à la case libre la plus proche d'une enclume libre
+            // sinon : il marche jusqu'au poste de l'enclume libre la plus proche
             let best = anvils
                 .iter()
-                .flat_map(|&a| env.map.walkable_neighbors(a).into_iter().map(move |n| (a, n)))
-                .filter_map(|(a, n)| {
-                    let path = env.map.find_path(here, n);
+                .filter_map(|&a| {
+                    let path = env.map.find_path(here, forge_station(a));
                     (!path.is_empty()).then(|| (path.len(), a, path))
                 })
                 .min_by_key(|(len, _, _)| *len);

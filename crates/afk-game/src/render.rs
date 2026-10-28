@@ -3,6 +3,7 @@
 //! Changer de bibliothèque de rendu = réécrire ce fichier, pas la logique du jeu.
 
 use crate::camera::{Camera, TILE_PX};
+use crate::sprites::Sprites;
 use afk_core::{Activity, Character, Game, PlayerId, PlotState, Resource, Role, Tile, TilePos, Vec2, WorkKind};
 use macroquad::prelude::*;
 
@@ -148,12 +149,13 @@ fn fitness_color(fitness: f32) -> Color {
 
 // ---------------------------------------------------------------- dessin
 
-pub fn draw(game: &Game, view: &View, me: PlayerId, speed: f32) {
+pub fn draw(game: &Game, view: &View, me: PlayerId, speed: f32, sprites: &Sprites) {
     clear_background(Color::from_rgba(20, 24, 30, 255));
     draw_map(game, view);
+    draw_beds(game, view, sprites);
     draw_farm(game, view);
     draw_target(game, view, me);
-    draw_characters(game, view, me);
+    draw_characters(game, view, me, sprites);
     draw_forge_sparks(game, view);
     draw_daylight(game, view);
     draw_hud(game, me, speed);
@@ -175,11 +177,6 @@ fn draw_map(game: &Game, view: &View) {
                 Tile::Field if (x + y) % 2 == 0 => {
                     draw_rectangle(px, py + 14.0 * s, t, 4.0 * s, Color::from_rgba(110, 80, 48, 255))
                 }
-                Tile::Bed => {
-                    draw_rectangle(px + 3.0 * s, py + 6.0 * s, 26.0 * s, 20.0 * s, Color::from_rgba(104, 68, 40, 255)); // cadre
-                    draw_rectangle(px + 5.0 * s, py + 8.0 * s, 22.0 * s, 16.0 * s, Color::from_rgba(196, 74, 74, 255)); // couverture
-                    draw_rectangle(px + 5.0 * s, py + 8.0 * s, 7.0 * s, 16.0 * s, Color::from_rgba(236, 234, 222, 255)); // oreiller
-                }
                 Tile::Anvil => {
                     draw_rectangle(px + 8.0 * s, py + 22.0 * s, 16.0 * s, 6.0 * s, Color::from_rgba(52, 52, 58, 255)); // pied
                     draw_rectangle(px + 11.0 * s, py + 16.0 * s, 10.0 * s, 7.0 * s, Color::from_rgba(70, 70, 78, 255)); // taille
@@ -188,6 +185,21 @@ fn draw_map(game: &Game, view: &View) {
                     draw_rectangle(px + 7.0 * s, py + 9.0 * s, 18.0 * s, 2.0 * s, Color::from_rgba(150, 150, 162, 255)); // reflet
                 }
                 _ => {}
+            }
+        }
+    }
+}
+
+/// Les lits : des sprites qui dépassent un peu de leur tuile, donc dessinés après toute la carte.
+fn draw_beds(game: &Game, view: &View, sprites: &Sprites) {
+    let map = game.map();
+    let s = view.tile_px / 32.0;
+    let (x0, x1, y0, y1) = view.visible_tiles(map.width(), map.height());
+    for y in y0..y1 {
+        for x in x0..x1 {
+            let p = TilePos::new(x, y);
+            if map.get(p) == Tile::Bed {
+                sprites.draw_bed(view.to_screen(p.center()), s);
             }
         }
     }
@@ -239,7 +251,7 @@ fn draw_target(game: &Game, view: &View, me: PlayerId) {
     draw_rectangle_lines(px, py, view.tile_px, view.tile_px, 3.0, Color::new(1.0, 1.0, 1.0, pulse));
 }
 
-fn draw_characters(game: &Game, view: &View, me: PlayerId) {
+fn draw_characters(game: &Game, view: &View, me: PlayerId, sprites: &Sprites) {
     let s = view.tile_px / 32.0;
     let possessed = game.possessed_by(me);
 
@@ -253,6 +265,11 @@ fn draw_characters(game: &Game, view: &View, me: PlayerId) {
         }
         let (x, y) = view.to_screen(c.pos);
         let active = Some(c.id) == possessed;
+
+        if c.role == Role::Blacksmith {
+            draw_sprite_character(game, c, (x, y), s, active, sprites);
+            continue;
+        }
 
         if c.activity == Activity::Sleeping {
             // couché dans le lit : tête sur l'oreiller, un "z" qui flotte
@@ -298,6 +315,49 @@ fn draw_characters(game: &Game, view: &View, me: PlayerId) {
                 Color::from_rgba(250, 220, 80, 255),
             );
         }
+    }
+}
+
+/// Un personnage dessiné avec des sprites : ombre, sprite animé, marqueur du joueur, barre de travail.
+fn draw_sprite_character(game: &Game, c: &Character, at: (f32, f32), s: f32, active: bool, sprites: &Sprites) {
+    let (x, y) = at;
+    let sleeping = c.activity == Activity::Sleeping;
+    let feet_y = y + 10.0 * s;
+
+    if !sleeping {
+        draw_ellipse(x, feet_y + 1.0 * s, 11.0 * s, 4.0 * s, 0.0, Color::new(0.0, 0.0, 0.0, 0.28));
+        if active {
+            draw_ellipse_lines(x, feet_y + 1.0 * s, 13.0 * s, 5.0 * s, 0.0, 2.0, WHITE);
+        }
+    }
+    let head = sprites.draw_blacksmith(c, at, s, game.time(), active);
+
+    if sleeping {
+        let float = (game.time() * 2.0).sin() * 2.0 * s;
+        draw_text("z", x + 6.0 * s, y - 12.0 * s + float, 22.0 * s, WHITE);
+        if active {
+            draw_rectangle(x - 4.0 * s, y - 28.0 * s, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255));
+        }
+        return;
+    }
+
+    let top = feet_y - head * s;
+    if active {
+        let bob = (game.time() * 6.0).sin() * 3.0 * s;
+        draw_rectangle(x - 4.0 * s, top - 14.0 * s + bob, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255));
+    }
+    // barre de progression : au-dessus de la tête, le bas est occupé par l'enclume
+    if let Some(work) = c.work {
+        let (bw, bh) = (26.0 * s, 5.0 * s);
+        let by = top - 6.0 * s;
+        draw_rectangle(x - bw / 2.0, by, bw, bh, Color::from_rgba(20, 20, 20, 255));
+        draw_rectangle(
+            x - bw / 2.0 + 1.0,
+            by + 1.0,
+            (bw - 2.0) * work.progress.clamp(0.0, 1.0),
+            bh - 2.0,
+            Color::from_rgba(250, 220, 80, 255),
+        );
     }
 }
 

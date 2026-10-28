@@ -40,6 +40,13 @@ impl WorkKind {
     }
 }
 
+/// La case où se tient le forgeron pour forger sur cette enclume : juste au-dessus (au nord),
+/// tourné vers le bas, l'enclume devant lui. L'IA s'y rend seule ; le joueur y est placé
+/// automatiquement quand il lance le travail depuis une case voisine.
+pub fn forge_station(anvil: TilePos) -> TilePos {
+    TilePos::new(anvil.x, anvil.y - 1)
+}
+
 /// Un travail en cours sur un personnage.
 #[derive(Clone, Copy, Debug)]
 pub struct Work {
