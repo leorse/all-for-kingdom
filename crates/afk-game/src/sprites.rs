@@ -3,7 +3,7 @@
 //!
 //! Un sprite est une grille de caractères : chaque lettre est une couleur de la palette (`.` = transparent).
 //! La partie « données » (palette, grille, rotation) est pure et testée ; la partie « textures » ne sert qu'à
-//! l'affichage et suppose une fenêtre macroquad ouverte. Voir `docs/art-direction.md`.
+//! l'affichage et suppose une fenêtre macroquad ouverte. Voir `knowledge/graphisme/direction-artistique.md`.
 
 use macroquad::prelude::*;
 
@@ -11,7 +11,7 @@ use macroquad::prelude::*;
 /// 32 pixels (`camera::BASE_TILE_PX`) ; ceux-ci, plus anciens, sont affichés à une échelle double jusqu'à leur refonte.
 pub const LEGACY_TILE_PX: f32 = 16.0;
 
-/// La palette commune, tirée de l'image de référence `docs/images/image_maison.jpg`.
+/// La palette commune, décrite dans `knowledge/graphisme/direction-artistique.md`.
 pub const PALETTE: &[(char, [u8; 4])] = &[
     ('.', [0, 0, 0, 0]),
     ('k', [0x2a, 0x1a, 0x12, 255]), // contour sombre

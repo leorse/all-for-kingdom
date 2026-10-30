@@ -62,7 +62,7 @@ impl Env<'_> {
 
     /// Trajet le plus court en distance, sans suivre les routes : fuite d'un voleur vers la sortie du château,
     /// poursuite d'un voleur par les gardes.
-    #[allow(dead_code)] // en attente des voleurs (voir IDEAS.md, « Bandits »)
+    #[allow(dead_code)] // en attente des voleurs (voir knowledge/idees.md, « Bandits »)
     pub fn direct_path(&self, from: TilePos, to: TilePos) -> VecDeque<TilePos> {
         self.map.find_path_mode(from, to, PathMode::Direct)
     }

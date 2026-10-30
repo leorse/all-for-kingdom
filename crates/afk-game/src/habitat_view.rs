@@ -1,4 +1,4 @@
-//! L'aspect des habitats : la maison vue en coupe, comme sur l'image de référence (`docs/images/image_maison.jpg`).
+//! L'aspect des habitats : la maison vue en coupe, comme dans le guide de style (`knowledge/graphisme/direction-artistique.md`).
 //!
 //! Toit de chaume et mur de rondins au nord (avec fenêtres et cheminée de pierre), murs de bois sur les côtés, mur
 //! sud bas avec la porte, sol en planches, paillasson, puis les meubles dans leur orientation. La lueur du feu et

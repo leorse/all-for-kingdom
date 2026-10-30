@@ -1,7 +1,7 @@
 //! Le transport : quels voyages un transporteur peut entreprendre d'un contenant à un autre.
 //!
 //! Le planificateur est pur : il lit les contenants et les réservations des autres transporteurs, et
-//! renvoie le meilleur voyage. Personne ne dit aux transporteurs quoi porter (voir `docs/gameplay`).
+//! renvoie le meilleur voyage. Personne ne dit aux transporteurs quoi porter (voir `knowledge/metiers/transporteur.md`).
 //!
 //! Règles :
 //! - un contenant donne ce que son métier produit ; l'entrepôt central donne ce qu'un consommateur réclame ;

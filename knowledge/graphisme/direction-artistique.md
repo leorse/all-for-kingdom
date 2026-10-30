@@ -1,13 +1,24 @@
+---
+type: Guide de style
+title: Direction artistique
+description: Style pixel art du jeu, tuile de 32 px, zoom à échelle entière, palette partagée, gabarit des personnages, chaîne SVG vers PNG, lumière jour/nuit.
+tags: [graphisme, pixel-art, palette, personnages]
+sources:
+  - resource: crates/afk-game/src/sprites.rs
+    title: palette et dessins 16 px
+  - resource: crates/afk-game/src/camera.rs
+    title: tuile de base et paliers de zoom
+  - resource: crates/afk-game/src/character_sprites.rs
+    title: gabarit des personnages et animations
+  - resource: crates/afk-game/src/render.rs
+    title: lumière du jour et rendu de l'ancien style
+  - resource: .claude/skills/afk-graphisme/samples/
+    title: images de référence et de comparaison de taille
+---
+
 # Direction artistique
 
-Ce guide fixe l'apparence du jeu. Il part de deux images de référence :
-
-- [`images/image_maison.jpg`](images/image_maison.jpg) : l'intérieur d'une maison, pour le décor et la lumière ;
-- [`images/forgeron_sample.jpg`](images/forgeron_sample.jpg) : des sprites de forgeron, pour les personnages. C'est une **inspiration** : nos personnages sont des **hommes aux proportions d'adulte** (pas des nains), et leurs mouvements sont mieux décomposés que dans l'image.
-
-Tout nouvel élément dessiné doit leur ressembler.
-
-![Référence : l'intérieur d'une maison](images/image_maison.jpg)
+Ce guide fixe l'apparence du jeu : pixel art net et chaleureux, intérieurs de bois et de chaume, personnages adultes bien décomposés. Tout nouvel élément dessiné doit s'y conformer.
 
 ## Le style en une phrase
 
@@ -15,7 +26,7 @@ Un **pixel art net et chaleureux**, vu de dessus en trois-quarts, fait de **bois
 
 ## Les règles
 
-- **Tuile de base : 32×32 pixels.** Les nouveaux dessins (les personnages, l'enclume) partent de cette grille. La taille a été choisie en comparant un même forgeron dessiné sur une tuile de 32 et sur une tuile de 64 : voir [`images/samples/comparaison_zoom_de_depart_64.png`](images/samples/comparaison_zoom_de_depart_64.png) et [`images/samples/comparaison_32_vs_64.png`](images/samples/comparaison_32_vs_64.png).
+- **Tuile de base : 32×32 pixels.** Les nouveaux dessins (les personnages, l'enclume) partent de cette grille. La taille a été choisie en comparant un même forgeron dessiné sur une tuile de 32 et sur une tuile de 64.
 - **Pixels nets.** Le dessin est affiché sans aucun lissage, à une **échelle entière** : chaque pixel du dessin devient un carré de 1×1, 2×2, 3×3 ou 4×4 pixels d'écran. Le zoom à la molette a donc quatre paliers : 32, **64** (départ), 96 et 128 pixels par tuile.
 - **Les anciens dessins sur 16 pixels** (les habitats) sont affichés **deux fois plus gros** pour occuper la même place, et restent nets. On voit donc pour l'instant deux tailles de pixels à l'écran ; ils seront redessinés à 32 pixels.
 - **Palette limitée et partagée.** Les couleurs sont celles du tableau ci-dessous, définies une seule fois dans `crates/afk-game/src/sprites.rs`. Un sprite n'en utilise pas d'autre ; un test le vérifie.
@@ -116,3 +127,13 @@ Un personnage :
 1. Partir du SVG d'un personnage existant (`forgeron.svg`), le copier sous le nom du métier et changer ses vêtements, ses couleurs et son animation de travail.
 2. Déclarer sa planche dans `character_sprites.rs` (`SheetSpec` et `SHEETS`) et la charger dans `character_view.rs`.
 3. Lancer `sprites.bat`, relire l'aperçu (visage, alternance des jambes, pieds sur l'ancre magenta), puis lancer les tests.
+
+## Zoom, lumière et animations
+
+- **Constantes** (`camera.rs`) : `BASE_TILE_PX = 32`, `ZOOM_LEVELS = [32, 64, 96, 128]` pixels d'écran par tuile, départ à 64 (`DEFAULT_ZOOM = 1`). À 32 le royaume (64×40 tuiles) tient à peu près dans la fenêtre. Les dessins de 16 pixels sont affichés avec `LEGACY_TILE_PX = 16` (deux fois plus gros).
+- **Ancien style** : le rendu en rectangles de `render.rs` exprime ses coordonnées en pixels d'une tuile de 32 (`s = tile_px / 32`).
+- **Marche** : 4 images de 0,125 s (8 images par seconde). **Repos** : 4 images de 0,9 / 0,9 / 0,9 / 0,15 s. **Sommeil** : 2 images de 1,2 s. **Forge** (forgeron) : 6 images de 0,16 / 0,12 / 0,16 / 0,07 / 0,14 / 0,12 s, l'impact est l'image 4 (`FORGE_IMPACT`), où jaillissent les étincelles.
+- **Lumière** : `draw_daylight` pose un voile sur la carte entière, bleu nuit (0.04, 0.07, 0.24) qui se réchauffe en orange crépusculaire (0.95, 0.45, 0.15) autour de l'aube et du soir, d'opacité maximale 0,62. Dans les habitats, les fenêtres s'éclairent la nuit, la cheminée est animée et le sol prend une teinte ambre.
+- **Images de référence** : le décor et la lumière viennent de `image_maison.jpg`, les personnages de `forgeron_sample.jpg`, et le choix de la tuile de 32 px de `comparaison_32_vs_64.png` ; elles sont rangées dans `.claude/skills/afk-graphisme/samples/`.
+- **État du redessin** : voir [l'inventaire graphique](/graphisme/inventaire.md).
+- **Piège** : le `README.md` parle encore d'une tuile de 16 px et de zooms 16/32/48/64 ; c'est périmé.

@@ -1,3 +1,18 @@
+---
+type: Règle
+title: Temps, repos et fatigue
+description: Cycle jour/nuit, forme et fatigue, quart de nuit, incarnation, joueur 2x plus rapide que l'IA, mode AFK.
+etat_en_jeu: en place
+tags: [regle, temps, fatigue]
+sources:
+  - resource: crates/afk-core/src/clock.rs
+    title: horloge
+  - resource: crates/afk-core/src/config.rs
+    title: réglages de fatigue et de cycle
+  - resource: crates/afk-core/src/character.rs
+    title: fatigue, efficiency()
+---
+
 # Temps, repos et fatigue
 
 Ces règles valent pour tous les métiers.
@@ -18,7 +33,7 @@ Pour rejoindre son lit, on emprunte les routes, comme pour tout trajet ordinaire
 - Elle baisse quand il marche ou travaille, plus lentement quand il reste à l'arrêt, et remonte en dormant.
 - **Sous 50 de forme**, il va plus lentement et travaille moins vite.
 - **À 15 de forme**, l'IA va se coucher même en plein jour.
-- Le sommeil est la seule façon de récupérer. Dormir plus vite est une amélioration possible de la maison (voir [habitat.md](habitat.md)).
+- Le sommeil est la seule façon de récupérer. Dormir plus vite est une amélioration possible de la maison (voir [habitat.md](/regles/habitat.md)).
 
 ## Le quart de nuit — en place
 

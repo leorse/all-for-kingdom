@@ -1,3 +1,16 @@
+---
+type: Règle
+title: Le royaume
+description: Le royaume : carte 64x40, disposition, déplacements sur routes, carte vide et zones décidées.
+etat_en_jeu: en place + décidé
+tags: [regle, carte, deplacement]
+sources:
+  - resource: crates/afk-core/src/scenario.rs
+    title: disposition de départ
+  - resource: crates/afk-core/src/map.rs
+    title: carte et chemins
+---
+
 # Le royaume
 
 ## La carte — en place
@@ -17,19 +30,19 @@
 - Les habitants **suivent les routes** : à distance proche, ils préfèrent la route à l'herbe, et ne la quittent que pour atteindre un but qui n'y est pas (champ, coffre, filon, arbre). Le surcoût de l'herbe est un réglage (`grass_cost`).
 - Ils marchent **en diagonale** (sans couper le coin d'un mur ou d'un coffre) et arrondissent leurs virages : le tracé est une courbe, pas un escalier.
 - Une personne qui **va se coucher** emprunte les routes.
-- Le **plus court chemin sans les routes** existe aussi, réservé à la fuite d'un voleur vers la sortie du château et à ses poursuivants (les gardes) : voir [garde.md](garde.md). Les voleurs n'existent pas encore.
+- Le **plus court chemin sans les routes** existe aussi, réservé à la fuite d'un voleur vers la sortie du château et à ses poursuivants (les gardes) : voir [garde.md](/metiers/garde.md). Les voleurs n'existent pas encore.
 
 ## Décidé : les filons
 
-Des **filons** de 2×2 tuiles (fer, cuivre, or, pierre) seront répartis sur la carte, chacun avec une **mine** attenante qui sert de maison au mineur. Voir [mineur.md](mineur.md).
+Des **filons** de 2×2 tuiles (fer, cuivre, or, pierre) seront répartis sur la carte, chacun avec une **mine** attenante qui sert de maison au mineur. Voir [mineur.md](/metiers/mineur.md).
 
 Comme les maisons et les champs, ils seront **loin du centre**.
 
 ## Décidé : le roi bâtit — carte vide et zones
 
-**À terme, la carte sera vide.** Le [roi](roi.md) y place des **zones** (champs, habitat, mines, forêt exploitée…) et un [artisan](artisan.md) construit. Le royaume grandit donc selon ses décisions, et non plus selon un scénario figé. L'inspiration est *The Settlers*.
+**À terme, la carte sera vide.** Le [roi](/metiers/roi.md) y place des **zones** (champs, habitat, mines, forêt exploitée…) et un [artisan](/metiers/artisan.md) construit. Le royaume grandit donc selon ses décisions, et non plus selon un scénario figé. L'inspiration est *The Settlers*.
 
-Les **routes se tracent d'elles-mêmes** entre les zones et les lieux de travail, pour alléger le travail du joueur. Elles servent aux déplacements et aux [transporteurs](transporteur.md).
+Les **routes se tracent d'elles-mêmes** entre les zones et les lieux de travail, pour alléger le travail du joueur. Elles servent aux déplacements et aux [transporteurs](/metiers/transporteur.md).
 
 ### La carte actuelle est en dur — volontairement
 
@@ -37,14 +50,14 @@ Pour l'instant, **tout est posé à la main** dans le scénario de départ. C'es
 
 ## Décidé : les forêts sont limitées
 
-Les arbres **poussent**, et il y a des **zones de forêt** en nombre limité (deux au départ). Voir [bucheron.md](bucheron.md).
+Les arbres **poussent**, et il y a des **zones de forêt** en nombre limité (deux au départ). Voir [bucheron.md](/metiers/bucheron.md).
 
 ## À définir
 
 - Où sont les premiers filons : au bord du royaume, regroupés dans une zone rocheuse ?
-- La carte s'agrandit-elle, et y a-t-il une notion de région autour du royaume (voir l'idée « Région et royaume ennemi » dans `IDEAS.md`) ?
-- Les bâtiments du scénario de départ seront-ils tous construits d'emblée, ou le royaume commence-t-il plus petit, avec le roi et l'[artisan](artisan.md) qui bâtissent le reste ?
+- La carte s'agrandit-elle, et y a-t-il une notion de région autour du royaume (voir l'idée « Région et royaume ennemi » dans [les idées](/idees.md)) ?
+- Les bâtiments du scénario de départ seront-ils tous construits d'emblée, ou le royaume commence-t-il plus petit, avec le roi et l'[artisan](/metiers/artisan.md) qui bâtissent le reste ?
 - La **taille des zones** : combien de tuiles pour un champ, une forêt, un quartier d'habitation ? Pas encore défini.
 - Comment une **zone** se construit : tout d'un coup, ou tuile par tuile selon l'avancement de l'artisan ?
 - Comment la **route** se trace : suit-elle le plus court chemin entre deux lieux, ou le joueur peut-il l'orienter ?
-- Les **arbres** actuels deviennent la matière du [bûcheron](bucheron.md) : certains resteront-ils décoratifs ?
+- Les **arbres** actuels deviennent la matière du [bûcheron](/metiers/bucheron.md) : certains resteront-ils décoratifs ?

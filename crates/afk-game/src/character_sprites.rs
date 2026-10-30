@@ -1,6 +1,6 @@
 //! Le gabarit commun des personnages dessinés : la cellule, le point d'ancrage, la disposition de la planche et les
 //! animations (nombre d'images, durées). Partagé par le jeu (choix de l'image à afficher) et par l'outil `spritegen`
-//! (contrôle et génération des planches) : aucune dépendance à macroquad ni à resvg. Voir `docs/art-direction.md`.
+//! (contrôle et génération des planches) : aucune dépendance à macroquad ni à resvg. Voir `knowledge/graphisme/direction-artistique.md`.
 
 use afk_core::{Activity, Facing};
 
