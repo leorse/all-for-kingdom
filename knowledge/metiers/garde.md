@@ -1,3 +1,14 @@
+---
+type: Métier
+title: Le garde
+description: Le garde : deux gardes (jour et nuit), rondes fixes le long des routes, poursuite à venir.
+etat_en_jeu: en place (rondes seulement)
+tags: [metier, securite]
+sources:
+  - resource: crates/afk-core/src/character.rs
+    title: patrol_routine
+---
+
 # Le garde
 
 Il veille sur le royaume en faisant des rondes.
@@ -10,7 +21,7 @@ Il veille sur le royaume en faisant des rondes.
 - Chacun suit un **itinéraire fixe** le long des routes, point par point, dans l'ordre. À chaque point, il s'arrête un instant pour surveiller, puis repart.
 - Si un point est inaccessible, il passe au suivant.
 
-Le garde de nuit est le seul à avoir son heure de dormir inversée ; voir [temps-et-repos.md](temps-et-repos.md).
+Le garde de nuit est le seul à avoir son heure de dormir inversée ; voir [temps-et-repos.md](/regles/temps-et-repos.md).
 
 ## La poursuite — à venir
 
@@ -26,6 +37,6 @@ Il n'y a pas de menace dans le jeu pour l'instant : les rondes sont du décor qu
 
 ## Idées liées
 
-- **Les bandits** (voir `IDEAS.md`) leur donneraient un vrai rôle : ils circulent dans le royaume, volent et attaquent, et **seuls les gardes peuvent se défendre**.
-- Entretenir un garde **coûterait de l'argent** (voir l'idée « Économie » dans `IDEAS.md`).
-- Le forgeron fabriquerait leurs **armes** (voir [forgeron.md](forgeron.md)).
+- **Les bandits** (voir [les idées](/idees.md)) leur donneraient un vrai rôle : ils circulent dans le royaume, volent et attaquent, et **seuls les gardes peuvent se défendre**.
+- Entretenir un garde **coûterait de l'argent** (voir l'idée « Économie » dans [les idées](/idees.md)).
+- Le forgeron fabriquerait leurs **armes** (voir [forgeron.md](/metiers/forgeron.md)).

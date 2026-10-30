@@ -1,13 +1,26 @@
+---
+type: Métier
+title: Le mineur
+description: Le mineur : filons 2x2, qualité, coups de pioche, mine-maison, coffre au pied du filon.
+etat_en_jeu: en place (simplifié)
+tags: [metier, production, minerai]
+sources:
+  - resource: crates/afk-core/src/mine.rs
+    title: filons et mines
+  - resource: crates/afk-core/src/config.rs
+    title: strikes_per_quality, strike_secs
+---
+
 # Le mineur
 
-Il extrait du **minerai** des filons du royaume. C'est lui qui alimente le [forgeron](forgeron.md). Ce métier est **en place** : filons, mineurs, mine-maison et coffre de la mine.
+Il extrait du **minerai** des filons du royaume. C'est lui qui alimente le [forgeron](/metiers/forgeron.md). Ce métier est **en place** : filons, mineurs, mine-maison et coffre de la mine.
 
 ## En place aujourd'hui
 
 - Trois filons sur la carte (fer, or, pierre), chacun avec sa mine accolée et son mineur. Le cuivre existe comme nature mais n'est pas posé.
 - Qualité en **trois niveaux** (1, 2 ou 3 points par tuile) : **3, 5 ou 8 coups de pioche** d'une seconde par unité de minerai, pour la roche pure, moyenne ou impure. La pierre suit les mêmes règles.
 - Un mineur a **un filon attitré** : celui de sa mine. Jusqu'à 8 mineurs peuvent se placer autour d'un même filon, un par case.
-- Une unité extraite va **tout de suite dans le coffre de la mine**, posé **au pied du filon** (le mineur n'a pas à y aller). Le coffre contient au plus **200** unités de son minerai : **une fois plein, le mineur ne mine plus** et attend qu'un [transporteur](transporteur.md) en emporte. Les transporteurs portent le fer à la forge, le reste à l'entrepôt central.
+- Une unité extraite va **tout de suite dans le coffre de la mine**, posé **au pied du filon** (le mineur n'a pas à y aller). Le coffre contient au plus **200** unités de son minerai : **une fois plein, le mineur ne mine plus** et attend qu'un [transporteur](/metiers/transporteur.md) en emporte. Les transporteurs portent le fer à la forge, le reste à l'entrepôt central.
 - La mine est pour l'instant seulement la **maison** du mineur (son lit).
 - Le fer de départ (60) est conservé.
 
@@ -21,7 +34,7 @@ Ce qui suit en « décidé » et n'est **pas encore fait** : l'amélioration de 
   - **gris** : le fer ;
   - **cuivré** : le cuivre ;
   - **doré** : l'or ;
-  - **pierre** : la pierre, utilisée pour construire (voir [artisan.md](artisan.md)). Sa couleur reste à définir.
+  - **pierre** : la pierre, utilisée pour construire (voir [artisan.md](/metiers/artisan.md)). Sa couleur reste à définir.
 - Sa **qualité** est indiquée par des **points** sur ses tuiles. Ces points sont les **impuretés** : plus il y en a, moins la roche est pure, et plus c'est long à extraire.
 
 La nature et la qualité sont donc visibles sans avoir à miner. Choisir où installer un mineur, c'est choisir un filon avec ses yeux.
@@ -45,14 +58,14 @@ La mine est **la maison du mineur**. Elle sert aussi d'**entrepôt de minerai**.
 - Le mineur y dort et y revient chaque soir.
 - Il y dépose ce qu'il extrait. Le minerai est **limité par la capacité de l'entrepôt**.
 - **Une fois la limite atteinte, il ne mine plus.** Il attend qu'on vide l'entrepôt (le forgeron en consomme, ou le roi en emporte).
-- Plus tard, la mine pourra être **améliorée** : plus de confort, sommeil plus rapide, mineur plus rapide, entrepôt plus grand. Voir [habitat.md](habitat.md).
+- Plus tard, la mine pourra être **améliorée** : plus de confort, sommeil plus rapide, mineur plus rapide, entrepôt plus grand. Voir [habitat.md](/regles/habitat.md).
 
 La mine est attenante à son filon : on la construit contre lui.
 
 ## Ce que ça change dans le jeu
 
 - Le fer cesse d'être un stock de départ fini : il devient une production continue.
-- L'or arrive dans le royaume, ce qui prépare l'économie (pièces, taxes). Voir [ressources-et-stocks.md](ressources-et-stocks.md).
+- L'or arrive dans le royaume, ce qui prépare l'économie (pièces, taxes). Voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md).
 - Le royaume doit désormais équilibrer **le nombre de mineurs** avec **la capacité du forgeron** à transformer leur minerai.
 
 ## À définir
@@ -61,4 +74,4 @@ La mine est attenante à son filon : on la construit contre lui.
 - La **capacité de départ** d'un entrepôt de mine.
 - Les **8 postes** autour d'un filon sont aujourd'hui tous utilisables : seront-ils limités par la taille de la mine ?
 - Le **fer de départ** du royaume : on le garde, on le réduit, on le supprime ?
-- Où placer les mines sur la carte ? D'abord dans le scénario fixé à l'avance, puis par le roi (voir [roi.md](roi.md)).
+- Où placer les mines sur la carte ? D'abord dans le scénario fixé à l'avance, puis par le roi (voir [roi.md](/metiers/roi.md)).

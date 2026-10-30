@@ -1,3 +1,16 @@
+---
+type: Métier
+title: Le paysan
+description: Le paysan : parcelles, labour, semis, récolte, blé, équilibre actuel.
+etat_en_jeu: en place
+tags: [metier, production, ble]
+sources:
+  - resource: crates/afk-core/src/farm.rs
+    title: parcelles et cultures
+  - resource: crates/afk-core/src/config.rs
+    title: durées et gains
+---
+
 # Le paysan
 
 Il cultive les champs et produit du **blé**.
@@ -44,8 +57,8 @@ Le blé récolté est pris **en main** par le paysan (20 au plus, soit cinq réc
 
 ## Décidé
 
-- Le paysan aura **une limite de stockage**, comme le mineur : une fois la limite atteinte, il arrête de récolter. Le principe est expliqué dans [ressources-et-stocks.md](ressources-et-stocks.md).
-- Sa maison pourra être améliorée (voir [habitat.md](habitat.md)).
+- Le paysan aura **une limite de stockage**, comme le mineur : une fois la limite atteinte, il arrête de récolter. Le principe est expliqué dans [ressources-et-stocks.md](/regles/ressources-et-stocks.md).
+- Sa maison pourra être améliorée (voir [habitat.md](/regles/habitat.md)).
 
 ## À définir
 

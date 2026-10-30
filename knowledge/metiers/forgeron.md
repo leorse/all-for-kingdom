@@ -1,3 +1,16 @@
+---
+type: Métier
+title: Le forgeron
+description: Le forgeron : forge à l'enclume, fer, outils, liste d'objets décidée, priorités du roi.
+etat_en_jeu: en place, à étoffer
+tags: [metier, production, forge]
+sources:
+  - resource: crates/afk-core/src/character.rs
+    title: routine de forge (forge_routine, forge_spot)
+  - resource: crates/afk-core/src/config.rs
+    title: forge_secs, iron_per_tool
+---
+
 # Le forgeron
 
 Il transforme les matières premières en objets. Aujourd'hui il ne sait faire que des outils ; demain il aura toute une liste d'objets.
@@ -22,7 +35,7 @@ Un appui lance une **série** : il enchaîne les outils sans s'arrêter, tant qu
 
 ## Le fer — en place
 
-Le fer vient d'un **stock de départ** (60) et du [mineur de fer](mineur.md), qui l'ajoute au même compteur. Le forgeron puise dans ce compteur. Pas encore de stock local ni de lingots.
+Le fer vient d'un **stock de départ** (60) et du [mineur de fer](/metiers/mineur.md), qui l'ajoute au même compteur. Le forgeron puise dans ce compteur. Pas encore de stock local ni de lingots.
 
 ## Décidé : le forgeron fabrique une liste d'objets
 
@@ -47,12 +60,12 @@ Le fer et l'or arrivent bruts de la mine. Le forgeron en fait des **lingots**, q
 
 ### Un stock limité
 
-Le forgeron a **une limite de stockage**, comme les autres métiers : une fois ses réserves pleines, il cesse de forger. Voir [ressources-et-stocks.md](ressources-et-stocks.md).
+Le forgeron a **une limite de stockage**, comme les autres métiers : une fois ses réserves pleines, il cesse de forger. Voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md).
 
 ## À définir
 
 - Les **recettes** : combien de minerai par lingot, combien de lingots par outil, arme, pièce ?
-- Le **cuivre** : le forgeron en fait-il quelque chose ? Voir [mineur.md](mineur.md).
+- Le **cuivre** : le forgeron en fait-il quelque chose ? Voir [mineur.md](/metiers/mineur.md).
 - Quelles **armes**, pour qui (les gardes, le chef de guerre) ?
 - Comment le roi donne-t-il ses priorités : une liste ordonnée, des quantités à atteindre ?
 - Une forge peut-elle avoir plusieurs enclumes, et un atelier plus grand ?
