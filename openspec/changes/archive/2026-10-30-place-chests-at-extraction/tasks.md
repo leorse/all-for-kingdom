@@ -9,4 +9,4 @@
 ## 2. Documentation et vérification finale
 
 - [x] 2.1 Mettre à jour `docs/gameplay/transporteur.md`, `habitat.md`, `paysan.md`, `bucheron.md`, `mineur.md`, `forgeron.md` et `README.md` : les coffres sont au lieu d'extraction ; vérifier la cohérence des textes
-- [ ] 2.2 Mesurer avec `balance` que le paysan récolte plus qu'avant (trajets plus courts) et que le bois et les minerais circulent toujours ; vérifier à l'écran la position des coffres
+- [x] 2.2 Mesurer avec `balance` que le paysan récolte plus qu'avant (trajets plus courts) et que le bois et les minerais circulent toujours ; vérifier à l'écran la position des coffres
