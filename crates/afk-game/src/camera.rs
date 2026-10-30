@@ -6,13 +6,14 @@
 
 use afk_core::Vec2;
 
-/// La tuile de base du dessin, en pixels : le pixel art est dessiné sur une grille de 16×16 par tuile.
-pub const BASE_TILE_PX: f32 = 16.0;
+/// La tuile de base du dessin, en pixels : le pixel art est dessiné sur une grille de 32×32 par tuile.
+/// (Les dessins plus anciens, sur 16×16, sont affichés deux fois plus gros : voir `sprites::LEGACY_TILE_PX`.)
+pub const BASE_TILE_PX: f32 = 32.0;
 /// Les paliers de zoom : taille d'une tuile à l'écran, en pixels. Des multiples entiers de la tuile de base (×1 à ×4),
-/// pour que chaque pixel du dessin devienne un carré net. À 16 px la carte 64×40 tient dans la fenêtre par défaut
-/// (1024×640).
-pub const ZOOM_LEVELS: [f32; 4] = [16.0, 32.0, 48.0, 64.0];
-/// Le palier de départ (32 px par tuile).
+/// pour que chaque pixel du dessin devienne un carré net. Au plus petit palier, un quart de la carte 64×40 tient
+/// dans la fenêtre par défaut (1024×640).
+pub const ZOOM_LEVELS: [f32; 4] = [32.0, 64.0, 96.0, 128.0];
+/// Le palier de départ (64 px par tuile).
 pub const DEFAULT_ZOOM: usize = 1;
 /// Durée du glissement vers un personnage qu'on vient d'incarner, en secondes réelles.
 pub const SLIDE_SECS: f32 = 0.35;
@@ -259,7 +260,7 @@ mod tests {
     #[test]
     fn zoom_steps_move_one_level_and_stop_at_both_ends() {
         let d = DEFAULT_ZOOM;
-        assert_eq!(ZOOM_LEVELS[d], 32.0);
+        assert_eq!(ZOOM_LEVELS[d], 64.0);
         assert_eq!(step_zoom(d, 1), d + 1);
         assert_eq!(step_zoom(d, -1), d - 1);
         assert_eq!(step_zoom(ZOOM_LEVELS.len() - 1, 1), ZOOM_LEVELS.len() - 1);
@@ -272,10 +273,10 @@ mod tests {
     }
 
     #[test]
-    fn the_whole_map_fits_the_default_window_at_the_smallest_zoom() {
+    fn a_quarter_of_the_map_fits_the_default_window_at_the_smallest_zoom() {
         let (w, h) = (1024.0, 640.0);
-        assert!(MAP.x * ZOOM_LEVELS[0] <= w && MAP.y * ZOOM_LEVELS[0] <= h);
-        assert!(MAP.x * ZOOM_LEVELS[1] > w || MAP.y * ZOOM_LEVELS[1] > h, "le palier suivant ne tient plus");
+        let visible = (w / ZOOM_LEVELS[0]) * (h / ZOOM_LEVELS[0]);
+        assert!(visible >= MAP.x * MAP.y / 4.0, "{visible} tuiles visibles");
     }
 
     #[test]

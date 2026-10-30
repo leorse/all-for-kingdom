@@ -36,6 +36,8 @@ Avant les transporteurs, une ressource apparaissait dans un compteur global dès
 - une ressource **voyage** à pied sur les routes, ce qui prend du temps ;
 - sans transporteur, un entrepôt plein reste plein : le producteur s'arrête et le forgeron manque de matière même si les mines débordent.
 
+Pour atteindre un coffre éloigné des routes, il suit la route puis la quitte pour la dernière portion du trajet, en diagonale et en courbe (voir [royaume.md](royaume.md)).
+
 Cela donne une vraie **logistique** : les routes, les distances et le nombre de transporteurs comptent. Comme le transporteur est autonome, le joueur n'a pas à micro-gérer chaque livraison : il règle les **priorités** et le **nombre** de transporteurs.
 
 ## À définir

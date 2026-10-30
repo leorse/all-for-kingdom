@@ -12,6 +12,10 @@ Il veille sur le royaume en faisant des rondes.
 
 Le garde de nuit est le seul à avoir son heure de dormir inversée ; voir [temps-et-repos.md](temps-et-repos.md).
 
+## La poursuite — à venir
+
+Quand un voleur s'enfuira avec son butin, il prendra le **plus court chemin** vers la sortie du château, sans suivre les routes. Les gardes qui le poursuivent feront de même. Leur ronde, elle, suit toujours les routes. Le mode de déplacement est déjà prêt ; les voleurs ne sont pas encore dans le jeu.
+
 ## Le joueur — en place
 
 On peut incarner un garde et marcher à sa place. Il n'a pas encore de travail à effectuer : l'action n'a pas d'effet pour lui.

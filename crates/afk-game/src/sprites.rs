@@ -7,6 +7,10 @@
 
 use macroquad::prelude::*;
 
+/// La tuile des dessins de cette grille, en pixels. Les nouveaux dessins (personnages) partent de la tuile de base de
+/// 32 pixels (`camera::BASE_TILE_PX`) ; ceux-ci, plus anciens, sont affichés à une échelle double jusqu'à leur refonte.
+pub const LEGACY_TILE_PX: f32 = 16.0;
+
 /// La palette commune, tirée de l'image de référence `docs/images/image_maison.jpg`.
 pub const PALETTE: &[(char, [u8; 4])] = &[
     ('.', [0, 0, 0, 0]),
@@ -43,6 +47,20 @@ pub const PALETTE: &[(char, [u8; 4])] = &[
     ('Q', [0x4c, 0xb0, 0x5a, 255]), // flacon vert
     ('C', [0x8a, 0x8a, 0x3a, 255]), // tapis olive
     ('c', [0x5e, 0x5e, 0x26, 255]), // tapis olive foncé
+    // personnages (`assets/characters/`)
+    ('A', [0xf4, 0xc4, 0x96, 255]), // peau claire
+    ('a', [0xde, 0xa0, 0x70, 255]), // peau
+    ('I', [0xaa, 0x68, 0x46, 255]), // peau dans l'ombre
+    ('H', [0x84, 0x52, 0x2c, 255]), // cheveux et barbe
+    ('j', [0x64, 0x3a, 0x1e, 255]), // cheveux et barbe foncés
+    ('J', [0x42, 0x24, 0x12, 255]), // cheveux et barbe dans l'ombre
+    ('E', [0x96, 0x60, 0x34, 255]), // cuir
+    ('l', [0x76, 0x46, 0x24, 255]), // cuir foncé
+    ('n', [0x4e, 0x2c, 0x16, 255]), // cuir dans l'ombre
+    ('V', [0x5c, 0x5c, 0x6c, 255]), // tissu (pantalon)
+    ('v', [0x44, 0x44, 0x52, 255]), // tissu foncé
+    ('x', [0x2e, 0x2e, 0x3a, 255]), // tissu dans l'ombre
+    ('i', [0x96, 0x88, 0x6c, 255]), // chemise dans l'ombre
 ];
 
 /// La couleur RGBA d'une lettre de la palette.
@@ -599,6 +617,16 @@ mod tests {
     fn a_color_outside_the_palette_is_refused() {
         let rows = vec!["kW".to_string(), "?W".to_string()];
         assert!(PixelSprite::parse(&rows).unwrap_err().contains("hors palette"));
+    }
+
+    #[test]
+    fn each_palette_letter_and_color_is_unique() {
+        for (i, (c, rgba)) in PALETTE.iter().enumerate() {
+            for (c2, rgba2) in &PALETTE[i + 1..] {
+                assert_ne!(c, c2, "lettre {c} en double");
+                assert_ne!(rgba, rgba2, "couleur de {c} et {c2} identique");
+            }
+        }
     }
 
     #[test]

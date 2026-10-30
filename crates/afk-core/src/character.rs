@@ -9,7 +9,7 @@ use crate::config::Config;
 use crate::container::Container;
 use crate::farm::Farm;
 use crate::game::CharacterId;
-use crate::map::{Tile, TileMap};
+use crate::map::{PathMode, Tile, TileMap, ANVIL_CONTACT};
 use crate::forest::Forest;
 use crate::mine::Vein;
 use crate::math::{TilePos, Vec2};
@@ -25,6 +25,10 @@ pub const PLAYER_SPEED: f32 = 3.4;
 pub const AI_SPEED: f32 = 1.7;
 /// Demi-côté de la boîte de collision (en tuiles).
 pub const BODY_HALF: f32 = 0.28;
+/// Distance (en tuiles) à laquelle on coupe le coin d'un trajet pour arrondir le virage.
+const CORNER_RADIUS: f32 = 0.7;
+/// Vitesse à laquelle le cap tourne vers le but (par seconde) : plus c'est bas, plus les virages sont larges.
+const TURN_RATE: f32 = 7.0;
 
 /// Contexte de simulation d'un pas, partagé par tous les personnages (en lecture seule).
 pub(crate) struct Env<'a> {
@@ -46,6 +50,27 @@ pub(crate) struct Env<'a> {
 }
 
 impl Env<'_> {
+    /// Trajet ordinaire de `from` à `to` : il suit les routes (voir `PathMode::Roads`).
+    pub fn path(&self, from: TilePos, to: TilePos) -> VecDeque<TilePos> {
+        self.map.find_path_mode(from, to, self.roads())
+    }
+
+    /// Trajet ordinaire et son coût, pour comparer plusieurs buts.
+    pub fn path_cost(&self, from: TilePos, to: TilePos) -> Option<(VecDeque<TilePos>, f32)> {
+        self.map.find_path_cost(from, to, self.roads())
+    }
+
+    /// Trajet le plus court en distance, sans suivre les routes : fuite d'un voleur vers la sortie du château,
+    /// poursuite d'un voleur par les gardes.
+    #[allow(dead_code)] // en attente des voleurs (voir IDEAS.md, « Bandits »)
+    pub fn direct_path(&self, from: TilePos, to: TilePos) -> VecDeque<TilePos> {
+        self.map.find_path_mode(from, to, PathMode::Direct)
+    }
+
+    fn roads(&self) -> PathMode {
+        PathMode::Roads(self.cfg.grass_cost)
+    }
+
     /// Place restante dans ce contenant pour cette ressource (0 s'il n'y a pas de contenant).
     pub fn room(&self, container: Option<usize>, resource: Resource) -> u32 {
         container.and_then(|i| self.containers.get(i)).map_or(0, |c| c.room(resource))
@@ -64,6 +89,8 @@ pub(crate) enum Outcome {
     Take { container: usize, resource: Resource, amount: u32 },
     /// Déposer sa cargaison dans un contenant.
     Drop { container: usize },
+    /// Le joueur, conduit jusqu'au poste de forge de cette enclume, vient d'y arriver (ou s'est arrêté en route).
+    Arrived { anvil: TilePos },
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -115,6 +142,28 @@ fn is_adjacent(a: TilePos, b: TilePos) -> bool {
     (a.x - b.x).abs() + (a.y - b.y).abs() == 1
 }
 
+/// La case juste au nord d'une enclume, par laquelle on rejoint son poste de forge.
+pub fn forge_spot(anvil: TilePos) -> TilePos {
+    TilePos::new(anvil.x, anvil.y - 1)
+}
+
+/// Le personnage est-il à un dernier pas du poste de forge de `anvil` : sur la case au nord, ou dans la moitié libre
+/// de la case de l'enclume ?
+fn beside_forge_post(tile: TilePos, anvil: TilePos) -> bool {
+    tile == forge_spot(anvil) || tile == anvil
+}
+
+/// Le point exact où le forgeron se tient pour forger, dans la moitié libre de la case de l'enclume : centré sur elle,
+/// les pieds contre le socle (voir `ANVIL_CONTACT`). Debout ou au travail, il y est dessiné à la même hauteur.
+pub fn forge_post(anvil: TilePos) -> Vec2 {
+    Vec2::new(anvil.x as f32 + 0.5, anvil.y as f32 + ANVIL_CONTACT)
+}
+
+/// Le personnage est-il au poste de forge de `anvil` (au point près, pas seulement sur la bonne case) ?
+pub fn at_forge_post(pos: Vec2, anvil: TilePos) -> bool {
+    pos.distance(forge_post(anvil)) < 0.02
+}
+
 pub struct Character {
     pub id: CharacterId,
     pub name: String,
@@ -155,12 +204,16 @@ pub struct Character {
     wait: f32,
     at_work: bool,
     stuck: f32,
+    /// Direction de marche lissée (voir `follow_path`).
+    heading: Vec2,
     /// Part d'arbre abattue pendant ce pas par ce bûcheron (voir `Game::step`, qui additionne les coups).
     chop_delta: f32,
     /// Un porteur qui s'est couché avec du bois en main le livre à son réveil avant de reprendre le travail.
     deliver_first: bool,
     /// Chargement ou déchargement demandé pendant ce pas : c'est `Game` qui l'applique.
     outcome: Option<Outcome>,
+    /// Le joueur a demandé de forger depuis le côté de cette enclume : le personnage marche seul jusqu'à son poste.
+    approach: Option<TilePos>,
 }
 
 impl Character {
@@ -192,6 +245,7 @@ impl Character {
             job: None,
             deliver_first: false,
             outcome: None,
+            approach: None,
             chop_delta: 0.0,
             work_spots,
             path: VecDeque::new(),
@@ -201,6 +255,7 @@ impl Character {
             wait: 0.0,
             at_work: false,
             stuck: 0.0,
+            heading: Vec2::ZERO,
         }
     }
 
@@ -292,6 +347,7 @@ impl Character {
         self.activity = Activity::Sleeping;
         self.facing = Facing::Down;
         self.work = None;
+        self.approach = None;
         self.path.clear();
         self.goal = None;
         self.work_target = None;
@@ -339,6 +395,25 @@ impl Character {
 
     pub(crate) fn cancel_work(&mut self) {
         self.work = None;
+    }
+
+    /// Part seul vers le poste de forge de `anvil` par `path` (voir `drive`). L'enclume est réservée en route.
+    pub(crate) fn start_approach(&mut self, anvil: TilePos, path: VecDeque<TilePos>) {
+        self.approach = Some(anvil);
+        self.path = path;
+        self.work_target = Some(anvil);
+    }
+
+    pub(crate) fn cancel_approach(&mut self) {
+        self.approach = None;
+        self.path.clear();
+        self.work_target = None;
+        self.stuck = 0.0;
+    }
+
+    /// Est-il en route vers un poste de forge, à la demande du joueur ?
+    pub fn is_approaching(&self) -> bool {
+        self.approach.is_some()
     }
 
     /// Part d'arbre que ce bûcheron a abattue pendant le dernier pas (0 s'il ne coupe pas).
@@ -392,6 +467,14 @@ impl Character {
             let next = Vec2::new(self.pos.x, self.pos.y + delta.y);
             if !map.is_box_blocked(next, BODY_HALF) {
                 self.pos = next;
+            } else if delta.y > 0.0 {
+                // contre le socle d'une enclume : les pieds s'y posent exactement, sans s'arrêter un pas avant
+                if let Some(y) = map.anvil_contact(next, BODY_HALF).filter(|&y| y > self.pos.y) {
+                    let contact = Vec2::new(self.pos.x, y);
+                    if !map.is_box_blocked(contact, BODY_HALF) {
+                        self.pos = contact;
+                    }
+                }
             }
         }
     }
@@ -399,6 +482,26 @@ impl Character {
     /// Contrôle direct par un joueur. Bouger interrompt le travail en cours.
     fn drive(&mut self, dir: Vec2, env: &Env) {
         let dir = dir.normalized_or_zero();
+        if let Some(anvil) = self.approach {
+            if dir == Vec2::ZERO {
+                // conduit à son poste de forge : le chemin jusqu'à la case, puis le dernier pas jusqu'au point exact ;
+                // à l'arrivée, c'est `Game` qui lance la forge
+                if !self.path.is_empty() {
+                    self.follow_path(env);
+                } else if !beside_forge_post(self.tile(), anvil) {
+                    self.cancel_approach(); // chemin abandonné en route (bloqué) : il s'arrête là
+                    self.activity = Activity::Idle;
+                } else if self.step_to_point(forge_post(anvil), env) {
+                    self.approach = None;
+                    self.work_target = None;
+                    self.activity = Activity::Idle;
+                    self.facing = Facing::Down;
+                    self.outcome = Some(Outcome::Arrived { anvil });
+                }
+                return;
+            }
+            self.cancel_approach(); // le joueur reprend la main
+        }
         self.work_target = None; // le joueur décide : plus de tuile réservée par l'IA
         if self.work.is_some() {
             if dir == Vec2::ZERO {
@@ -419,6 +522,7 @@ impl Character {
     /// Le joueur quitte ce personnage : l'IA reprend depuis l'endroit où il se trouve.
     /// S'il dormait, il continue de dormir ; s'il travaillait, il termine son travail.
     pub(crate) fn release_to_ai(&mut self) {
+        self.approach = None;
         self.path.clear();
         self.goal = None;
         self.work_target = None;
@@ -432,14 +536,25 @@ impl Character {
 
     /// Avance d'un pas le long du chemin en cours. Renvoie `true` quand le chemin vient de se terminer.
     fn follow_path(&mut self, env: &Env) -> bool {
-        let Some(&next) = self.path.front() else {
+        if self.path.is_empty() {
             return false;
-        };
-        let goal = next.center();
+        }
+        let was_walking = self.activity == Activity::Walking;
+        self.activity = Activity::Walking;
+
+        // Virage : on coupe le coin dès qu'on en est proche, si le segment vers la case suivante est libre.
+        // Le dernier point n'est jamais coupé : on arrive exactement sur le but.
+        while self.path.len() > 1
+            && self.pos.distance(self.path[0].center()) < CORNER_RADIUS
+            && env.map.is_segment_clear(self.pos, self.path[1].center(), BODY_HALF)
+        {
+            self.path.pop_front();
+        }
+
+        let goal = self.path[0].center();
         let to_goal = goal - self.pos;
         let dist = to_goal.length();
         let step = AI_SPEED * self.speed_factor(env.cfg) * self.efficiency() * env.dt;
-        self.activity = Activity::Walking;
 
         if dist <= step.max(0.03) {
             self.pos = goal;
@@ -448,7 +563,12 @@ impl Character {
             return self.path.is_empty();
         }
 
-        let dir = to_goal * (1.0 / dist);
+        // Le cap tourne progressivement vers le but : les changements de direction deviennent des courbes.
+        // Près du but, ou au départ, on vise droit pour ne pas tourner autour.
+        let desired = to_goal * (1.0 / dist);
+        let steered = (self.heading + (desired - self.heading) * (TURN_RATE * env.dt).min(1.0)).normalized_or_zero();
+        let dir = if !was_walking || dist < CORNER_RADIUS || steered == Vec2::ZERO { desired } else { steered };
+        self.heading = dir;
         self.facing = Facing::from_dir(dir);
         let before = self.pos;
         self.try_move(dir * step, env.map);
@@ -464,6 +584,23 @@ impl Character {
         } else {
             self.stuck = 0.0;
         }
+        false
+    }
+
+    /// Dernier pas, en ligne droite, jusqu'à `target` dans la case où il se trouve déjà (sans obstacle à contourner).
+    /// Renvoie `true` à l'arrivée.
+    fn step_to_point(&mut self, target: Vec2, env: &Env) -> bool {
+        let to_target = target - self.pos;
+        let dist = to_target.length();
+        let step = AI_SPEED * self.speed_factor(env.cfg) * self.efficiency() * env.dt;
+        if dist <= step.max(0.005) {
+            self.pos = target;
+            return true;
+        }
+        let dir = to_target * (1.0 / dist);
+        self.pos = self.pos + dir * step;
+        self.facing = Facing::from_dir(dir);
+        self.activity = Activity::Walking;
         false
     }
 
@@ -507,7 +644,7 @@ impl Character {
             return;
         }
         if self.goal != Some(self.home) || self.path.is_empty() {
-            self.path = env.map.find_path(self.tile(), self.home);
+            self.path = env.path(self.tile(), self.home);
             self.goal = Some(self.home);
             self.activity = Activity::Idle; // si le lit est inaccessible, on attend sur place
             return;
@@ -552,7 +689,7 @@ impl Character {
             }
         }
         if let Some(target) = env.farm.pick_target_with(here, env.claimed, can_harvest) {
-            self.path = env.map.find_path(here, target);
+            self.path = env.path(here, target);
             if self.path.is_empty() {
                 self.wait = 1.0; // parcelle inaccessible : on réessaiera
             } else {
@@ -569,7 +706,8 @@ impl Character {
         self.wander_routine(env, rng); // rien à faire : tout pousse
     }
 
-    /// Le forgeron : tant qu'il y a du fer, va se placer à côté d'une enclume libre, la regarde et forge.
+    /// Le forgeron : tant qu'il y a du fer, va se placer au poste d'une enclume libre (au nord, contre son socle), regarde
+    /// vers l'enclume et forge.
     /// Sans fer, il traîne dans sa forge en attendant.
     fn forge_routine(&mut self, env: &Env, rng: &mut Rng) {
         if self.wait > 0.0 {
@@ -597,22 +735,26 @@ impl Character {
                 .filter(|a| !env.claimed.contains(a))
                 .collect();
 
-            // déjà à côté d'une enclume libre : on la regarde et on forge
-            if let Some(&anvil) = anvils.iter().find(|&&a| is_adjacent(here, a)) {
-                self.facing = Facing::from_dir(anvil.center() - self.pos);
+            // à un dernier pas du poste d'une enclume libre : on se place au point exact, on la regarde et on forge
+            if let Some(&anvil) = anvils.iter().find(|&&a| beside_forge_post(here, a)) {
+                if !self.step_to_point(forge_post(anvil), env) {
+                    self.work_target = Some(anvil);
+                    return;
+                }
+                self.facing = Facing::Down;
                 self.start_work(WorkKind::Forge, anvil, WorkKind::Forge.duration_secs(env.cfg));
                 return;
             }
 
-            // sinon : on marche jusqu'à la case libre la plus proche d'une enclume libre
+            // sinon : on marche jusqu'au poste de forge libre le plus proche
             let best = anvils
                 .iter()
-                .flat_map(|&a| env.map.walkable_neighbors(a).into_iter().map(move |n| (a, n)))
+                .map(|&a| (a, forge_spot(a)))
                 .filter_map(|(a, n)| {
-                    let path = env.map.find_path(here, n);
-                    (!path.is_empty()).then(|| (path.len(), a, path))
+                    let (path, cost) = env.path_cost(here, n)?;
+                    (!path.is_empty()).then(|| (cost, a, path))
                 })
-                .min_by_key(|(len, _, _)| *len);
+                .min_by(|a, b| a.0.total_cmp(&b.0));
             if let Some((_, anvil, path)) = best {
                 self.goal = path.back().copied();
                 self.path = path;
@@ -667,10 +809,10 @@ impl Character {
             .into_iter()
             .filter(|p| !env.claimed.contains(p))
             .filter_map(|p| {
-                let path = env.map.find_path(here, p);
-                (!path.is_empty()).then(|| (path.len(), p, path))
+                let (path, cost) = env.path_cost(here, p)?;
+                (!path.is_empty()).then(|| (cost, p, path))
             })
-            .min_by_key(|(len, _, _)| *len);
+            .min_by(|a, b| a.0.total_cmp(&b.0));
         if let Some((_, post, path)) = best {
             self.goal = Some(post);
             self.path = path;
@@ -736,7 +878,7 @@ impl Character {
         posts.sort_by_key(|p| ((p.x - here.x).abs() + (p.y - here.y).abs(), p.x, p.y));
         posts.dedup();
         for post in posts {
-            let path = env.map.find_path(here, post);
+            let path = env.path(here, post);
             if !path.is_empty() {
                 self.goal = Some(post);
                 self.path = path;
@@ -766,10 +908,10 @@ impl Character {
             .walkable_neighbors(crate_tile)
             .into_iter()
             .filter_map(|n| {
-                let path = env.map.find_path(here, n);
-                (!path.is_empty()).then(|| (path.len(), n, path))
+                let (path, cost) = env.path_cost(here, n)?;
+                (!path.is_empty()).then(|| (cost, n, path))
             })
-            .min_by_key(|(len, _, _)| *len);
+            .min_by(|a, b| a.0.total_cmp(&b.0));
         match best {
             Some((_, n, path)) => {
                 self.goal = Some(n);
@@ -911,7 +1053,7 @@ impl Character {
                 self.at_work = true;
                 return;
             }
-            self.path = env.map.find_path(self.tile(), target);
+            self.path = env.path(self.tile(), target);
             if self.path.is_empty() {
                 self.patrol_next += 1; // point inaccessible : on passe au suivant
                 self.wait = 1.0;
@@ -947,7 +1089,7 @@ impl Character {
                 self.at_work = true;
                 return;
             }
-            self.path = env.map.find_path(self.tile(), target);
+            self.path = env.path(self.tile(), target);
             self.goal = Some(target);
             if self.path.is_empty() {
                 self.goal = None;
@@ -962,5 +1104,149 @@ impl Character {
             self.wait = rng.range_f32(2.0, 5.0); // arrivé : il "travaille" sur place
             self.at_work = true;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::map::PathMode;
+
+    const DT: f32 = 0.05;
+
+    fn tp(x: i32, y: i32) -> TilePos {
+        TilePos::new(x, y)
+    }
+
+    fn walker(map: &TileMap, at: TilePos, home: TilePos) -> Character {
+        let _ = map;
+        Character::new(CharacterId(0), "Test".into(), Role::Farmer, home, false, vec![at])
+    }
+
+    /// Fait marcher `c` le long de son trajet et renvoie les positions successives.
+    fn walk(c: &mut Character, map: &TileMap, night: bool, max_steps: usize) -> Vec<Vec2> {
+        let farm = Farm::from_map(map);
+        let cfg = Config::default();
+        let mut trail = vec![c.pos];
+        for _ in 0..max_steps {
+            let env = Env {
+                map,
+                farm: &farm,
+                containers: &[],
+                reservations: &[],
+                cfg: &cfg,
+                night,
+                dt: DT,
+                dt_hours: 0.0,
+                claimed: &[],
+                veins: &[],
+                forests: &[],
+            };
+            if night {
+                c.go_to_bed(&env);
+                if c.asleep {
+                    break;
+                }
+            } else if c.follow_path(&env) {
+                break;
+            }
+            trail.push(c.pos);
+        }
+        trail
+    }
+
+    fn turn_degrees(trail: &[Vec2]) -> f32 {
+        let mut worst: f32 = 0.0;
+        for w in trail.windows(3) {
+            let (a, b) = (w[1] - w[0], w[2] - w[1]);
+            if a.length() < 1e-4 || b.length() < 1e-4 {
+                continue;
+            }
+            let cos = ((a.x * b.x + a.y * b.y) / (a.length() * b.length())).clamp(-1.0, 1.0);
+            worst = worst.max(cos.acos().to_degrees());
+        }
+        worst
+    }
+
+    #[test]
+    fn a_walker_cuts_across_open_ground_on_the_diagonal_and_arrives() {
+        let map = TileMap::new(20, 20, Tile::Grass);
+        let mut c = walker(&map, tp(2, 2), tp(2, 2));
+        c.path = map.find_path_mode(tp(2, 2), tp(12, 12), PathMode::Direct);
+        let trail = walk(&mut c, &map, false, 600);
+        assert!(c.path.is_empty(), "arrivé");
+        assert_eq!(c.tile(), tp(12, 12));
+        assert!(trail.len() < 400, "pas de blocage sur la diagonale : {} pas", trail.len());
+        // en diagonale : bien plus court que l'escalier de 20 cases
+        let length: f32 = trail.windows(2).map(|w| w[0].distance(w[1])).sum();
+        assert!(length < 15.5, "trajet {length}");
+    }
+
+    #[test]
+    fn the_route_to_a_chest_off_the_road_is_a_smooth_curve() {
+        let mut map = TileMap::new(30, 16, Tile::Grass);
+        map.fill_rect(0, 12, 30, 1, Tile::Path);
+        map.set(tp(20, 5), Tile::Crate);
+        let mut c = walker(&map, tp(2, 12), tp(2, 12));
+        c.pos = tp(2, 12).center();
+        c.path = map.find_path_mode(tp(2, 12), tp(20, 6), PathMode::Roads(3.0));
+        let trail = walk(&mut c, &map, false, 2000);
+        assert!(c.path.is_empty());
+        assert_eq!(c.tile(), tp(20, 6));
+        assert!(trail.iter().all(|p| !map.is_box_blocked(*p, BODY_HALF)), "aucun point dans un obstacle");
+        let worst = turn_degrees(&trail);
+        assert!(worst < 25.0, "virage trop vif : {worst}°");
+        let on_road = trail.iter().filter(|p| map.get(p.tile()) == Tile::Path).count();
+        assert!(on_road * 2 > trail.len(), "il suit la route");
+    }
+
+    #[test]
+    fn a_walker_goes_round_a_wall_corner_without_crossing_it() {
+        let mut map = TileMap::new(20, 20, Tile::Grass);
+        map.fill_rect(8, 4, 1, 12, Tile::Wall);
+        let mut c = walker(&map, tp(4, 10), tp(4, 10));
+        c.path = map.find_path_mode(tp(4, 10), tp(14, 10), PathMode::Direct);
+        let trail = walk(&mut c, &map, false, 3000);
+        assert_eq!(c.tile(), tp(14, 10));
+        assert!(trail.iter().all(|p| !map.is_box_blocked(*p, BODY_HALF)));
+    }
+
+    #[test]
+    fn the_direct_path_cuts_across_where_the_ordinary_path_follows_the_road() {
+        let mut map = TileMap::new(30, 30, Tile::Grass);
+        map.fill_rect(0, 2, 28, 1, Tile::Path);
+        map.fill_rect(27, 2, 1, 26, Tile::Path);
+        let farm = Farm::from_map(&map);
+        let cfg = Config::default();
+        let env = Env {
+            map: &map,
+            farm: &farm,
+            containers: &[],
+            reservations: &[],
+            cfg: &cfg,
+            night: false,
+            dt: DT,
+            dt_hours: 0.0,
+            claimed: &[],
+            veins: &[],
+            forests: &[],
+        };
+        let on_road = |p: &VecDeque<TilePos>| p.iter().filter(|t| map.get(**t) == Tile::Path).count();
+        let chase = env.direct_path(tp(0, 2), tp(27, 27));
+        let patrol = env.path(tp(0, 2), tp(27, 27));
+        assert!(chase.len() < patrol.len());
+        assert!(on_road(&chase) < on_road(&patrol), "la poursuite coupe, la ronde suit la route");
+    }
+
+    #[test]
+    fn going_to_bed_takes_the_road() {
+        let mut map = TileMap::new(30, 16, Tile::Grass);
+        map.fill_rect(0, 12, 30, 1, Tile::Path);
+        let home = tp(25, 12);
+        let mut c = walker(&map, tp(3, 5), home);
+        let trail = walk(&mut c, &map, true, 4000);
+        assert!(c.asleep, "il est allé se coucher");
+        let on_road = trail.iter().filter(|p| map.get(p.tile()) == Tile::Path).count();
+        assert!(on_road > trail.len() / 2, "il rejoint la route puis la suit : {on_road}/{}", trail.len());
     }
 }

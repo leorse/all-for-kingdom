@@ -8,6 +8,10 @@ Ces règles valent pour tous les métiers.
 - Le jour se lève à 6 h et tombe à 20 h.
 - La nuit, l'IA rentre dormir dans son lit.
 
+## Aller se coucher — en place
+
+Pour rejoindre son lit, on emprunte les routes, comme pour tout trajet ordinaire.
+
 ## La forme — en place
 
 - Chaque personnage a une jauge de **forme** : pleine = en forme.
