@@ -73,14 +73,12 @@ impl Sheet {
             self.draw_cell(frame, at, SLEEP_ANCHOR, scale, sleep_rotation(sleep_dir));
             return;
         }
-        if c.work.is_none() {
-            // l'ombre au sol, sous les pieds (au travail, l'enclume la cache)
-            draw_ellipse(at.0, at.1 + 1.0 * scale, 9.0 * scale, 2.5 * scale, 0.0, Color::new(0.0, 0.0, 0.0, 0.22));
-        }
+        // l'ombre au sol, sous les pieds
+        draw_ellipse(at.0, at.1 + 1.0 * scale, 9.0 * scale, 2.5 * scale, 0.0, Color::new(0.0, 0.0, 0.0, 0.22));
         self.draw_cell(frame, at, cs::ANCHOR, scale, 0.0);
     }
 
-    /// Dessine un objet fixe de la planche (l'enclume...), ancré comme un personnage au centre de sa case.
+    /// Dessine un objet fixe de la planche (l'enclume...), ancré comme un personnage sur le point `center`.
     pub fn draw_extra(&self, name: &str, center: afk_core::Vec2, view: &View) {
         if let Some(frame) = self.spec.extra(name) {
             self.draw_cell(frame, view.to_screen(center), cs::ANCHOR, scale(view), 0.0);

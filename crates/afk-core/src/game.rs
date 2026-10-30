@@ -416,9 +416,9 @@ impl Game {
                 } else if let Some((kind, tile)) = self.available_work(id) {
                     let c = &self.characters[id.0];
                     if kind == WorkKind::Forge && !at_forge_post(c.pos, tile) {
-                        // on ne forge que depuis le poste au nord de l'enclume : il y va seul (déjà sur la bonne case,
-                        // il ne fait que le dernier pas pour se centrer)
-                        if c.tile() == forge_spot(tile) {
+                        // on ne forge que depuis le poste au nord du socle : il y va seul (déjà sur la case au nord ou
+                        // dans la moitié libre, il ne fait que le dernier pas pour se centrer)
+                        if c.tile() == forge_spot(tile) || c.tile() == tile {
                             self.characters[id.0].start_approach(tile, std::collections::VecDeque::new());
                         } else {
                             let path = self.map.find_path_mode(c.tile(), forge_spot(tile), PathMode::Roads(self.config.grass_cost));
@@ -1256,12 +1256,83 @@ use std::collections::HashSet;
     fn the_forge_post_is_centered_on_the_anvil_and_against_it() {
         let scenario = Scenario::village();
         let post = forge_post(ANVIL);
-        assert_eq!(post.tile(), forge_spot(ANVIL), "le point est dans la case au nord");
+        assert_eq!(post.tile(), ANVIL, "le point est dans la moitié libre de la case de l'enclume");
         assert_eq!(post.x, ANVIL.center().x, "centré sur l'enclume");
-        assert!(post.y > forge_spot(ANVIL).center().y, "plus près de l'enclume que le centre de la case");
+        assert!(post.y < ANVIL.center().y, "dans la moitié haute");
         assert!(!scenario.map.is_box_blocked(post, BODY_HALF), "le corps y tient sans toucher l'enclume");
         // collé contre elle : un pas de plus vers le sud et le corps la touche
         assert!(scenario.map.is_box_blocked(Vec2::new(post.x, post.y + 0.02), BODY_HALF));
+    }
+
+    /// Le forgeron incarné, à `pos`, tourné vers le bas.
+    fn player_smith_at(pos: Vec2) -> Game {
+        let mut game = new_game();
+        game.apply(Command::Possess { player: P0, character: SMITH });
+        game.characters[SMITH.0].pos = pos;
+        game.characters[SMITH.0].facing = Facing::Down;
+        game
+    }
+
+    #[test]
+    fn pushing_south_from_the_north_tile_stops_feet_against_the_base() {
+        let mut game = player_smith_at(forge_spot(ANVIL).center());
+        game.apply(Command::Move { player: P0, dir: Vec2::new(0.0, 1.0) });
+        run(&mut game, 1.0);
+        assert_eq!(game.characters[SMITH.0].pos, forge_post(ANVIL), "les pieds contre le socle, sans s'arrêter avant");
+    }
+
+    #[test]
+    fn the_base_blocks_from_the_south_and_the_sides() {
+        let start = ANVIL.center();
+        for (from, dir) in [
+            (Vec2::new(start.x, start.y + 1.0), Vec2::new(0.0, -1.0)),
+            (Vec2::new(start.x - 1.0, start.y + 0.4), Vec2::new(1.0, 0.0)),
+            (Vec2::new(start.x + 1.0, start.y + 0.4), Vec2::new(-1.0, 0.0)),
+        ] {
+            let mut game = player_smith_at(from);
+            game.apply(Command::Move { player: P0, dir });
+            run(&mut game, 1.0);
+            let p = game.characters[SMITH.0].pos;
+            assert!(!game.map.is_box_blocked(p, BODY_HALF), "il ne traverse pas le socle : {p:?}");
+            assert_ne!(p.tile(), ANVIL, "il reste hors de la case : {p:?}");
+        }
+    }
+
+    #[test]
+    fn off_center_in_the_free_half_one_press_recenters_then_forges() {
+        let post = forge_post(ANVIL);
+        let mut game = player_smith_at(Vec2::new(post.x - 0.2, post.y - 0.1));
+        assert_eq!(game.available_work(SMITH), Some((WorkKind::Forge, ANVIL)));
+        game.apply(Command::Interact { player: P0 });
+        assert!(game.characters[SMITH.0].is_approaching());
+        ticks_until(&mut game, 2.0, |g| g.characters[SMITH.0].work.is_some());
+        assert!(at_forge_post(game.characters[SMITH.0].pos, ANVIL));
+    }
+
+    #[test]
+    fn a_route_from_the_free_half_leaves_by_the_north_and_never_crosses_the_anvil() {
+        let map = &Scenario::village().map;
+        let south = TilePos::new(ANVIL.x, ANVIL.y + 1);
+        let path = map.find_path(ANVIL, south);
+        assert_eq!(path.front(), Some(&forge_spot(ANVIL)), "il sort par le nord");
+        assert_eq!(path.back(), Some(&south));
+        assert!(!path.contains(&ANVIL));
+        // et une route ordinaire ne traverse jamais la case de l'enclume
+        let west = TilePos::new(ANVIL.x - 1, ANVIL.y);
+        let east = TilePos::new(ANVIL.x + 1, ANVIL.y);
+        assert!(!map.find_path(west, east).contains(&ANVIL));
+    }
+
+    #[test]
+    fn the_ai_leaves_the_forge_post_when_the_player_lets_go() {
+        // sans fer, il ne forge pas : l'IA doit quitter le poste et circuler, sans rester collée au socle
+        let mut game = Game::new(village_without_miners(), 1, Config { starting_iron: 0, ..Config::default() });
+        game.apply(Command::Possess { player: P0, character: SMITH });
+        game.characters[SMITH.0].pos = forge_post(ANVIL);
+        game.apply(Command::ToggleIdle { player: P0 });
+        ticks_until(&mut game, 60.0, |g| g.characters[SMITH.0].tile() != ANVIL);
+        let c = &game.characters[SMITH.0];
+        assert!(!game.map.is_box_blocked(c.pos, BODY_HALF));
     }
 
     #[test]

@@ -392,21 +392,23 @@ fn draw_characters(game: &Game, view: &View, sheets: &Sheets, me: PlayerId) {
     let t = game.time();
     let possessed = game.possessed_by(me);
 
-    // personnages et enclumes, triés par profondeur : ce qui est plus bas à l'écran passe devant (l'enclume, sur la
-    // case au sud du forgeron, cache le bas de son corps)
+    // personnages et enclumes, triés par profondeur : ce qui est plus bas à l'écran passe devant. Une enclume compte à
+    // la ligne du haut de son socle : ses pieds plus bas, un personnage passe devant ; plus haut, derrière
     enum Body<'a> {
         Character(&'a Character),
         Anvil(TilePos),
     }
     let mut bodies: Vec<(f32, Body)> = game.characters().iter().map(|c| (c.pos.y, Body::Character(c))).collect();
-    bodies.extend(game.map().find_tiles(Tile::Anvil).into_iter().map(|a| (a.y as f32 + 0.99, Body::Anvil(a))));
+    bodies.extend(game.map().find_tiles(Tile::Anvil).into_iter().map(|a| (a.y as f32 + 0.5, Body::Anvil(a))));
     bodies.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
     for (_, body) in &bodies {
         let c = match body {
             Body::Anvil(anvil) => {
                 if view.point_visible(anvil.center(), 2.0) {
-                    sheets.blacksmith.draw_extra("enclume", anvil.center(), view);
+                    // 14 px sous le centre de la case : le bas du socle tombe au bas de la case
+                    let at = anvil.center() + afk_core::Vec2::new(0.0, 14.0 / 32.0);
+                    sheets.blacksmith.draw_extra("enclume", at, view);
                 }
                 continue;
             }

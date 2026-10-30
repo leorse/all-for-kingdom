@@ -9,7 +9,7 @@ use crate::config::Config;
 use crate::container::Container;
 use crate::farm::Farm;
 use crate::game::CharacterId;
-use crate::map::{PathMode, Tile, TileMap};
+use crate::map::{PathMode, Tile, TileMap, ANVIL_CONTACT};
 use crate::forest::Forest;
 use crate::mine::Vein;
 use crate::math::{TilePos, Vec2};
@@ -142,16 +142,21 @@ fn is_adjacent(a: TilePos, b: TilePos) -> bool {
     (a.x - b.x).abs() + (a.y - b.y).abs() == 1
 }
 
-/// Le poste de forge d'une enclume : la case juste au nord. On n'y forge que de là, en regardant vers le bas.
+/// La case juste au nord d'une enclume, par laquelle on rejoint son poste de forge.
 pub fn forge_spot(anvil: TilePos) -> TilePos {
     TilePos::new(anvil.x, anvil.y - 1)
 }
 
-/// Le point exact où le forgeron se tient pour forger, dans la case `forge_spot` : centré sur l'enclume et collé
-/// contre elle (ses pieds 2 pixels de dessin au-dessus de sa case, son corps derrière elle, voir `ANVIL_BACK`).
-/// Debout ou au travail, il y est dessiné à la même hauteur.
+/// Le personnage est-il à un dernier pas du poste de forge de `anvil` : sur la case au nord, ou dans la moitié libre
+/// de la case de l'enclume ?
+fn beside_forge_post(tile: TilePos, anvil: TilePos) -> bool {
+    tile == forge_spot(anvil) || tile == anvil
+}
+
+/// Le point exact où le forgeron se tient pour forger, dans la moitié libre de la case de l'enclume : centré sur elle,
+/// les pieds contre le socle (voir `ANVIL_CONTACT`). Debout ou au travail, il y est dessiné à la même hauteur.
 pub fn forge_post(anvil: TilePos) -> Vec2 {
-    Vec2::new(anvil.x as f32 + 0.5, anvil.y as f32 - 2.0 / 32.0)
+    Vec2::new(anvil.x as f32 + 0.5, anvil.y as f32 + ANVIL_CONTACT)
 }
 
 /// Le personnage est-il au poste de forge de `anvil` (au point près, pas seulement sur la bonne case) ?
@@ -462,6 +467,14 @@ impl Character {
             let next = Vec2::new(self.pos.x, self.pos.y + delta.y);
             if !map.is_box_blocked(next, BODY_HALF) {
                 self.pos = next;
+            } else if delta.y > 0.0 {
+                // contre le socle d'une enclume : les pieds s'y posent exactement, sans s'arrêter un pas avant
+                if let Some(y) = map.anvil_contact(next, BODY_HALF).filter(|&y| y > self.pos.y) {
+                    let contact = Vec2::new(self.pos.x, y);
+                    if !map.is_box_blocked(contact, BODY_HALF) {
+                        self.pos = contact;
+                    }
+                }
             }
         }
     }
@@ -475,7 +488,7 @@ impl Character {
                 // à l'arrivée, c'est `Game` qui lance la forge
                 if !self.path.is_empty() {
                     self.follow_path(env);
-                } else if self.tile() != forge_spot(anvil) {
+                } else if !beside_forge_post(self.tile(), anvil) {
                     self.cancel_approach(); // chemin abandonné en route (bloqué) : il s'arrête là
                     self.activity = Activity::Idle;
                 } else if self.step_to_point(forge_post(anvil), env) {
@@ -693,7 +706,7 @@ impl Character {
         self.wander_routine(env, rng); // rien à faire : tout pousse
     }
 
-    /// Le forgeron : tant qu'il y a du fer, va se placer au poste d'une enclume libre (au nord, contre elle), regarde
+    /// Le forgeron : tant qu'il y a du fer, va se placer au poste d'une enclume libre (au nord, contre son socle), regarde
     /// vers l'enclume et forge.
     /// Sans fer, il traîne dans sa forge en attendant.
     fn forge_routine(&mut self, env: &Env, rng: &mut Rng) {
@@ -722,8 +735,8 @@ impl Character {
                 .filter(|a| !env.claimed.contains(a))
                 .collect();
 
-            // déjà sur la case du poste d'une enclume libre : on se place au point exact, on la regarde et on forge
-            if let Some(&anvil) = anvils.iter().find(|&&a| here == forge_spot(a)) {
+            // à un dernier pas du poste d'une enclume libre : on se place au point exact, on la regarde et on forge
+            if let Some(&anvil) = anvils.iter().find(|&&a| beside_forge_post(here, a)) {
                 if !self.step_to_point(forge_post(anvil), env) {
                     self.work_target = Some(anvil);
                     return;

@@ -1,6 +1,7 @@
 //! La carte à tuiles : types de terrain, collisions et recherche de chemin.
 //! Aucune notion de couleur ou de sprite ici : le rendu décide comment afficher chaque `Tile`.
 
+use crate::character::BODY_HALF;
 use crate::math::{TilePos, Vec2};
 use std::cmp::Reverse;
 use std::collections::{BinaryHeap, VecDeque};
@@ -53,9 +54,13 @@ impl Tile {
     }
 }
 
-/// Part nord de la case d'une enclume (en tuiles) où l'on peut se tenir : l'enclume, vue de trois-quarts, n'occupe
-/// que le bas de sa case. C'est là que les pieds du forgeron se posent quand il forge (voir `forge_post`).
-pub const ANVIL_BACK: f32 = 0.22;
+/// Où se posent les pieds de celui qui est collé au socle d'une enclume, depuis le haut de sa case (en tuiles) : le
+/// socle occupe la moitié basse de la case, la moitié haute est praticable (voir `forge_post`).
+pub const ANVIL_CONTACT: f32 = 12.0 / 32.0;
+
+/// Depuis le haut de sa case, là où l'enclume commence à bloquer : le corps dépasse de `BODY_HALF` sous les pieds, qui
+/// s'arrêtent ainsi à `ANVIL_CONTACT`. La marge évite qu'un arrondi ne bloque celui qui s'y tient.
+pub const ANVIL_BACK: f32 = ANVIL_CONTACT + BODY_HALF + 0.001;
 
 pub struct TileMap {
     width: i32,
@@ -143,10 +148,18 @@ impl TileMap {
             let p = Vec2::new(center.x + dx, center.y + dy);
             let tile = p.tile();
             match self.get(tile) {
-                // le haut de la case de l'enclume est derrière elle : le forgeron s'y tient pour forger
+                // la moitié haute de la case de l'enclume est libre : le forgeron s'y tient pour forger
                 Tile::Anvil => p.y - tile.y as f32 >= ANVIL_BACK,
                 t => t.is_solid(),
             }
+        })
+    }
+
+    /// La hauteur où s'arrêtent les pieds de celui dont la boîte, en `center`, vient de toucher une enclume par le nord.
+    pub fn anvil_contact(&self, center: Vec2, half: f32) -> Option<f32> {
+        [-half, half].iter().find_map(|&dx| {
+            let tile = Vec2::new(center.x + dx, center.y + half).tile();
+            (self.get(tile) == Tile::Anvil).then_some(tile.y as f32 + ANVIL_CONTACT)
         })
     }
 
@@ -187,6 +200,13 @@ impl TileMap {
     pub fn find_path_cost(&self, from: TilePos, to: TilePos, mode: PathMode) -> Option<(VecDeque<TilePos>, f32)> {
         if !self.in_bounds(from) || !self.in_bounds(to) || self.get(to).is_solid() {
             return None;
+        }
+        if self.get(from) == Tile::Anvil {
+            // debout dans la moitié libre de la case d'une enclume : on en sort par le nord, jamais à travers le socle
+            let north = TilePos::new(from.x, from.y - 1);
+            let (mut path, cost) = self.find_path_cost(north, to, mode)?;
+            path.push_front(north);
+            return Some((path, cost));
         }
         if from == to {
             return Some((VecDeque::new(), 0.0));
