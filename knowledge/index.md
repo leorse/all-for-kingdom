@@ -30,7 +30,7 @@ Le principe du jeu : on incarne tour à tour les habitants d'une cité médiéva
 * [Les bâtiments](/regles/batiments.md) - type, taille minimale, assets obligatoires, taille libre, un lit = une personne (décidé)
 * [Construire](/regles/construction.md) - plan dans une liste, rectangle bleu/rouge, fondations, transporteurs et artisans, routes vers le camp (décidé)
 * [Propriété et affectation](/regles/propriete-et-affectation.md) - un bâtiment appartient à quelqu'un, embauche liée au lit, métier depuis le bâtiment (décidé)
-* [Le départ de partie et le camp de base](/regles/depart-et-camp.md) - carte vide, roi et deux artisans, pécule, coffres seulement (décidé)
+* [Le départ de partie et le camp de base](/regles/depart-et-camp.md) - carte vide, camp de base de 3 lits, roi et deux artisans, pécule, coffres seulement (décidé)
 * [Le royaume](/regles/royaume.md) - la carte, la disposition, les déplacements
 
 ## Le moteur

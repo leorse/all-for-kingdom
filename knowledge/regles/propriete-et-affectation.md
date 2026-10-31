@@ -20,6 +20,10 @@ Règles **décidées, pas encore dans le jeu**. En place aujourd'hui : le jeu co
 - dans une maison **à un lit** : le propriétaire ;
 - dans une maison **à plusieurs lits** : le **locataire de chaque lit**.
 
+## Au départ — décidé pour l'instant
+
+Les **trois lits du camp de base** sont ceux du roi et des deux artisans (voir [depart-et-camp.md](/regles/depart-et-camp.md)).
+
 ## L'embauche — décidé
 
 - Quelqu'un (un vagabond, par exemple) **n'est embauché que s'il y a un lit** pour lui : une **place libre** quelque part dans le royaume.

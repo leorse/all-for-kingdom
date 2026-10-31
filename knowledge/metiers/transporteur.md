@@ -43,7 +43,7 @@ Il arrive que deux métiers aient besoin du même matériau (le fer pour les lin
 
 ### Les chantiers — décidé
 
-À la validation d'un plan, les transporteurs **déposent les matériaux devant les fondations** (voir [construction.md](/regles/construction.md)). Au tout début de la partie, il n'y a **pas encore de transporteur** : qui livre alors est à définir.
+À la validation d'un plan, les transporteurs **déposent les matériaux devant les fondations** (voir [construction.md](/regles/construction.md)). Au tout début de la partie, il n'y a **pas encore de transporteur** : ce sont les **artisans** qui livrent, car un artisan sans chantier fait le travail d'un transporteur, tout le temps (voir [artisan.md](/metiers/artisan.md)).
 
 ## Ce que ça change dans le jeu
 

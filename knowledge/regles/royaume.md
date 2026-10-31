@@ -42,7 +42,7 @@ Comme les maisons et les champs, ils seront **loin du centre**.
 
 **À terme, la carte sera vide.** Le [roi](/metiers/roi.md) y place des **zones** (champs, habitat, mines, forêt exploitée…) et un [artisan](/metiers/artisan.md) construit. Le royaume grandit donc selon ses décisions, et non plus selon un scénario figé. L'inspiration est *The Settlers*.
 
-Les **routes se tracent d'elles-mêmes** pour alléger le travail du joueur, une fois la fondation faite, et **toutes mènent au camp de base**. Elles servent aux déplacements et aux [transporteurs](/metiers/transporteur.md). Le roi place des plans rectangulaires ([construction.md](/regles/construction.md)) ; la partie commence avec le roi et deux artisans, un camp de base et un petit pécule ([depart-et-camp.md](/regles/depart-et-camp.md)). Les **fondations bloquent le passage**.
+Les **routes se tracent d'elles-mêmes** pour alléger le travail du joueur, dès que le bâtiment est terminé, et **toutes mènent au camp de base**. Elles servent aux déplacements et aux [transporteurs](/metiers/transporteur.md). Le roi place des plans rectangulaires ([construction.md](/regles/construction.md)) ; la partie commence avec le roi et deux artisans, un camp de base et un petit pécule ([depart-et-camp.md](/regles/depart-et-camp.md)). Les **fondations bloquent le passage**.
 
 ### La carte actuelle est en dur — volontairement
 
@@ -59,5 +59,5 @@ Les arbres **poussent**, et il y a des **zones de forêt** en nombre limité (de
 - Les bâtiments du scénario de départ seront-ils tous construits d'emblée, ou le royaume commence-t-il plus petit, avec le roi et l'[artisan](/metiers/artisan.md) qui bâtissent le reste ?
 - La **taille des zones** : combien de tuiles pour un champ, une forêt, un quartier d'habitation ? Pas encore défini.
 - Comment une construction avance : tout d'un coup, ou par étapes visibles selon l'avancement des artisans ? (Les fondations sont décidées : voir [construction.md](/regles/construction.md).)
-- Comment la **route** se trace vers le camp de base : plus court chemin, ou autre règle ? Et quand : à la pose de la fondation ou à sa fin ?
+- Comment la **route** se trace vers le camp de base : plus court chemin, ou autre règle ?
 - Les **arbres** actuels deviennent la matière du [bûcheron](/metiers/bucheron.md) : certains resteront-ils décoratifs ?

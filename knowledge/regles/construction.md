@@ -31,14 +31,14 @@ Les assets de base du bâtiment sont **compris dans le prix et placés automatiq
 ## Le chantier — décidé
 
 1. À la validation, des **fondations** apparaissent à l'endroit choisi.
-2. Les **transporteurs** posent les **matériaux requis devant les fondations**.
+2. Les **transporteurs** posent les **matériaux requis devant les fondations**. Les **artisans** qui n'ont pas de chantier font aussi ce travail (voir [artisan.md](/metiers/artisan.md)) : c'est eux qui livrent au début de la partie.
 3. Les **artisans** se mettent à construire.
 
 Les **fondations bloquent le passage**.
 
 ## Les routes — décidé
 
-Une fois la fondation faite, **une route se génère toute seule**. **Toutes les routes mènent au camp de base** (voir [depart-et-camp.md](/regles/depart-et-camp.md)). Le joueur n'a pas à les tracer.
+**Dès que le bâtiment est terminé**, **une route se génère toute seule** (pas à la pose des fondations). **Toutes les routes mènent au camp de base** (voir [depart-et-camp.md](/regles/depart-et-camp.md)). Le joueur n'a pas à les tracer. Décidé pour l'instant : cela pourra changer plus tard.
 
 ## Les priorités — provisoire
 
@@ -46,11 +46,10 @@ Quand plusieurs chantiers attendent, les artisans les prennent **dans l'ordre de
 
 ## À définir
 
-- **Qui livre les matériaux au tout début**, quand il n'y a pas encore de transporteur ? Les artisans eux-mêmes ?
-- « Une fois la fondation faite » : dès sa **pose** à la validation, ou quand les artisans ont **fini** la fondation ?
 - Peut-on **annuler** un chantier, et que devient la matière déjà livrée ?
 - **Agrandir** un bâtiment existant : par la même interface (on étire un côté et on paie la différence) ?
 - Le **coût** de chaque plan et de chaque asset, la **durée** d'un chantier, et le fait que les **deux artisans** bâtissent ensemble.
-- Si la matière manque en cours de route : l'artisan **attend sur place**, ou va autre part ?
+- Si la matière manque en cours de route : l'artisan **attend sur place**, ou va livrer lui-même (il fait aussi le transport quand il est libre) ?
+- Le tracé d'une route **vers le camp** : plus court chemin, ou suit-elle les routes existantes ?
 - Une construction **interdite** (arbre, eau, filon, autre bâtiment dans le rectangle) : la zone devient-elle d'une autre couleur ?
 - Ce que fait **l'IA du roi** quand personne ne l'incarne : place-t-elle des plans ? (voir [roi.md](/metiers/roi.md))

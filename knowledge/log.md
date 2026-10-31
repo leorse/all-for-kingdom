@@ -2,6 +2,7 @@
 
 ## 2026-10-31
 * **Bâtiments et construction (décidé, pas en jeu)** : création de [les bâtiments](/regles/batiments.md) (type, taille minimale, assets obligatoires, taille libre, un lit = une personne), [construire](/regles/construction.md) (interface du roi, plan en rectangle bleu ou rouge, fondations, transporteurs et artisans, routes vers le camp de base, temps inchangé), [propriété et affectation](/regles/propriete-et-affectation.md) et [le départ de partie](/regles/depart-et-camp.md) (carte vide, roi et deux artisans, pécule, coffres seulement, camp de base). Mise à jour de [roi](/metiers/roi.md), [artisan](/metiers/artisan.md), [tavernier](/metiers/tavernier.md), [transporteur](/metiers/transporteur.md), [habitat](/regles/habitat.md), [royaume](/regles/royaume.md), [ressources et stocks](/regles/ressources-et-stocks.md) et [les idées](/idees.md). Les classes de taille fixe de l'habitat et la spec OpenSpec `housing` restent en place jusqu'à l'implémentation. Aucune valeur chiffrée n'est arrêtée (coûts, pécule).
+* **Précisions** : les artisans sans chantier font le travail de transporteur, au début comme tout le temps ; les routes apparaissent dès que le bâtiment est **terminé** (pas à la pose des fondations), décidé pour l'instant ; la partie commence avec un camp de base de trois lits (le roi et les deux artisans).
 
 ## 2026-10-30
 * **Idées**: ajout dans [les idées](/idees.md) de la mine souterraine (vue en coupe, profondeur croissante, bestioles) et des mini-jeux en mode possession. Rien de décidé.
