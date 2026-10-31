@@ -40,7 +40,7 @@ Comme les maisons et les champs, ils seront **loin du centre**.
 
 ## Décidé : le roi bâtit — carte vide et zones
 
-**À terme, la carte sera vide.** Le [roi](/metiers/roi.md) y place des **zones** (champs, habitat, mines, forêt exploitée…) et un [artisan](/metiers/artisan.md) construit. Le royaume grandit donc selon ses décisions, et non plus selon un scénario figé. L'inspiration est *The Settlers*.
+**À terme, la carte sera vide.** Le [roi](/metiers/roi.md) y place des **zones** (champs, habitat, mines, forêt exploitée…) et un [artisan](/metiers/artisan.md) construit. Le royaume grandit donc selon ses décisions, et non plus selon un scénario figé. L'inspiration est *The Settlers*. **La nature est déjà là au départ** : forêts, filons, eau, lacs, arbres ; seuls les bâtiments manquent (voir [depart-et-camp.md](/regles/depart-et-camp.md)).
 
 Les **routes se tracent d'elles-mêmes** pour alléger le travail du joueur, dès que le bâtiment est terminé, et **toutes mènent au camp de base**. Elles servent aux déplacements et aux [transporteurs](/metiers/transporteur.md). Le roi place des plans rectangulaires ([construction.md](/regles/construction.md)) ; la partie commence avec le roi et deux artisans, un camp de base et un petit pécule ([depart-et-camp.md](/regles/depart-et-camp.md)). Les **fondations bloquent le passage**.
 
@@ -56,7 +56,6 @@ Les arbres **poussent**, et il y a des **zones de forêt** en nombre limité (de
 
 - Où sont les premiers filons : au bord du royaume, regroupés dans une zone rocheuse ?
 - La carte s'agrandit-elle, et y a-t-il une notion de région autour du royaume (voir l'idée « Région et royaume ennemi » dans [les idées](/idees.md)) ?
-- Les bâtiments du scénario de départ seront-ils tous construits d'emblée, ou le royaume commence-t-il plus petit, avec le roi et l'[artisan](/metiers/artisan.md) qui bâtissent le reste ?
 - La **taille des zones** : combien de tuiles pour un champ, une forêt, un quartier d'habitation ? Pas encore défini.
 - Comment une construction avance : tout d'un coup, ou par étapes visibles selon l'avancement des artisans ? (Les fondations sont décidées : voir [construction.md](/regles/construction.md).)
 - Comment la **route** se trace vers le camp de base : plus court chemin, ou autre règle ?

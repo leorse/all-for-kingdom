@@ -1,7 +1,7 @@
 ---
 type: Règle
 title: Le départ de partie et le camp de base
-description: La partie commence avec le roi et deux artisans dans un camp de base de trois lits, sur une carte sans bâtiment, avec un petit pécule dans des coffres et sans entrepôt. Décidé pour l'instant, pas encore en jeu.
+description: La partie commence avec le roi et deux artisans dans un camp de base temporaire (trois lits, un feu, un coffre de 100), sur une carte sans bâtiment mais avec sa nature, et un entrepôt à bâtir en priorité. Décidé pour l'instant, pas encore en jeu.
 etat_en_jeu: décidé dans le principe
 tags: [regle, depart, camp, ressources]
 sources:
@@ -22,16 +22,27 @@ Règles **décidées dans leur principe, pas encore dans le jeu**. Le village pr
 - Un **petit pécule** de ressources de départ : du **bois**, de la **pierre**, des **graines**… Sa composition et ses quantités ne sont pas arrêtées. Le **nombre de ressources** du jeu non plus : il se déduira des besoins des bâtiments.
 - **Pas d'entrepôt** au départ. Les ressources sont **dans des coffres, et c'est tout** (voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md)).
 - Des **vagabonds se promènent** sur la carte **sans qu'il y ait de taverne** (voir [tavernier.md](/metiers/tavernier.md)).
+- La **nature est déjà là** : forêts, filons, eau, lacs, arbres. Seuls les bâtiments manquent.
 
-## Le camp de base — décidé dans le principe
+## Le camp de base — décidé pour l'instant
 
-Le **point de départ** est un simple **camp de base avec trois lits** : ceux du roi et des deux artisans. Décidé **pour l'instant** : cela pourra changer plus tard. Il sera **amélioré par la suite** ; ce qu'il contient d'autre et ce qu'il devient ne sont pas encore fixés.
+Le camp de base est **une zone temporaire** qui contient :
+
+- **trois lits** : ceux du roi et des deux artisans ;
+- **un feu de camp** ;
+- **un coffre**, qui peut contenir **absolument tout** : du bois, du blé, de la pierre, sans être réservé à un matériau, avec des limites (voir plus bas).
+
+Décidé **pour l'instant** : cela pourra changer plus tard.
 
 **Toutes les routes mènent au camp de base** (voir [construction.md](/regles/construction.md)).
 
+## L'entrepôt, première urgence — décidé
+
+Le coffre du camp ne contient que **100 éléments**. Le joueur a **tout intérêt à construire un entrepôt dès les premières minutes** : il contient des quantités **beaucoup plus grandes**. L'entrepôt est le premier grand objectif de la partie (voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md)).
+
 ## À définir
 
-- **Ce qu'est le camp** en dehors de ses trois lits : un bâtiment comme les autres, avec ses assets minimaux ? Piste, **non décidée** : un coffre et un feu, amélioré plus tard en château.
-- Où est le **pécule** : dans le coffre du camp ?
-- Les **forêts et les filons** existent-ils déjà sur la carte vide (la nature est là, pas les bâtiments), ou le roi doit-il aussi les placer ?
-- Le **château**, ou le camp amélioré : que devient-il, et le roi y dort-il ?
+- La **limite de 100** du coffre du camp : par ressource, ou au total ? Les coffres actuels du jeu sont à **200 de chaque ressource** : le créateur dit « les mêmes limites que d'habitude » et aussi « 100 éléments chacun ». À trancher.
+- Le **pécule** est-il dans le coffre du camp ? Sa composition et ses quantités ne sont pas arrêtées.
+- Que devient la **zone temporaire** : améliorée, ou remplacée (un château, des maisons) ? Le roi dort-il toujours au camp ?
+- La **capacité de l'entrepôt**, et ce qu'il coûte : assez bas pour être bâti dans les premières minutes.

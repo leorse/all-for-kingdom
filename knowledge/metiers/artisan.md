@@ -24,11 +24,13 @@ Il y a **deux artisans dès le début de la partie**, avec le roi (voir [depart-
 
 ## Artisan et transporteur — décidé
 
-**Quand un artisan n'a pas de travail, il fait le travail d'un [transporteur](/metiers/transporteur.md)**, **au début comme tout le temps**. Aucun autre métier n'a besoin de transporteurs au départ : les deux artisans livrent la matière aux chantiers quand ils ne construisent pas.
+**Quand un artisan n'a pas de travail, il fait le travail d'un [transporteur](/metiers/transporteur.md)**, **au début comme tout le temps**. Les deux artisans livrent la matière aux chantiers quand ils ne construisent pas.
+
+**Un artisan a toujours pour priorité de construire.** Il ne transporte que s'il n'a rien d'autre à faire : plus de question de priorité entre construire et livrer.
 
 ## Le chantier — décidé
 
-Le roi pose un plan, des **fondations** apparaissent (elles bloquent le passage), les **transporteurs** (ou les artisans libres) déposent les matériaux devant, puis les artisans construisent. Les routes se génèrent quand le bâtiment est **terminé**. Les plans sont pris **dans l'ordre où ils ont été placés**. Voir [construction.md](/regles/construction.md).
+Le roi pose un plan, des **fondations** apparaissent (elles bloquent le passage). **Le chantier ne commence que si toutes les ressources sont disponibles** : elles sont alors apportées devant par les **transporteurs** (ou les artisans libres), et dès que tout est là, les artisans construisent, pendant que les transporteurs continuent leur travail habituel. Les routes se génèrent quand le bâtiment est **terminé**. Les plans sont pris **dans l'ordre où ils ont été placés**. Voir [construction.md](/regles/construction.md).
 
 ## D'où viennent le bois et la pierre — décidé
 
@@ -49,7 +51,7 @@ La chaîne complète d'une construction est donc : **roi (plan) → bûcheron et
 - Il construit des **zones** que le roi place (champs, habitat…) : combien de tuiles à la fois ? Voir [royaume.md](/regles/royaume.md).
 - Le **coût** de chaque plan et de chaque asset en bois et en pierre : il dépend de la forme choisie (voir [batiments.md](/regles/batiments.md) et [construction.md](/regles/construction.md)).
 - La **durée** d'un chantier, et si plusieurs artisans peuvent bâtir en même temps le même plan.
-- Quand la matière manque (le plan peut être posé même sans ressources, la construction attend les matériaux) : l'artisan qui construit attend sur place, ou l'autre artisan va-t-il la chercher en priorité ? Qui passe avant, construire ou livrer ?
+- Les **deux artisans** bâtissent-ils ensemble un même chantier, ou un chacun ? Combien de temps dure un chantier ?
 - Les artisans **spécialisés** (maçon, charpentier) ou un seul métier pour tout ?
 - Est-ce que l'artisan **améliore** aussi les maisons (voir [habitat.md](/regles/habitat.md)), ou seulement les nouveaux bâtiments ?
 - Peut-on **démolir** ou déplacer un bâtiment ?

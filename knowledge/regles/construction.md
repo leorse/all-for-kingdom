@@ -22,7 +22,7 @@ Règles **décidées, pas encore dans le jeu**. Aujourd'hui tous les bâtiments 
 3. On **place ce plan** : une forme **rectangulaire ou carrée** en **surbrillance**, qu'on **déplace** et qu'on **agrandit** autant qu'on veut.
 4. Pendant qu'on la change, on voit **le coût en pierre et en bois** se recalculer.
 5. La zone est **bleue** quand le royaume a les ressources, **rouge** quand il ne les a pas.
-6. On **valide**. Même en rouge, on peut poser la fondation : elle sera prise en compte, et les matériaux viendront quand il y en aura.
+6. On **valide**. Même en rouge, on peut poser le plan : les fondations apparaissent, et le chantier attend d'avoir toutes ses ressources.
 
 **Le temps ne change jamais** : le royaume continue de tourner à la même vitesse pendant qu'on place un plan (pas de pause, pas de ralenti).
 
@@ -30,11 +30,12 @@ Les assets de base du bâtiment sont **compris dans le prix et placés automatiq
 
 ## Le chantier — décidé
 
-1. À la validation, des **fondations** apparaissent à l'endroit choisi.
-2. Les **transporteurs** posent les **matériaux requis devant les fondations**. Les **artisans** qui n'ont pas de chantier font aussi ce travail (voir [artisan.md](/metiers/artisan.md)) : c'est eux qui livrent au début de la partie.
-3. Les **artisans** se mettent à construire.
+1. À la validation, des **fondations** apparaissent à l'endroit choisi. Elles **bloquent le passage**.
+2. **Un chantier ne commence que si toutes les ressources sont disponibles.** Tant qu'elles ne le sont pas, le plan attend.
+3. Quand elles le sont, les **matériaux sont apportés devant le chantier** (par les transporteurs ; les artisans qui n'ont rien à faire font aussi ce travail, voir [artisan.md](/metiers/artisan.md)).
+4. **Dès que tout est là, le chantier commence** : les **artisans** s'activent et construisent. Pendant ce temps, les **transporteurs continuent leur travail habituel**.
 
-Les **fondations bloquent le passage**.
+Une fois le chantier commencé, il n'y a donc plus d'arbitrage entre construire et livrer : **un artisan a toujours pour priorité de construire**, et il ne transporte que s'il n'a rien d'autre à faire.
 
 ## Les routes — décidé
 
@@ -49,7 +50,7 @@ Quand plusieurs chantiers attendent, les artisans les prennent **dans l'ordre de
 - Peut-on **annuler** un chantier, et que devient la matière déjà livrée ?
 - **Agrandir** un bâtiment existant : par la même interface (on étire un côté et on paie la différence) ?
 - Le **coût** de chaque plan et de chaque asset, la **durée** d'un chantier, et le fait que les **deux artisans** bâtissent ensemble.
-- Si la matière manque en cours de route : l'artisan **attend sur place**, ou va livrer lui-même (il fait aussi le transport quand il est libre) ?
+- Quand les ressources deviennent disponibles pour un plan, sont-elles **mises de côté** pour lui, afin qu'un plan posé après ne les prenne pas ? Avec l'ordre des placements comme ordre de service ?
 - Le tracé d'une route **vers le camp** : plus court chemin, ou suit-elle les routes existantes ?
 - Une construction **interdite** (arbre, eau, filon, autre bâtiment dans le rectangle) : la zone devient-elle d'une autre couleur ?
 - Ce que fait **l'IA du roi** quand personne ne l'incarne : place-t-elle des plans ? (voir [roi.md](/metiers/roi.md))

@@ -47,6 +47,12 @@ Le [mineur](/metiers/mineur.md) apporte quatre minerais, un par nature de filon 
 
 La partie commence avec un **petit pécule** (bois, pierre, graines… à préciser) et **pas d'entrepôt** : les ressources sont **dans des coffres, et c'est tout**. Le **nombre de ressources** du jeu n'est pas arrêté : il se déduit des besoins des bâtiments. Voir [depart-et-camp.md](/regles/depart-et-camp.md).
 
+## Décidé : le coffre du camp et l'entrepôt
+
+- Le **coffre du camp** peut contenir **toutes les ressources** (bois, blé, pierre…), pas un seul matériau, avec une limite de **100 éléments** (par ressource ou au total : à trancher, les coffres actuels sont à 200 de chaque ressource).
+- Le **joueur a intérêt à construire un entrepôt dès les premières minutes** : il contient **beaucoup plus**. Voir [depart-et-camp.md](/regles/depart-et-camp.md).
+- Le **chantier d'un plan ne démarre que si toutes les ressources sont disponibles** (voir [construction.md](/regles/construction.md)).
+
 ## Décidé : la construction consomme du bois et de la pierre
 
 Un nouveau besoin apparaît : les chantiers de l'[artisan](/metiers/artisan.md). Le coût d'un plan dépend de sa forme et des assets qu'il comprend (voir [batiments.md](/regles/batiments.md)), et les matériaux sont déposés devant les fondations par les transporteurs (voir [construction.md](/regles/construction.md)).
@@ -79,6 +85,8 @@ C'est un point essentiel : produire sans limite n'a plus de sens. Il faut équil
 La capacité d'un stock peut grandir grâce aux améliorations de la maison (voir [habitat.md](/regles/habitat.md)).
 
 ## À définir
+
+- La **capacité de l'entrepôt** et celle du coffre du camp (100 par ressource, ou au total ?).
 
 - La **composition du pécule** de départ et ce qu'il permet de construire.
 - Le **stock de chantier** : où sont posés les matériaux livrés devant les fondations, et que devient le surplus ?
