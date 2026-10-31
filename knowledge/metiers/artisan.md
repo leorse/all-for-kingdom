@@ -18,6 +18,14 @@ Il **construit** ce que le roi a décidé de bâtir. Ce métier est **décidé d
 
 Sans artisan, un plan reste un plan. Sans ressources, l'artisan ne peut pas avancer.
 
+## Au départ — décidé
+
+Il y a **deux artisans dès le début de la partie**, avec le roi (voir [depart-et-camp.md](/regles/depart-et-camp.md)). Ce sont les seuls à pouvoir bâtir tant qu'on n'en embauche pas d'autres.
+
+## Le chantier — décidé
+
+Le roi pose un plan, des **fondations** apparaissent (elles bloquent le passage), les **transporteurs** déposent les matériaux devant, puis les artisans construisent. Les plans sont pris **dans l'ordre où ils ont été placés**. Voir [construction.md](/regles/construction.md).
+
 ## D'où viennent le bois et la pierre — décidé
 
 - Le **bois** vient du [bûcheron](/metiers/bucheron.md).
@@ -35,9 +43,9 @@ La chaîne complète d'une construction est donc : **roi (plan) → bûcheron et
 ## À définir
 
 - Il construit des **zones** que le roi place (champs, habitat…) : combien de tuiles à la fois ? Voir [royaume.md](/regles/royaume.md).
-- Le **coût** de chaque bâtiment en bois et en pierre.
+- Le **coût** de chaque plan et de chaque asset en bois et en pierre : il dépend de la forme choisie (voir [batiments.md](/regles/batiments.md) et [construction.md](/regles/construction.md)).
 - La **durée** d'un chantier, et si plusieurs artisans peuvent bâtir en même temps le même plan.
-- Que se passe-t-il quand il manque de la matière : l'artisan attend sur place, ou va faire autre chose ?
+- Que se passe-t-il quand il manque de la matière : l'artisan attend sur place, ou va faire autre chose ? (Le plan peut être posé même sans ressources : la construction attend les matériaux.)
 - Les artisans **spécialisés** (maçon, charpentier) ou un seul métier pour tout ?
 - Est-ce que l'artisan **améliore** aussi les maisons (voir [habitat.md](/regles/habitat.md)), ou seulement les nouveaux bâtiments ?
 - Peut-on **démolir** ou déplacer un bâtiment ?

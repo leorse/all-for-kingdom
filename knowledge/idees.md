@@ -21,6 +21,7 @@ Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une i
 - Remplace le placement codé en dur dans `scenario.rs` (voir `kingdom-layout`, qui précise que le scénario est une donnée pure).
 - Fait partie du gameplay du rôle de roi.
 - À terme la carte est vide : le roi place des zones et les routes se tracent seules (inspiration *The Settlers*).
+- **Largement décidé** depuis : voir [construire](/regles/construction.md), [le départ de partie](/regles/depart-et-camp.md) et [les bâtiments](/regles/batiments.md).
 - Détails dans [artisan](/metiers/artisan.md), [roi](/metiers/roi.md) et [royaume](/regles/royaume.md).
 
 ## Bûcheron, transporteurs
@@ -33,6 +34,7 @@ Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une i
 - Le roi les affecte à un rôle (paysan, forgeron, etc.). Taverne pleine : plus de vagabonds.
 - Les arrivants ont des compétences : bons paysans, bons forgerons, chevaliers… Une mauvaise affectation est contre-productive.
 - Améliorer la taverne donne plus de lits.
+- **Décidé depuis** : des vagabonds se promènent même sans taverne ; l'embauche exige un lit libre ; voir [propriété et affectation](/regles/propriete-et-affectation.md).
 - Détails dans [tavernier](/metiers/tavernier.md) et [competences](/regles/competences.md).
 
 ## Mineurs
@@ -67,6 +69,7 @@ Chaque métier (ou presque) est un prétexte à un mini-jeu quand le joueur poss
 - Détails dans [ressources-et-stocks](/regles/ressources-et-stocks.md).
 
 ## Amélioration des maisons
+- **Décidé depuis** : un bâtiment a une taille minimale et des assets obligatoires, on agrandit à volonté en ajoutant des assets qui améliorent la vie des occupants : voir [les bâtiments](/regles/batiments.md).
 - Une maison s'améliore : confort, sommeil plus rapide, travailleur plus rapide, entrepôt plus grand.
 - Probablement lié à l'idée « Mobilier » ci-dessous.
 - Détails dans [habitat](/regles/habitat.md).

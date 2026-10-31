@@ -1,5 +1,8 @@
 # Journal de la base de connaissances
 
+## 2026-10-31
+* **Bâtiments et construction (décidé, pas en jeu)** : création de [les bâtiments](/regles/batiments.md) (type, taille minimale, assets obligatoires, taille libre, un lit = une personne), [construire](/regles/construction.md) (interface du roi, plan en rectangle bleu ou rouge, fondations, transporteurs et artisans, routes vers le camp de base, temps inchangé), [propriété et affectation](/regles/propriete-et-affectation.md) et [le départ de partie](/regles/depart-et-camp.md) (carte vide, roi et deux artisans, pécule, coffres seulement, camp de base). Mise à jour de [roi](/metiers/roi.md), [artisan](/metiers/artisan.md), [tavernier](/metiers/tavernier.md), [transporteur](/metiers/transporteur.md), [habitat](/regles/habitat.md), [royaume](/regles/royaume.md), [ressources et stocks](/regles/ressources-et-stocks.md) et [les idées](/idees.md). Les classes de taille fixe de l'habitat et la spec OpenSpec `housing` restent en place jusqu'à l'implémentation. Aucune valeur chiffrée n'est arrêtée (coûts, pécule).
+
 ## 2026-10-30
 * **Idées**: ajout dans [les idées](/idees.md) de la mine souterraine (vue en coupe, profondeur croissante, bestioles) et des mini-jeux en mode possession. Rien de décidé.
 * **Initialization**: création du bundle OKF v0.2. Migration de `docs/gameplay/` vers [métiers](/metiers/paysan.md) et [règles](/regles/temps-et-repos.md), de `docs/art-direction.md` vers [la direction artistique](/graphisme/direction-artistique.md), de `IDEAS.md` vers [les idées](/idees.md). Création des pages [moteur](/moteur/architecture.md) et [projet](/projet/controles-et-lancement.md). Les images de référence sont rangées dans le skill `afk-graphisme`.

@@ -22,6 +22,10 @@ La taverne **accueille les gens qui arrivent dans le royaume**. Elle est la **po
 - Le **roi** les **affecte** à un métier. Voir [roi.md](/metiers/roi.md).
 - La taverne a **un nombre de lits**. **Quand tous les lits sont pris, plus personne n'arrive.**
 
+### Sans taverne — décidé
+
+Des **vagabonds se promènent sur la carte sans qu'il y ait de taverne**. La taverne n'est donc pas la seule porte d'entrée de la population : elle les **accueille et les retient** à un endroit. L'embauche d'un vagabond ne dépend que d'un **lit libre** (voir [propriete-et-affectation.md](/regles/propriete-et-affectation.md)).
+
 ### Qui arrive — décidé dans le principe
 
 Les arrivants ne sont pas tous des vagabonds sans talent. Ils ont chacun des **compétences** (voir [competences.md](/regles/competences.md)) :
@@ -45,7 +49,8 @@ En **améliorant la taverne**, on obtient **plus de lits**, donc plus de place. 
 ## À définir
 
 - Le **nombre de lits** de départ, et ce que coûte et apporte chaque amélioration.
-- Le **rythme d'arrivée**, et ce qui le fait varier (prospérité, réputation du royaume, améliorations de la taverne).
+- Le **rythme d'arrivée** des vagabonds, avec ou sans taverne, et ce qui le fait varier (prospérité, réputation du royaume, améliorations de la taverne).
+- Ce que **change** la taverne pour le roi, puisqu'on peut embaucher sans elle : confort, nombre, qualité des profils ?
 - Comment sont tirés les **profils** qui arrivent : au hasard, selon le niveau de la taverne, selon ce dont le royaume a besoin ?
 - Les arrivants **dorment** à la taverne, et que consomment-ils (du blé du paysan ?).
 - Un arrivant qui reste trop longtemps **s'en va-t-il** ?
