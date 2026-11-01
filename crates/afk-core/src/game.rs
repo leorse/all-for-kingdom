@@ -10,6 +10,7 @@
 
 use std::collections::HashMap;
 
+use crate::building::{check_plan, plan_build_secs, plan_cost, Building, Cost, PlanError, PlanKind, Site, SiteState};
 use crate::character::{at_forge_post, forge_spot, Character, Env, Facing, Outcome, Role, BODY_HALF};
 use crate::clock::Clock;
 use crate::config::Config;
@@ -51,6 +52,10 @@ pub enum Command {
     Interact { player: PlayerId },
     /// Vider l'entrepôt central : toutes les ressources de son contenant disparaissent.
     EmptyDepot { player: PlayerId },
+    /// Le roi pose un plan : un rectangle de `w` sur `h` tuiles, murs compris, dont le coin haut-gauche est en
+    /// (`x`, `y`), avec `beds` lits pour une maison. Refusé si le joueur n'incarne pas un roi ou si le plan ne peut
+    /// pas être posé là (voir `Game::check_plan`). Même sans les ressources, le plan se pose : le chantier attend.
+    PlacePlan { player: PlayerId, kind: PlanKind, x: i32, y: i32, w: i32, h: i32, beds: u32 },
 }
 
 struct PlayerSlot {
@@ -69,6 +74,15 @@ pub struct Game {
     forests: Vec<Forest>,
     lodges: Vec<LodgeSpec>,
     habitats: Vec<HabitatSpec>,
+    /// Les entrepôts et les tavernes bâtis (les maisons sont dans `habitats`).
+    buildings: Vec<Building>,
+    /// Les plans posés par le roi, dans l'ordre : en attente, en livraison, en construction ou terminés.
+    sites: Vec<Site>,
+    /// Une case de la place du camp de base : toutes les routes qu'on bâtit y mènent.
+    camp: Option<TilePos>,
+    /// Heures de jeu avant la prochaine arrivée d'un vagabond (s'il y a un camp).
+    vagabond_timer: f32,
+    vagabonds_seen: usize,
     saplings: Saplings,
     /// Avancement (0 à 1) des arbres entamés, partagé entre les bûcherons qui s'y attaquent.
     tree_progress: HashMap<TilePos, f32>,
@@ -103,8 +117,17 @@ impl Game {
         let mut containers: Vec<Container> = scenario
             .containers
             .iter()
-            .map(|&spec| Container::new(spec, config.container_capacity, &scenario.veins))
+            .map(|&spec| {
+                let capacity = if spec.kind == ContainerKind::Camp { config.camp_capacity } else { config.container_capacity };
+                Container::new(spec, capacity, &scenario.veins)
+            })
             .collect();
+        // le pécule de départ, dans le coffre du camp
+        if let Some(camp) = containers.iter_mut().find(|c| c.kind == ContainerKind::Camp) {
+            camp.add(Resource::Wood, config.starting_wood);
+            camp.add(Resource::Stone, config.starting_stone);
+            camp.add(Resource::Seeds, config.starting_seeds);
+        }
         if let Some(forge) = containers.iter_mut().find(|c| c.kind == ContainerKind::Forge) {
             forge.add(Resource::Iron, config.starting_iron);
         }
@@ -136,6 +159,11 @@ impl Game {
             forests: scenario.forests,
             lodges: scenario.lodges,
             habitats: scenario.habitats,
+            buildings: Vec::new(),
+            sites: Vec::new(),
+            camp: scenario.camp,
+            vagabond_timer: config.vagabond_first_hours,
+            vagabonds_seen: 0,
             saplings: Saplings::new(),
             tree_progress: HashMap::new(),
             characters,
@@ -205,6 +233,77 @@ impl Game {
 
     pub fn habitats(&self) -> &[HabitatSpec] {
         &self.habitats
+    }
+
+    /// Les entrepôts et les tavernes bâtis.
+    pub fn buildings(&self) -> &[Building] {
+        &self.buildings
+    }
+
+    /// Les plans posés par le roi, dans l'ordre où il les a posés.
+    pub fn sites(&self) -> &[Site] {
+        &self.sites
+    }
+
+    /// Une case de la place du camp de base, s'il y a un camp.
+    pub fn camp(&self) -> Option<TilePos> {
+        self.camp
+    }
+
+    /// Le plan en cours de construction ou de livraison qui couvre cette tuile.
+    pub fn site_at(&self, tile: TilePos) -> Option<&Site> {
+        self.sites.iter().find(|s| s.state != SiteState::Done && s.contains(tile))
+    }
+
+    /// Le coût d'un plan de cette forme, et sa durée de construction pour un artisan en pleine forme.
+    pub fn plan_cost(&self, kind: PlanKind, w: i32, h: i32, beds: u32) -> Cost {
+        plan_cost(kind, w, h, beds, &self.config)
+    }
+
+    pub fn plan_secs(&self, kind: PlanKind, w: i32, h: i32, beds: u32) -> f32 {
+        plan_build_secs(kind, w, h, beds, &self.config)
+    }
+
+    /// Ce plan peut-il être posé ici ? Les personnages à l'intérieur de l'emprise l'en empêchent.
+    pub fn check_plan(&self, kind: PlanKind, x: i32, y: i32, w: i32, h: i32, beds: u32) -> Result<(), PlanError> {
+        let bodies: Vec<TilePos> = self.characters.iter().filter(|c| !c.gone).map(|c| c.tile()).collect();
+        check_plan(&self.map, kind, x, y, w, h, beds, &bodies)
+    }
+
+    /// Ce que le royaume peut encore promettre à un nouveau chantier en `resource` : ce qui est dans les coffres, moins
+    /// ce que les chantiers en livraison attendent encore (ce qui est déjà en route dans les mains n'y est plus).
+    pub fn available(&self, resource: Resource) -> u32 {
+        let stored: u32 = self.containers.iter().filter(|c| !c.is_site()).map(|c| c.get(resource)).sum();
+        let pending: u32 = self
+            .sites
+            .iter()
+            .filter(|s| s.state == SiteState::Delivering)
+            .filter_map(|s| s.pile)
+            .map(|p| {
+                let pile = &self.containers[p];
+                let need = pile.needs().get(&resource).copied().unwrap_or(0);
+                let carried: u32 = self
+                    .characters
+                    .iter()
+                    .filter(|c| c.job.map_or(false, |j| j.to == p))
+                    .filter_map(|c| c.cargo)
+                    .filter(|&(r, _)| r == resource)
+                    .map(|(_, n)| n)
+                    .sum();
+                need.saturating_sub(pile.get(resource) + carried)
+            })
+            .sum();
+        stored.saturating_sub(pending)
+    }
+
+    /// Le royaume a-t-il de quoi payer ce coût ? (La zone d'un plan est bleue si oui, rouge sinon.)
+    pub fn can_afford(&self, cost: Cost) -> bool {
+        self.available(Resource::Wood) >= cost.wood && self.available(Resource::Stone) >= cost.stone
+    }
+
+    /// Le personnage incarné par ce joueur est-il un roi ? C'est lui qui pose les plans.
+    pub fn is_king(&self, player: PlayerId) -> bool {
+        self.possessed_by(player).and_then(|id| self.characters.get(id.0)).map_or(false, |c| c.role == Role::King)
     }
 
     /// Places libres d'un habitat : ses lits que personne n'occupe comme logement (aucun personnage n'y a son lit).
@@ -287,6 +386,9 @@ impl Game {
         if self.map.get(tile) == Tile::Ore {
             return Some(WorkKind::Mine);
         }
+        if self.sites.iter().any(|s| s.state == SiteState::Building && s.contains(tile)) {
+            return Some(WorkKind::Build);
+        }
         if self.map.get(tile) == Tile::Tree && self.forest_index_at(tile).is_some() {
             return Some(WorkKind::Chop);
         }
@@ -305,7 +407,7 @@ impl Game {
         let worked_by_other = |tile: TilePos| {
             self.characters
                 .iter()
-                .any(|o| o.id != id && o.work.map_or(false, |w| !matches!(w.kind, WorkKind::Mine | WorkKind::Chop) && w.tile == tile))
+                .any(|o| o.id != id && o.work.map_or(false, |w| !matches!(w.kind, WorkKind::Mine | WorkKind::Chop | WorkKind::Build) && w.tile == tile))
         };
         [c.facing_tile(), c.tile()].into_iter().find_map(|tile| {
             self.work_kind_at(tile)
@@ -335,7 +437,7 @@ impl Game {
             WorkKind::Chop => {
                 c.cargo.map_or(0, |(_, n)| n) + self.config.logs_per_tree <= self.config.lumberjack_carry
             }
-            WorkKind::Till | WorkKind::Plant => true,
+            WorkKind::Till | WorkKind::Plant | WorkKind::Build => true,
         }
     }
 
@@ -350,7 +452,7 @@ impl Game {
     /// Personnage situé à ce point du monde (pour désigner quelqu'un à la souris, par exemple).
     pub fn character_at(&self, point: Vec2) -> Option<CharacterId> {
         let mut best: Option<(f32, CharacterId)> = None;
-        for c in &self.characters {
+        for c in self.characters.iter().filter(|c| !c.gone) {
             // le corps est dessiné légèrement au-dessus du point de contact
             let d = c.pos.distance(point + Vec2::new(0.0, 0.15));
             if d < 0.6 && best.map_or(true, |(bd, _)| d < bd) {
@@ -376,7 +478,7 @@ impl Game {
                 let start = slot.possessed.unwrap_or(slot.last).0;
                 for offset in 1..=n {
                     let candidate = CharacterId((start + offset) % n);
-                    if self.is_free_for(candidate, player) {
+                    if !self.characters[candidate.0].gone && self.is_free_for(candidate, player) {
                         self.possess(player, candidate);
                         break;
                     }
@@ -403,6 +505,11 @@ impl Game {
                     depot.clear();
                 }
             }
+            Command::PlacePlan { player, kind, x, y, w, h, beds } => {
+                if self.is_king(player) && self.check_plan(kind, x, y, w, h, beds).is_ok() {
+                    self.place_plan(kind, x, y, w, h, beds);
+                }
+            }
             Command::Interact { player } => {
                 let Some(id) = self.possessed_by(player) else { return };
                 if self.characters[id.0].asleep {
@@ -427,7 +534,10 @@ impl Game {
                             }
                         }
                     } else {
-                        let secs = work_secs(kind, tile, &self.config, &self.veins);
+                        let secs = match (kind, self.site_at(tile)) {
+                            (WorkKind::Build, Some(site)) => site.total_secs,
+                            _ => work_secs(kind, tile, &self.config, &self.veins),
+                        };
                         self.characters[id.0].start_work(kind, tile, secs);
                     }
                 } else {
@@ -449,7 +559,11 @@ impl Game {
         // les personnages agissent sur un monde en lecture seule et rapportent ce qu'ils ont terminé...
         let night = self.clock.is_night();
         let mut finished = Vec::new();
+        let tavern = self.buildings.iter().find(|b| b.kind == PlanKind::Tavern).map(|b| b.front());
         for i in 0..self.characters.len() {
+            if self.characters[i].gone {
+                continue;
+            }
             // parcelles déjà visées ou travaillées par les autres, y compris ceux déjà mis à jour
             // dans ce même pas : c'est ce qui empêche deux paysans de choisir la même parcelle
             let claimed: Vec<TilePos> = self
@@ -482,6 +596,9 @@ impl Game {
                 claimed: &claimed,
                 veins: &self.veins,
                 forests: &self.forests,
+                sites: &self.sites,
+                camp: self.camp,
+                tavern,
             };
             if let Some(outcome) = self.characters[i].update(&env, control, &mut self.rng) {
                 finished.push((i, outcome));
@@ -502,6 +619,9 @@ impl Game {
         }
 
         self.chop_trees();
+        self.update_sites();
+        self.build_sites();
+        self.spawn_vagabonds(dt_hours);
 
         // les arbres abattus repoussent, au rythme du temps de jeu ; pas sur une case où l'on se tient
         let bodies: Vec<_> = self.characters.iter().map(|c| c.pos).collect();
@@ -540,7 +660,7 @@ impl Game {
                     self.characters[who].start_work(WorkKind::Forge, done.tile, secs);
                 }
             }
-            WorkKind::Chop => {} // jamais émis : `Game` décide seul de la chute des arbres
+            WorkKind::Chop | WorkKind::Build => {} // jamais émis : `Game` décide seul de la chute des arbres et de la fin des chantiers
             WorkKind::Mine => {
                 if let Some(i) = self.veins.iter().position(|v| v.contains(done.tile)) {
                     let ore = self.veins[i].kind.resource();
@@ -604,7 +724,7 @@ impl Game {
                 let source = &self.containers[ci];
                 let gives = |r: Resource| {
                     if source.is_depot() {
-                        self.containers.iter().any(|k| !k.is_depot() && k.consumes() == Some(r))
+                        self.containers.iter().any(|k| !k.is_depot() && k.wants(r))
                     } else {
                         source.product() == Some(r)
                     }
@@ -651,6 +771,189 @@ impl Game {
                     c.cancel_work();
                 }
             }
+        }
+    }
+
+    /// Pose un plan validé : les fondations apparaissent (solides) et le chantier attend ses ressources.
+    fn place_plan(&mut self, kind: PlanKind, x: i32, y: i32, w: i32, h: i32, beds: u32) {
+        self.map.fill_rect(x, y, w, h, Tile::Foundation);
+        self.sites.push(Site {
+            kind,
+            x,
+            y,
+            w,
+            h,
+            beds,
+            cost: plan_cost(kind, w, h, beds, &self.config),
+            state: SiteState::Waiting,
+            progress: 0.0,
+            total_secs: plan_build_secs(kind, w, h, beds, &self.config),
+            pile: None,
+            pile_ground: Tile::Grass,
+        });
+    }
+
+    /// Fait avancer les chantiers en attente et en livraison : un chantier ne démarre que si toutes ses ressources
+    /// sont disponibles ; elles sont alors apportées devant lui, et il passe en construction quand tout est là.
+    fn update_sites(&mut self) {
+        for i in 0..self.sites.len() {
+            match self.sites[i].state {
+                SiteState::Waiting => {
+                    let pile_tile = self.sites[i].pile_tile();
+                    // le tas se pose sur une case que personne n'occupe : on écarte ceux qui s'y tiennent (sauf le
+                    // personnage d'un joueur, qui bouge quand il veut), pour qu'un badaud ne bloque pas un chantier
+                    if self.can_afford(self.sites[i].cost) {
+                        self.clear_tile(pile_tile);
+                    }
+                    let site = &self.sites[i];
+                    let blocked = self.characters.iter().any(|c| !c.gone && c.tile() == pile_tile);
+                    if !blocked && self.can_afford(site.cost) {
+                        let needs = site.cost.as_needs();
+                        self.containers.push(Container::new_site(i, pile_tile, needs));
+                        self.sites[i].pile_ground = if self.map.get(pile_tile) == Tile::Path { Tile::Path } else { Tile::Grass };
+                        self.map.set(pile_tile, Tile::Crate);
+                        self.sites[i].pile = Some(self.containers.len() - 1);
+                        self.sites[i].state = SiteState::Delivering;
+                    }
+                }
+                SiteState::Delivering => {
+                    if self.sites[i].pile.map_or(false, |p| self.containers[p].is_complete()) {
+                        self.sites[i].state = SiteState::Building;
+                    }
+                }
+                SiteState::Building | SiteState::Done => {}
+            }
+        }
+    }
+
+    /// Écarte de cette tuile les personnages que personne n'incarne, vers une case voisine libre.
+    fn clear_tile(&mut self, tile: TilePos) {
+        let occupied: Vec<TilePos> = self.characters.iter().filter(|c| !c.gone).map(|c| c.tile()).collect();
+        for ci in 0..self.characters.len() {
+            let c = &self.characters[ci];
+            if c.gone || c.tile() != tile || self.controller_of(CharacterId(ci)).is_some() {
+                continue;
+            }
+            let free = self.map.walkable_neighbors(tile).into_iter().find(|n| !occupied.contains(n));
+            if let Some(n) = free {
+                self.characters[ci].shove_to(n);
+            }
+        }
+    }
+
+    /// Additionne le travail de tous les artisans sur chaque chantier en construction ; à 100 %, il est terminé.
+    fn build_sites(&mut self) {
+        for i in 0..self.sites.len() {
+            if self.sites[i].state != SiteState::Building {
+                continue;
+            }
+            let builders: Vec<usize> = (0..self.characters.len())
+                .filter(|&ci| self.characters[ci].work.map_or(false, |w| w.kind == WorkKind::Build && self.sites[i].contains(w.tile)))
+                .collect();
+            let delta: f32 = builders.iter().map(|&ci| self.characters[ci].build_delta()).sum();
+            let progress = (self.sites[i].progress + delta).min(1.0);
+            self.sites[i].progress = progress;
+            for &ci in &builders {
+                self.characters[ci].set_work_progress(progress);
+            }
+            if progress >= 1.0 {
+                for &ci in &builders {
+                    self.characters[ci].cancel_work();
+                }
+                self.finish_site(i);
+            }
+        }
+    }
+
+    /// Le chantier est terminé : le bâtiment prend la place des fondations, les matériaux sont consommés et une route le
+    /// relie au camp de base.
+    fn finish_site(&mut self, i: usize) {
+        let site = self.sites[i].clone();
+        let pile = site.pile;
+        match site.kind {
+            PlanKind::House => {
+                if let Some(spec) = HabitatSpec::house(site.x, site.y, site.w, site.h, site.beds) {
+                    spec.build(&mut self.map);
+                    self.habitats.push(spec);
+                }
+            }
+            PlanKind::Warehouse | PlanKind::Tavern => {
+                let building = Building { kind: site.kind, x: site.x, y: site.y, w: site.w, h: site.h };
+                building.build(&mut self.map);
+                self.buildings.push(building);
+            }
+        }
+        if let Some(p) = pile {
+            if site.kind == PlanKind::Warehouse {
+                // le tas devant la porte devient le coffre de l'entrepôt : vide, et beaucoup plus grand
+                self.containers[p].become_depot(self.config.warehouse_capacity);
+            } else {
+                self.containers[p].retire();
+                self.map.set(site.pile_tile(), site.pile_ground); // le chemin qui passait là reste un chemin
+            }
+        }
+        self.sites[i].state = SiteState::Done;
+        self.lay_road(site.front());
+    }
+
+    /// Trace la route de `from` jusqu'au camp de base : le trajet ordinaire (qui préfère les routes déjà là) dont les
+    /// tuiles d'herbe deviennent des chemins. La route est continue par les côtés : un pas en diagonale est complété par
+    /// une case voisine, pour que chaque virage fasse un angle (et non un creux) et que les sprites d'angle s'y raccordent.
+    fn lay_road(&mut self, from: TilePos) {
+        let Some(camp) = self.camp else { return };
+        let path = self.map.find_path_mode(from, camp, PathMode::Roads(self.config.grass_cost));
+        let mut prev = from;
+        for t in std::iter::once(from).chain(path) {
+            if t.x != prev.x && t.y != prev.y {
+                let corners = [TilePos::new(t.x, prev.y), TilePos::new(prev.x, t.y)];
+                let is_road = |g: &Game, c: TilePos| g.map.get(c) == Tile::Path;
+                let corner = corners
+                    .into_iter()
+                    .find(|&c| is_road(self, c))
+                    .or_else(|| corners.into_iter().find(|&c| self.map.get(c) == Tile::Grass));
+                if let Some(c) = corner {
+                    self.map.set(c, Tile::Path);
+                }
+            }
+            if self.map.get(t) == Tile::Grass {
+                self.map.set(t, Tile::Path);
+            }
+            prev = t;
+        }
+    }
+
+    /// Un vagabond arrive de temps en temps par le bord de la carte, dans la limite de `vagabond_max`.
+    fn spawn_vagabonds(&mut self, dt_hours: f32) {
+        if self.camp.is_none() {
+            return;
+        }
+        self.vagabond_timer -= dt_hours;
+        if self.vagabond_timer > 0.0 {
+            return;
+        }
+        self.vagabond_timer = self.config.vagabond_every_hours;
+        let present = self.characters.iter().filter(|c| c.role == Role::Vagabond && !c.gone).count();
+        if present >= self.config.vagabond_max {
+            return;
+        }
+        let (w, h) = (self.map.width(), self.map.height());
+        for _ in 0..40 {
+            let along = self.rng.index(1000) as i32;
+            let spot = match self.rng.index(4) {
+                0 => TilePos::new(1, 1 + along % (h - 2)),
+                1 => TilePos::new(w - 2, 1 + along % (h - 2)),
+                2 => TilePos::new(1 + along % (w - 2), 1),
+                _ => TilePos::new(1 + along % (w - 2), h - 2),
+            };
+            if self.map.get(spot).is_solid() || self.map.get(spot) == Tile::Water {
+                continue;
+            }
+            self.vagabonds_seen += 1;
+            let id = CharacterId(self.characters.len());
+            let mut vagabond = Character::new(id, format!("Vagabond {}", self.vagabonds_seen), Role::Vagabond, spot, false, vec![spot]);
+            vagabond.set_stay_hours(self.config.vagabond_stay_hours);
+            self.characters.push(vagabond);
+            break;
         }
     }
 
@@ -2506,5 +2809,543 @@ use std::collections::HashSet;
         assert!(everywhere(&game, Resource::Wood) >= before + 6);
         run_until(&mut game, 2, 12.0);
         assert!(game.containers[lodge].get(Resource::Wood) >= before + 6, "livré le lendemain");
+    }
+}
+
+/// Le départ de partie : le camp, le pécule, le roi qui pose des plans, les artisans qui bâtissent, les vagabonds.
+#[cfg(test)]
+mod camp_tests {
+    use super::*;
+    use crate::building::SiteState;
+
+    const P0: PlayerId = PlayerId(0);
+    const KING: CharacterId = CharacterId(0);
+
+    fn camp_game() -> Game {
+        let mut game = Game::new(Scenario::camp(), 1, Config::default());
+        game.apply(Command::Possess { player: P0, character: KING });
+        game
+    }
+
+    fn run(game: &mut Game, seconds: f32) {
+        for _ in 0..(seconds / TICK) as usize {
+            game.step(TICK);
+        }
+    }
+
+    /// Le premier emplacement libre pour un plan de cette forme, en partant du camp et en s'en éloignant.
+    fn spot(game: &Game, kind: PlanKind, w: i32, h: i32, beds: u32, skip: usize) -> (i32, i32) {
+        let camp = game.camp().expect("un camp");
+        let mut found = Vec::new();
+        for y in 2..game.map().height() - 2 {
+            for x in 2..game.map().width() - 2 {
+                if game.check_plan(kind, x, y, w, h, beds).is_ok() {
+                    found.push((x, y));
+                }
+            }
+        }
+        let dist = |&(x, y): &(i32, i32)| (x - camp.x).pow(2) + (y - camp.y).pow(2);
+        found.retain(|p| dist(p) > 120); // loin de la place du camp, où le roi et les artisans se promènent
+        found.sort_by_key(|p| (dist(p), p.1, p.0));
+        found[skip]
+    }
+
+    fn place(game: &mut Game, kind: PlanKind, x: i32, y: i32, w: i32, h: i32, beds: u32) {
+        game.apply(Command::PlacePlan { player: P0, kind, x, y, w, h, beds });
+    }
+
+    fn place_min(game: &mut Game, kind: PlanKind, skip: usize) -> usize {
+        let (w, h) = kind.min_size();
+        let beds = kind.min_beds();
+        let (x, y) = spot(game, kind, w, h, beds, skip);
+        let before = game.sites().len();
+        place(game, kind, x, y, w, h, beds);
+        assert_eq!(game.sites().len(), before + 1, "le plan aurait dû être posé en ({x}, {y})");
+        before
+    }
+
+    /// Fait tourner la partie jusqu'à ce que `done` soit vrai ; panique au-delà de `max_secs`.
+    fn run_until(game: &mut Game, max_secs: f32, done: impl Fn(&Game) -> bool) -> f32 {
+        for n in 0..(max_secs / TICK) as u32 {
+            if done(game) {
+                return n as f32 * TICK;
+            }
+            game.step(TICK);
+        }
+        panic!("condition jamais atteinte en {max_secs} s");
+    }
+
+    // ------------------------------------------------------------ le départ
+
+    #[test]
+    fn the_camp_starts_with_a_king_two_artisans_three_beds_and_an_empty_map() {
+        let game = camp_game();
+        let roles: Vec<Role> = game.characters().iter().map(|c| c.role).collect();
+        assert_eq!(roles, vec![Role::King, Role::Artisan, Role::Artisan]);
+        let beds = game.map().find_tiles(Tile::Bed);
+        assert_eq!(beds.len(), 3, "trois lits au camp");
+        for c in game.characters() {
+            assert!(beds.contains(&c.home), "{} dort au camp", c.name);
+        }
+        assert_eq!(game.map().find_tiles(Tile::Campfire).len(), 1, "un feu de camp");
+        assert!(game.habitats().is_empty() && game.buildings().is_empty() && game.sites().is_empty());
+        assert_eq!(game.map().find_tiles(Tile::Wall).len(), 0, "aucun bâtiment");
+        assert_eq!(game.free_places(), 0);
+    }
+
+    #[test]
+    fn nature_is_there_from_the_start() {
+        let game = camp_game();
+        assert!(!game.map().find_tiles(Tile::Water).is_empty());
+        assert!(!game.map().find_tiles(Tile::Tree).is_empty());
+        assert!(!game.veins().is_empty());
+        assert!(game.forests().len() >= 2);
+        assert!(game.forests().iter().all(|f| !f.trees(game.map()).is_empty()));
+    }
+
+    #[test]
+    fn the_starting_stock_is_in_the_camp_chest_and_nowhere_else() {
+        let game = camp_game();
+        let cfg = game.config();
+        assert_eq!(game.containers().len(), 1, "un seul coffre, pas d'entrepôt");
+        let chest = &game.containers()[0];
+        assert_eq!(chest.kind, ContainerKind::Camp);
+        assert_eq!(chest.capacity(), cfg.camp_capacity);
+        assert_eq!(
+            (chest.get(Resource::Wood), chest.get(Resource::Stone), chest.get(Resource::Seeds)),
+            (cfg.starting_wood, cfg.starting_stone, cfg.starting_seeds)
+        );
+        assert_eq!(game.stock().get(Resource::Wood), cfg.starting_wood);
+        assert!(cfg.starting_wood <= cfg.camp_capacity, "le pécule tient dans le coffre");
+    }
+
+    #[test]
+    fn the_camp_chest_holds_any_resource_up_to_its_capacity() {
+        let mut game = camp_game();
+        let chest = &mut game.containers[0];
+        assert!(chest.accepts(Resource::Wheat) && chest.accepts(Resource::Iron) && chest.accepts(Resource::Wood));
+        assert_eq!(chest.add(Resource::Wheat, 150), 100, "100 au plus de chaque ressource");
+    }
+
+    #[test]
+    fn everything_at_the_camp_is_reachable_on_foot() {
+        let game = camp_game();
+        let camp = game.camp().unwrap();
+        assert!(!game.map().get(camp).is_solid());
+        for c in game.characters() {
+            assert!(game.map().find_path(camp, c.tile()).len() > 0 || c.tile() == camp, "{} est coincé", c.name);
+        }
+    }
+
+    // ------------------------------------------------------------ poser un plan
+
+    #[test]
+    fn only_a_possessed_king_can_place_a_plan() {
+        let mut game = camp_game();
+        let (x, y) = spot(&game, PlanKind::House, 6, 5, 1, 0);
+        game.apply(Command::ToggleIdle { player: P0 }); // plus personne d'incarné
+        place(&mut game, PlanKind::House, x, y, 6, 5, 1);
+        assert!(game.sites().is_empty(), "personne n'incarne le roi");
+        game.apply(Command::Possess { player: P0, character: CharacterId(1) }); // un artisan
+        place(&mut game, PlanKind::House, x, y, 6, 5, 1);
+        assert!(game.sites().is_empty(), "un artisan n'est pas le roi");
+        game.apply(Command::Possess { player: P0, character: KING });
+        place(&mut game, PlanKind::House, x, y, 6, 5, 1);
+        assert_eq!(game.sites().len(), 1);
+    }
+
+    #[test]
+    fn a_placed_plan_puts_solid_foundations_on_the_map() {
+        let mut game = camp_game();
+        let (x, y) = spot(&game, PlanKind::House, 6, 5, 1, 0);
+        place(&mut game, PlanKind::House, x, y, 6, 5, 1);
+        let site = &game.sites()[0];
+        assert_eq!(site.state, SiteState::Waiting);
+        for yy in y..y + 5 {
+            for xx in x..x + 6 {
+                let t = TilePos::new(xx, yy);
+                assert_eq!(game.map().get(t), Tile::Foundation, "{t:?}");
+                assert!(game.map().get(t).is_solid(), "les fondations bloquent le passage");
+            }
+        }
+        // et on ne peut pas poser un autre plan dessus
+        assert_eq!(game.check_plan(PlanKind::House, x + 2, y, 6, 5, 1), Err(PlanError::Blocked));
+    }
+
+    #[test]
+    fn a_plan_that_does_not_fit_is_not_placed() {
+        let mut game = camp_game();
+        place(&mut game, PlanKind::House, 20, 10, 5, 5, 1); // trop petite
+        place(&mut game, PlanKind::House, 0, 0, 6, 5, 1); // dans l'eau du bord
+        assert!(game.sites().is_empty());
+    }
+
+    #[test]
+    fn a_plan_placed_without_the_resources_is_accepted_but_waits() {
+        // un pécule trop maigre pour la plus petite maison
+        let mut game = Game::new(Scenario::camp(), 1, Config { starting_wood: 10, ..Config::default() });
+        game.apply(Command::Possess { player: P0, character: KING });
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(&game, PlanKind::House, w, h, 1, 0);
+        let cost = game.plan_cost(PlanKind::House, w, h, 1);
+        assert!(!game.can_afford(cost), "{cost:?} dépasse le pécule");
+        place(&mut game, PlanKind::House, x, y, w, h, 1);
+        assert_eq!(game.sites().len(), 1, "on peut quand même poser le plan");
+        run(&mut game, 30.0);
+        let site = &game.sites()[0];
+        assert_eq!(site.state, SiteState::Waiting, "le chantier ne commence pas sans toutes les ressources");
+        assert!(site.pile.is_none());
+        assert_eq!(game.stock().get(Resource::Wood), 10, "rien n'a été pris");
+        // les fondations bloquent quand même le passage
+        assert_eq!(game.map().get(TilePos::new(x + 1, y + 1)), Tile::Foundation);
+    }
+
+    #[test]
+    fn affordability_follows_the_stock() {
+        let game = camp_game();
+        let cheap = game.plan_cost(PlanKind::House, 6, 5, 1);
+        assert!(game.can_afford(cheap));
+        assert!(!game.can_afford(Cost { wood: game.config().starting_wood + 1, stone: 0 }));
+        assert!(!game.can_afford(Cost { wood: 0, stone: game.config().starting_stone + 1 }));
+    }
+
+    // ------------------------------------------------------------ le chantier
+
+    #[test]
+    fn a_house_is_delivered_then_built_then_becomes_a_habitat_with_a_free_bed() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        let cost = game.sites()[i].cost;
+        let start_wood = game.stock().get(Resource::Wood);
+
+        // d'abord les matériaux sont apportés devant le chantier
+        run_until(&mut game, 60.0, |g| g.sites()[i].state == SiteState::Delivering);
+        let pile = game.sites()[i].pile.expect("un tas devant le chantier");
+        assert_eq!(game.map().get(game.sites()[i].pile_tile()), Tile::Crate);
+        // le chantier ne passe en construction que lorsque tout est là
+        run_until(&mut game, 120.0, |g| g.sites()[i].state == SiteState::Building);
+        assert!(game.containers()[pile].is_complete(), "tout le matériel est devant le chantier");
+        assert_eq!(game.containers()[pile].get(Resource::Wood), cost.wood);
+        assert_eq!(game.containers()[pile].get(Resource::Stone), cost.stone);
+
+        run_until(&mut game, 300.0, |g| g.sites()[i].state == SiteState::Done);
+        assert_eq!(game.habitats().len(), 1, "la maison est un habitat");
+        assert_eq!(game.free_places(), 1, "avec une place libre : un lit");
+        assert!(game.can_hire());
+        assert_eq!(game.stock().get(Resource::Wood), start_wood - cost.wood, "les matériaux sont consommés");
+        assert_eq!(game.stock().get(Resource::Stone), game.config().starting_stone - cost.stone);
+        // le bâtiment a pris la place des fondations
+        let s = &game.sites()[i];
+        assert!(game.map().find_tiles(Tile::Foundation).is_empty());
+        assert_eq!(game.map().get(TilePos::new(s.x, s.y)), Tile::Wall);
+        assert_eq!(game.map().get(s.door()), Tile::Floor, "la porte est ouverte");
+        assert!(matches!(game.map().get(s.pile_tile()), Tile::Grass | Tile::Path), "le tas est consommé");
+    }
+
+    #[test]
+    fn the_artisans_build_together_and_always_build_first() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        run_until(&mut game, 120.0, |g| g.sites()[i].state == SiteState::Building);
+        run(&mut game, 8.0);
+        let builders = game.characters().iter().filter(|c| c.role == Role::Artisan && c.work.map_or(false, |w| w.kind == WorkKind::Build)).count();
+        assert_eq!(builders, 2, "les deux artisans construisent");
+        // les artisans construisent depuis l'extérieur
+        for c in game.characters().iter().filter(|c| c.role == Role::Artisan) {
+            assert!(!game.sites()[i].contains(c.tile()), "{} est dans les fondations", c.name);
+        }
+        let mid = game.sites()[i].progress;
+        assert!(mid > 0.0 && mid < 1.0);
+    }
+
+    #[test]
+    fn two_artisans_build_twice_as_fast_as_one() {
+        let time_with = |artisans: usize| {
+            let mut scenario = Scenario::camp();
+            scenario.characters.truncate(1 + artisans);
+            let mut game = Game::new(scenario, 1, Config::default());
+            game.apply(Command::Possess { player: P0, character: KING });
+            let i = place_min(&mut game, PlanKind::House, 0);
+            let start = run_until(&mut game, 120.0, |g| g.sites()[i].state == SiteState::Building);
+            let end = run_until(&mut game, 600.0, |g| g.sites()[i].state == SiteState::Done);
+            end - start
+        };
+        let (one, two) = (time_with(1), time_with(2));
+        assert!((1.7..2.3).contains(&(one / two)), "un artisan : {one:.1} s, deux : {two:.1} s");
+    }
+
+    #[test]
+    fn the_build_time_grows_with_the_surface_and_depends_on_the_kind() {
+        let total = |kind: PlanKind, extra_w: i32| {
+            let (w, h) = kind.min_size();
+            let game = camp_game();
+            game.plan_secs(kind, w + extra_w, h, kind.min_beds())
+        };
+        assert!(total(PlanKind::House, 4) > total(PlanKind::House, 0));
+        assert!(total(PlanKind::Warehouse, 4) > total(PlanKind::Warehouse, 0));
+        // la durée réelle suit : une plus grande maison met plus de temps à construire
+        let built_in = |extra_w: i32| {
+            let mut game = camp_game();
+            let (w, h) = (6 + extra_w, 5);
+            let (x, y) = spot(&game, PlanKind::House, w, h, 1, 0);
+            place(&mut game, PlanKind::House, x, y, w, h, 1);
+            let start = run_until(&mut game, 200.0, |g| g.sites()[0].state == SiteState::Building);
+            run_until(&mut game, 900.0, |g| g.sites()[0].state == SiteState::Done) - start
+        };
+        let (small, big) = (built_in(0), built_in(6));
+        assert!(big > small * 1.5, "6x5 : {small:.1} s, 12x5 : {big:.1} s");
+    }
+
+    #[test]
+    fn a_road_to_the_camp_appears_when_the_building_is_finished_not_before() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        let front = game.sites()[i].front();
+        let camp = game.camp().unwrap();
+        let grass_on_way = |g: &Game| {
+            g.map().find_path_mode(front, camp, PathMode::Roads(g.config().grass_cost)).iter().filter(|t| g.map().get(**t) == Tile::Grass).count()
+        };
+        assert!(grass_on_way(&game) > 0, "il y a de l'herbe entre le chantier et le camp");
+        run_until(&mut game, 120.0, |g| g.sites()[i].state == SiteState::Building);
+        run(&mut game, 5.0);
+        assert!(game.sites()[i].progress < 1.0);
+        assert_eq!(game.map().get(front), Tile::Grass, "pas de route pendant la construction");
+        run_until(&mut game, 300.0, |g| g.sites()[i].state == SiteState::Done);
+        assert_eq!(grass_on_way(&game), 0, "la route mène au camp");
+        assert_eq!(game.map().get(front), Tile::Path);
+        // la route se suit par les côtés : aucun pas en diagonale sans case de route à côté (pas de creux dans les angles)
+        let is_path = |t: TilePos| game.map().get(t) == Tile::Path;
+        let steps = game.map().find_path_mode(front, camp, PathMode::Roads(game.config().grass_cost));
+        let mut prev = front;
+        for t in steps {
+            if t.x != prev.x && t.y != prev.y {
+                assert!(
+                    is_path(TilePos::new(t.x, prev.y)) || is_path(TilePos::new(prev.x, t.y)),
+                    "creux en diagonale entre {prev:?} et {t:?}"
+                );
+            }
+            prev = t;
+        }
+    }
+
+    #[test]
+    fn the_pile_spot_gives_back_the_path_it_was_laid_on() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        let pile = game.sites()[i].pile_tile();
+        game.map.set(pile, Tile::Path); // un chemin passait là avant le tas
+        run_until(&mut game, 120.0, |g| g.sites()[i].state == SiteState::Delivering);
+        assert_eq!(game.map().get(pile), Tile::Crate);
+        run_until(&mut game, 300.0, |g| g.sites()[i].state == SiteState::Done);
+        assert_eq!(game.map().get(pile), Tile::Path, "le chemin n'est pas effacé par la fin du chantier");
+    }
+
+    #[test]
+    fn a_warehouse_replaces_the_pile_with_a_big_empty_chest() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::Warehouse, 0);
+        run_until(&mut game, 500.0, |g| g.sites()[i].state == SiteState::Done);
+        assert_eq!(game.buildings().len(), 1);
+        assert_eq!(game.buildings()[0].kind, PlanKind::Warehouse);
+        let depots: Vec<&Container> = game.containers().iter().filter(|c| c.kind == ContainerKind::Depot).collect();
+        assert_eq!(depots.len(), 1);
+        assert_eq!(depots[0].capacity(), game.config().warehouse_capacity);
+        assert!(game.config().warehouse_capacity > game.config().camp_capacity, "l'entrepôt contient beaucoup plus");
+        assert_eq!(depots[0].get(Resource::Wood), 0, "les matériaux livrés sont consommés");
+        // les décors solides sont posés dans l'entrepôt, et on entre par la porte
+        for t in game.buildings()[0].decor_tiles() {
+            assert_eq!(game.map().get(t), Tile::Furniture);
+        }
+        let b = game.buildings()[0];
+        assert!(!game.map().find_path(b.front(), TilePos::new(b.x + b.w / 2, b.y + b.h - 2)).is_empty());
+    }
+
+    #[test]
+    fn a_tavern_is_a_building_with_tables() {
+        let mut game = camp_game();
+        let mut cfg = Config::default();
+        cfg.starting_wood = 100;
+        cfg.camp_capacity = 100;
+        let (w, h) = PlanKind::Tavern.min_size();
+        let cost = game.plan_cost(PlanKind::Tavern, w, h, 0);
+        if !game.can_afford(cost) {
+            game = Game::new(Scenario::camp(), 1, Config { starting_wood: 100, starting_stone: 100, ..cfg });
+            game.apply(Command::Possess { player: P0, character: KING });
+        }
+        let i = place_min(&mut game, PlanKind::Tavern, 0);
+        run_until(&mut game, 900.0, |g| g.sites()[i].state == SiteState::Done);
+        assert_eq!(game.buildings()[0].kind, PlanKind::Tavern);
+        assert_eq!(game.free_places(), 0, "une taverne n'est pas un habitat");
+    }
+
+    #[test]
+    fn a_waiting_site_starts_as_soon_as_the_resources_are_there_and_in_order() {
+        let mut game = camp_game();
+        // deux maisons : les deux tiennent dans le pécule
+        let a = place_min(&mut game, PlanKind::House, 0);
+        let b = place_min(&mut game, PlanKind::House, 40);
+        run(&mut game, 1.0);
+        assert!(game.sites()[a].state != SiteState::Waiting && game.sites()[b].state != SiteState::Waiting);
+        // les artisans construisent le premier posé d'abord
+        run_until(&mut game, 200.0, |g| g.sites().iter().any(|s| s.state == SiteState::Building));
+        assert_eq!(game.sites()[a].state, SiteState::Building, "dans l'ordre des placements");
+    }
+
+    #[test]
+    fn resources_promised_to_one_site_are_not_promised_to_another() {
+        let mut game = camp_game();
+        // deux plans qui, ensemble, dépassent le pécule de bois, mais chacun y tient
+        let (w, h) = (14, 8);
+        let one = game.plan_cost(PlanKind::House, w, h, 1);
+        assert!(game.can_afford(one));
+        assert!(!game.can_afford(Cost { wood: one.wood * 2, stone: one.stone * 2 }), "{one:?} x2 dépasse le pécule");
+        let (x, y) = spot(&game, PlanKind::House, w, h, 1, 0);
+        place(&mut game, PlanKind::House, x, y, w, h, 1);
+        let (x2, y2) = spot(&game, PlanKind::House, w, h, 1, 0);
+        place(&mut game, PlanKind::House, x2, y2, w, h, 1);
+        assert_eq!(game.sites().len(), 2);
+        run(&mut game, 15.0);
+        // un seul des deux démarre (selon que quelqu'un se tient sur l'emplacement du tas ou non), l'autre attend :
+        // le bois et la pierre promis au premier ne sont plus disponibles
+        let waiting: Vec<&Site> = game.sites().iter().filter(|s| s.state == SiteState::Waiting).collect();
+        assert_eq!(waiting.len(), 1, "un chantier démarre, l'autre attend");
+        assert!(!game.can_afford(waiting[0].cost), "le matériel est promis à l'autre chantier");
+    }
+
+    #[test]
+    fn an_artisan_without_a_site_to_build_carries_materials() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        run_until(&mut game, 60.0, |g| g.characters().iter().any(|c| c.role == Role::Artisan && c.cargo.is_some()));
+        assert_ne!(game.sites()[i].state, SiteState::Building, "ils portent avant de construire");
+    }
+
+    #[test]
+    fn a_player_artisan_can_build_by_facing_the_foundations() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        run_until(&mut game, 120.0, |g| g.sites()[i].state == SiteState::Building);
+        let site = game.sites()[i].clone();
+        game.apply(Command::ToggleIdle { player: P0 });
+        game.apply(Command::Possess { player: P0, character: CharacterId(1) });
+        // l'artisan se tient juste au-dessus des fondations, tourné vers elles
+        let c = &mut game.characters[1];
+        c.cancel_work();
+        c.pos = TilePos::new(site.x + 2, site.y - 1).center();
+        c.facing = Facing::Down;
+        assert_eq!(game.available_work(CharacterId(1)), Some((WorkKind::Build, TilePos::new(site.x + 2, site.y))));
+        game.apply(Command::Interact { player: P0 });
+        let work = game.characters()[1].work.expect("il construit");
+        assert_eq!(work.kind, WorkKind::Build);
+        assert!((work.secs - site.total_secs).abs() < 0.01);
+    }
+
+    #[test]
+    fn someone_standing_on_the_pile_spot_is_pushed_aside_so_the_site_still_starts() {
+        let mut game = camp_game();
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(&game, PlanKind::House, w, h, 1, 0);
+        place(&mut game, PlanKind::House, x, y, w, h, 1);
+        let pile_tile = game.sites()[0].pile_tile();
+        // un artisan se tient exactement sur la case du futur tas, et ne bouge plus (il dort debout, en quelque sorte)
+        game.characters[1].pos = pile_tile.center();
+        game.characters[1].stand_still_for_test(1000.0);
+        run(&mut game, 3.0);
+        assert_ne!(game.sites()[0].state, SiteState::Waiting, "le chantier démarre malgré lui");
+        assert_ne!(game.characters()[1].tile(), pile_tile, "on l'a écarté");
+        assert!(!game.map().get(game.characters()[1].tile()).is_solid());
+        assert_eq!(game.map().get(pile_tile), Tile::Crate);
+    }
+
+    #[test]
+    fn a_player_character_on_the_pile_spot_is_not_moved() {
+        let mut game = camp_game();
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(&game, PlanKind::House, w, h, 1, 0);
+        place(&mut game, PlanKind::House, x, y, w, h, 1);
+        let pile_tile = game.sites()[0].pile_tile();
+        game.characters[0].pos = pile_tile.center(); // le roi, incarné
+        run(&mut game, 3.0);
+        assert_eq!(game.characters()[0].tile(), pile_tile, "le joueur bouge quand il veut");
+        assert_eq!(game.sites()[0].state, SiteState::Waiting, "le chantier attend");
+        game.apply(Command::Move { player: P0, dir: Vec2::new(0.0, 1.0) });
+        run(&mut game, 2.0);
+        assert_ne!(game.sites()[0].state, SiteState::Waiting, "il s'est écarté : le chantier démarre");
+    }
+
+    #[test]
+    fn a_character_is_not_allowed_inside_foundations() {
+        let mut game = camp_game();
+        // le roi se tient dans l'emprise : le plan est refusé
+        let (x, y) = spot(&game, PlanKind::House, 6, 5, 1, 0);
+        game.characters[0].pos = TilePos::new(x + 2, y + 2).center();
+        assert_eq!(game.check_plan(PlanKind::House, x, y, 6, 5, 1), Err(PlanError::Occupied));
+    }
+
+    #[test]
+    fn foundations_block_walking() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        let s = game.sites()[i].clone();
+        let across = game.map().find_path(TilePos::new(s.x + 2, s.y - 1), TilePos::new(s.x + 2, s.y + s.h));
+        let straight = (s.h + 1) as usize;
+        assert!(across.is_empty() || across.len() > straight, "on contourne les fondations");
+        assert!(game.map().find_path(TilePos::new(s.x + 2, s.y - 1), TilePos::new(s.x + 2, s.y + 1)).is_empty(), "on ne rentre pas dedans");
+    }
+
+    // ------------------------------------------------------------ les vagabonds
+
+    #[test]
+    fn vagabonds_pass_by_the_camp_and_leave() {
+        let cfg = Config { vagabond_first_hours: 0.5, vagabond_every_hours: 1.0, vagabond_stay_hours: 1.0, ..Config::default() };
+        let mut game = Game::new(Scenario::camp(), 1, cfg);
+        run_until(&mut game, 120.0, |g| g.characters().iter().any(|c| c.role == Role::Vagabond));
+        let id = game.characters().iter().position(|c| c.role == Role::Vagabond).unwrap();
+        let v = &game.characters()[id];
+        assert!(game.map().get(v.tile()) != Tile::Water && !game.map().get(v.tile()).is_solid(), "il arrive par un bord praticable");
+        assert!(v.name.starts_with("Vagabond"));
+        // il se promène : il bouge
+        let start = game.characters()[id].pos;
+        run(&mut game, 15.0);
+        assert!(game.characters()[id].pos.distance(start) > 1.0 || game.characters()[id].gone);
+        // puis il repart
+        run_until(&mut game, 400.0, |g| g.characters()[id].gone);
+    }
+
+    #[test]
+    fn vagabonds_do_not_need_a_bed_and_never_sleep() {
+        let cfg = Config { vagabond_first_hours: 0.1, vagabond_stay_hours: 100.0, ..Config::default() };
+        let mut game = Game::new(Scenario::camp(), 1, cfg);
+        run_until(&mut game, 60.0, |g| g.characters().iter().any(|c| c.role == Role::Vagabond));
+        run(&mut game, 700.0); // une journée entière, nuit comprise
+        let id = game.characters().iter().position(|c| c.role == Role::Vagabond).unwrap();
+        assert!(!game.characters()[id].asleep);
+        assert_eq!(game.free_places(), 0);
+    }
+
+    #[test]
+    fn no_more_vagabonds_than_the_limit_are_around_at_once() {
+        let cfg = Config { vagabond_first_hours: 0.1, vagabond_every_hours: 0.2, vagabond_stay_hours: 1000.0, vagabond_max: 2, ..Config::default() };
+        let mut game = Game::new(Scenario::camp(), 1, cfg);
+        run(&mut game, 200.0);
+        let around = game.characters().iter().filter(|c| c.role == Role::Vagabond && !c.gone).count();
+        assert_eq!(around, 2);
+    }
+
+    #[test]
+    fn the_village_has_no_vagabonds_and_no_camp() {
+        let mut game = Game::new(Scenario::village(), 1, Config::default());
+        assert!(game.camp().is_none());
+        run(&mut game, 120.0);
+        assert!(game.characters().iter().all(|c| c.role != Role::Vagabond));
+    }
+
+    #[test]
+    fn a_day_at_the_camp_is_stable_the_artisans_sleep_in_their_beds() {
+        let mut game = camp_game();
+        run(&mut game, 700.0);
+        for c in game.characters() {
+            assert!(c.asleep || game.clock().hour() < 20.0, "{} devrait dormir la nuit", c.name);
+        }
     }
 }

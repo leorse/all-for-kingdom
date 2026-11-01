@@ -4,6 +4,7 @@
 //! Il ne sait rien de l'affichage, des touches du clavier, du son ou du réseau.
 //! Un frontend (voir `afk-game`) lit son état et lui envoie des [`Command`].
 
+pub mod building;
 pub mod character;
 pub mod clock;
 pub mod config;
@@ -21,6 +22,7 @@ pub mod rng;
 pub mod scenario;
 pub mod work;
 
+pub use building::{check_plan, plan_build_secs, plan_cost, Building, Cost, PlanError, PlanKind, Site, SiteState};
 pub use character::{Activity, Character, Facing, Role};
 pub use clock::Clock;
 pub use config::Config;

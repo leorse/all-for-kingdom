@@ -17,7 +17,7 @@ sources:
 
 ## Aujourd'hui — en place
 
-Le royaume a sept ressources. Elles vivent dans des **coffres** (un par lieu de travail, plafonnés à 200 de chaque ressource) ; les compteurs affichés en haut à droite de l'écran en sont le **total**.
+Le royaume a huit ressources (blé, graines, bois, fer, cuivre, or, pierre, outils). Elles vivent dans des **coffres** (un par lieu de travail, plafonnés à 200 de chaque ressource) ; les compteurs affichés en haut à droite de l'écran en sont le **total**.
 
 | Ressource | D'où elle vient | À quoi elle sert |
 |---|---|---|
@@ -43,9 +43,25 @@ Le [mineur](/metiers/mineur.md) apporte quatre minerais, un par nature de filon 
 - **pierre** : sert à construire (voir plus bas) ;
 - **cuivre** : usage à définir.
 
+## En place : le coffre du camp, l'entrepôt et les tas de chantier
+
+- Au départ (`Scenario::camp`), le **pécule** (bois, pierre, graines) est dans le **coffre du camp**, qui contient toutes les ressources, **100 de chacune au plus**. Les graines n'ont pas encore de consommateur.
+- Un **entrepôt** bâti par le roi a un coffre beaucoup plus grand (`warehouse_capacity`).
+- Les matériaux d'un chantier sont posés dans un **tas** devant lui, qui n'accepte que ce qu'il lui faut. Le bois et la pierre qui y sont déposés sont consommés à la fin de la construction. Voir [construction.md](/regles/construction.md).
+
+## Décidé : le départ avec un pécule, sans entrepôt
+
+La partie commence avec un **petit pécule** (bois, pierre, graines… à préciser) et **pas d'entrepôt** : les ressources sont **dans des coffres, et c'est tout**. Le **nombre de ressources** du jeu n'est pas arrêté : il se déduit des besoins des bâtiments. Voir [depart-et-camp.md](/regles/depart-et-camp.md).
+
+## Décidé : le coffre du camp et l'entrepôt
+
+- Le **coffre du camp** peut contenir **toutes les ressources** (bois, blé, pierre…), pas un seul matériau, avec une limite de **100 éléments** (par ressource ou au total : à trancher, les coffres actuels sont à 200 de chaque ressource).
+- Le **joueur a intérêt à construire un entrepôt dès les premières minutes** : il contient **beaucoup plus**. Voir [depart-et-camp.md](/regles/depart-et-camp.md).
+- Le **chantier d'un plan ne démarre que si toutes les ressources sont disponibles** (voir [construction.md](/regles/construction.md)).
+
 ## Décidé : la construction consomme du bois et de la pierre
 
-Un nouveau besoin apparaît : les chantiers de l'[artisan](/metiers/artisan.md).
+Un nouveau besoin apparaît : les chantiers de l'[artisan](/metiers/artisan.md). Le coût d'un plan dépend de sa forme et des assets qu'il comprend (voir [batiments.md](/regles/batiments.md)), et les matériaux sont déposés devant les fondations par les transporteurs (voir [construction.md](/regles/construction.md)).
 
 - **Bois** : produit par le [bûcheron](/metiers/bucheron.md).
 - **Pierre** : un minerai de plus, extrait par le [mineur](/metiers/mineur.md).
@@ -75,6 +91,11 @@ C'est un point essentiel : produire sans limite n'a plus de sens. Il faut équil
 La capacité d'un stock peut grandir grâce aux améliorations de la maison (voir [habitat.md](/regles/habitat.md)).
 
 ## À définir
+
+- La **capacité de l'entrepôt** et celle du coffre du camp (100 par ressource, ou au total ?).
+
+- La **composition du pécule** de départ et ce qu'il permet de construire (en place : de quoi bâtir un entrepôt et deux maisons, mais aucun producteur de bois ou de pierre n'est constructible).
+- Le **stock de chantier** : où sont posés les matériaux livrés devant les fondations, et que devient le surplus ?
 
 - La **capacité** de chaque stock.
 - Le **compteur global** affiché à l'écran disparaît-il, ou reste-t-il comme total des stocks du royaume ? (Le transport est confié aux transporteurs, voir [transporteur.md](/metiers/transporteur.md).)

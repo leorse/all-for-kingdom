@@ -54,7 +54,7 @@ fn priority(kind: WorkKind) -> u8 {
         WorkKind::Harvest => 0,
         WorkKind::Plant => 1,
         WorkKind::Till => 2,
-        WorkKind::Forge | WorkKind::Mine | WorkKind::Chop => 3, // pas un travail de ferme : n'arrive jamais ici
+        WorkKind::Forge | WorkKind::Mine | WorkKind::Chop | WorkKind::Build => 3, // pas un travail de ferme : n'arrive jamais ici
     }
 }
 

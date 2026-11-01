@@ -1,7 +1,7 @@
 ---
 type: Règle
 title: La maison et son entrepôt
-description: Maisons : trois classes de taille, lits et places, coffres au lieu d'extraction, améliorations décidées, aspect en coupe.
+description: Maisons : trois classes de taille fixe en place (à remplacer par des bâtiments composables), lits et places, coffres au lieu d'extraction, améliorations décidées, aspect en coupe.
 etat_en_jeu: en place + décidé
 tags: [regle, habitat]
 sources:
@@ -44,6 +44,14 @@ Tout bâtiment où l'on dort (sauf le château) est un **habitat** de l'une de c
 - Un habitat pourra être **agrandi** (petite → moyenne → grande), mais seulement si l'espace autour est libre : l'emprise de la classe suivante, depuis le même coin haut-gauche, ne doit couvrir que de l'herbe ou des chemins (un arbre, de l'eau, un mur, un coffre, un champ ou un filon l'interdit). Le jeu sait vérifier cette place ; **l'action d'agrandir n'existe pas encore**.
 - Quand le **roi** posera un nouvel habitat, ce sera le logement d'un nouvel arrivant (pas encore dans le jeu, comme l'arrivée des vagabonds à la taverne).
 
+## En place : les maisons bâties par le roi
+
+Une maison que le roi fait bâtir est un habitat de **taille libre** (au minimum 6×5), avec le nombre de lits choisi (un par place), une table et un bac d'eau, sans étagère d'office (`HabitatSpec::house`). Elle compte dans les places libres et la règle d'embauche comme les autres. Elle est dessinée comme les maisons du village, avec le nombre de fenêtres de sa classe de référence. Voir [batiments.md](/regles/batiments.md) et [construction.md](/regles/construction.md).
+
+## Décidé : les classes fixes seront remplacées
+
+Les trois classes ci-dessus (celles du village) sont **appelées à disparaître** : un bâtiment aura une taille minimale et des assets obligatoires, avec une taille libre au-dessus (maison minimale : un lit, un bac d'eau, une table), chaque asset ajouté améliorant la vie des occupants, un lit égalant une personne. Voir [batiments.md](/regles/batiments.md). Les meubles et leurs rotations d'aujourd'hui servent de base aux assets. Chaque lit a un propriétaire attribué par le roi ([propriete-et-affectation.md](/regles/propriete-et-affectation.md)).
+
 ## En place : des coffres au lieu d'extraction
 
 Chaque lieu de travail a un **coffre** posé **dehors**, au niveau de l'extraction de la ressource : au pied de chaque filon, en lisière de chaque forêt, à côté du champ du paysan, contre la forge, et à côté de la porte de l'entrepôt central des [transporteurs](/metiers/transporteur.md). La maison reste le lieu où l'on dort ; le stock est dans le coffre. Voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md).
@@ -71,7 +79,7 @@ Les vagabonds arrivent à la [taverne](/metiers/tavernier.md). On ne peut en emb
 
 ## À définir
 
-- Le **coût** des améliorations, et qui paie (le personnage, le roi).
+- Le **coût** des assets et des agrandissements, et qui paie (le personnage, le roi) : voir [batiments.md](/regles/batiments.md).
 - Est-ce que **toutes les maisons** s'améliorent, ou seulement celles des métiers de production ?
 - Comment se combinent le confort, les meubles et les améliorations ?
 

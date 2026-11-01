@@ -21,6 +21,10 @@ generated: { by: claude-code/claude-sonnet-5-5, at: 2026-10-30T12:00:00Z }
 
 Cycle (durée de la journée, heure de départ, aube, crépuscule) ; fatigue (gain actif, gain à l'arrêt, récupération en dormant, seuils d'épuisement et de réveil, portée du lit) ; travail (facteur du joueur, durées de labour, semis, récolte, pousse, gain de blé) ; forge ; mine (coups par qualité, durée d'un coup) ; forêt (durée d'abattage, bûches, repousse) ; contenants et transport (capacité, charge, vitesse des transporteurs, portées à la main) ; déplacements (`grass_cost`).
 
+## Les réglages du départ de partie
+
+Capacité du coffre du camp et pécule (`camp_capacity`, `starting_wood`, `starting_stone`, `starting_seeds`) ; construction : un réglage **par type de plan**, dans l'ordre de `PlanKind::ALL` (maison, entrepôt, taverne) : bois et pierre par tuile, coût des assets de base, durée par tuile, durée des assets, plus le prix et la durée d'un lit en plus et la capacité d'un entrepôt bâti ; vagabonds (délai du premier, intervalle, nombre maximal, durée du séjour). Ce sont des ordres de grandeur à calibrer.
+
 ## Les unités : le piège principal
 
 - **Heures de jeu** : fatigue, sommeil, pousse des cultures, repousse des arbres. Elles suivent la longueur de la journée.

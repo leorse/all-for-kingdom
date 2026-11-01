@@ -75,10 +75,46 @@ pub struct Config {
     pub transport_load: u32,
     /// Vitesse des transporteurs par rapport aux autres personnages (ils courent).
     pub transporter_speed_factor: f32,
+    /// Vitesse du roi quand le joueur l'incarne, par rapport aux autres : il traverse la carte pour placer ses plans.
+    pub king_speed_factor: f32,
     /// Bûches qu'un bûcheron peut porter à la main.
     pub lumberjack_carry: u32,
     /// Blé qu'un paysan peut porter à la main.
     pub farmer_carry: u32,
+
+    // --- le départ de partie (le camp)
+    /// Capacité (par ressource) du coffre du camp de base.
+    pub camp_capacity: u32,
+    /// Le pécule de départ, dans le coffre du camp.
+    pub starting_wood: u32,
+    pub starting_stone: u32,
+    pub starting_seeds: u32,
+
+    // --- construction : un réglage par type de bâtiment, dans l'ordre de `PlanKind::ALL` (maison, entrepôt, taverne)
+    /// Bois et pierre par tuile de surface (murs compris).
+    pub plan_wood_per_tile: [f32; 3],
+    pub plan_stone_per_tile: [f32; 3],
+    /// Ce que coûtent les assets de base, compris dans le prix et posés automatiquement.
+    pub plan_asset_wood: [u32; 3],
+    pub plan_asset_stone: [u32; 3],
+    /// Durée de construction par tuile, pour un artisan en pleine forme (secondes réelles).
+    pub plan_build_secs_per_tile: [f32; 3],
+    /// Durée supplémentaire pour poser les assets de base.
+    pub plan_asset_secs: [f32; 3],
+    /// Un lit de plus dans une maison : bois et durée.
+    pub extra_bed_wood: u32,
+    pub extra_bed_secs: f32,
+    /// Capacité (par ressource) d'un entrepôt bâti par le roi.
+    pub warehouse_capacity: u32,
+
+    // --- les vagabonds
+    /// Heures de jeu avant le premier vagabond, puis entre deux arrivées.
+    pub vagabond_first_hours: f32,
+    pub vagabond_every_hours: f32,
+    /// Combien en même temps, au plus.
+    pub vagabond_max: usize,
+    /// Heures de jeu qu'un vagabond reste dans les parages avant de repartir (quatre fois plus s'il y a une taverne).
+    pub vagabond_stay_hours: f32,
 
     // --- déplacements
     /// Surcoût de l'herbe par rapport à la route pour les trajets ordinaires (la route coûte 1) :
@@ -117,8 +153,26 @@ impl Default for Config {
             container_capacity: 200,
             transport_load: 10,
             transporter_speed_factor: 1.5,
+            king_speed_factor: 1.6,
             lumberjack_carry: 9,
             farmer_carry: 20,
+            camp_capacity: 100,
+            starting_wood: 90,
+            starting_stone: 60,
+            starting_seeds: 12,
+            plan_wood_per_tile: [0.5, 0.4, 0.6],
+            plan_stone_per_tile: [0.2, 0.5, 0.3],
+            plan_asset_wood: [8, 8, 14],
+            plan_asset_stone: [2, 0, 3],
+            plan_build_secs_per_tile: [1.6, 1.2, 2.0],
+            plan_asset_secs: [8.0, 6.0, 12.0],
+            extra_bed_wood: 4,
+            extra_bed_secs: 5.0,
+            warehouse_capacity: 1000,
+            vagabond_first_hours: 2.0,
+            vagabond_every_hours: 5.0,
+            vagabond_max: 3,
+            vagabond_stay_hours: 10.0,
             grass_cost: crate::map::DEFAULT_GRASS_COST,
         }
     }

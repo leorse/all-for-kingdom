@@ -6,6 +6,8 @@ use std::collections::BTreeMap;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Resource {
     Wheat,
+    /// Les graines du pécule de départ. Rien ne les consomme encore : le semis viendra plus tard.
+    Seeds,
     Wood,
     Iron,
     Copper,
@@ -15,8 +17,9 @@ pub enum Resource {
 }
 
 impl Resource {
-    pub const ALL: [Resource; 7] = [
+    pub const ALL: [Resource; 8] = [
         Resource::Wheat,
+        Resource::Seeds,
         Resource::Wood,
         Resource::Iron,
         Resource::Copper,

@@ -23,6 +23,8 @@ pub enum WorkKind {
     Mine,
     /// Donner des coups de hache sur un arbre de forêt (à plusieurs : les coups s'additionnent).
     Chop,
+    /// Construire un chantier (à plusieurs : les artisans additionnent leur travail).
+    Build,
 }
 
 impl WorkKind {
@@ -33,6 +35,7 @@ impl WorkKind {
             WorkKind::Forge => Role::Blacksmith,
             WorkKind::Mine => Role::Miner,
             WorkKind::Chop => Role::Lumberjack,
+            WorkKind::Build => Role::Artisan,
         }
     }
 
@@ -45,6 +48,7 @@ impl WorkKind {
             WorkKind::Forge => cfg.forge_secs,
             WorkKind::Mine => cfg.strike_secs,
             WorkKind::Chop => cfg.chop_secs,
+            WorkKind::Build => 1.0, // la durée d'un chantier est celle de son plan, voir `Site::total_secs`
         }
     }
 }

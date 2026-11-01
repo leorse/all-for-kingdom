@@ -20,7 +20,7 @@ pub struct Input {
     pub wheel: i32,
 }
 
-pub fn poll(player: PlayerId, view: &View, game: &Game) -> Input {
+pub fn poll(player: PlayerId, view: &View, game: &Game, ui_has_mouse: bool) -> Input {
     let mut commands = Vec::new();
 
     // Déplacement : flèches, WASD (QWERTY) ou ZQSD (AZERTY).
@@ -72,7 +72,7 @@ pub fn poll(player: PlayerId, view: &View, game: &Game) -> Input {
     }
 
     // Clic sur un personnage.
-    if is_mouse_button_pressed(MouseButton::Left) {
+    if is_mouse_button_pressed(MouseButton::Left) && !ui_has_mouse {
         if let Some(character) = game.character_at(view.to_world(mouse_position())) {
             commands.push(Command::Possess { player, character });
         }

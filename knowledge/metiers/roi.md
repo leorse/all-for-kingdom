@@ -2,7 +2,7 @@
 type: Métier
 title: Le roi
 description: Le roi : répartit rôles, ressources et territoire. Le métier qui portera le plus de gameplay ; presque tout reste à faire.
-etat_en_jeu: décidé en grande partie
+etat_en_jeu: poser des plans en place ; le reste décidé
 tags: [metier, gouvernance]
 ---
 
@@ -12,7 +12,7 @@ Il dirige le royaume. Son vrai rôle n'existe pas encore : c'est le métier qui 
 
 ## Aujourd'hui — en place
 
-Le roi **se promène dans le château** d'un poste à l'autre et y reste un moment. Il n'a pas de travail. Il dort dans sa chambre, au château, comme tout le monde.
+Au camp de base, le roi se promène autour du feu et dort dans l'un des trois lits. **Incarné, il pose des plans** (et marche plus vite que les autres : `king_speed_factor`) : choisir dans la liste, placer un rectangle, valider (voir [construction.md](/regles/construction.md)). Dans le village (`--village`), il se promène dans le château et peut aussi poser des plans. Quand personne ne l'incarne, il ne pose rien.
 
 ## Le modèle : un roi qui répartit — décidé
 
@@ -34,15 +34,15 @@ Le roi **donne des priorités au forgeron** : quoi fabriquer d'abord (armes, out
 
 Les stocks (minerai, blé, lingots…) devront être gérés. Le roi est le mieux placé pour cela. Voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md).
 
-### Placer des zones — décidé
+### Placer des plans — en place
 
-À terme, la **carte sera vide** et le roi y **place des zones** (champs, habitat, forêt exploitée, mines…), puis un [artisan](/metiers/artisan.md) vient construire, avec du bois et de la pierre. Les **routes se tracent d'elles-mêmes** pour soulager le joueur. Voir [royaume.md](/regles/royaume.md).
+À terme, la **carte sera vide** et la partie commence avec **le roi et deux artisans** (voir [depart-et-camp.md](/regles/depart-et-camp.md)). **Incarner le roi** permet de choisir un **plan dans une liste**, puis de le **placer** : un rectangle en surbrillance qu'on déplace et qu'on agrandit, avec le coût en bois et en pierre qui se recalcule (bleu si le royaume a les ressources, rouge sinon). Une fois validé, des fondations apparaissent, les [transporteurs](/metiers/transporteur.md) livrent les matériaux et les [artisans](/metiers/artisan.md) construisent. Les routes se tracent d'elles-mêmes vers le camp de base. Le temps ne s'arrête jamais pendant qu'on place. Voir [construction.md](/regles/construction.md).
 
 C'est le cœur du gameplay du roi : il décide où et quoi le royaume construit.
 
 ### Affecter les gens — décidé
 
-Des gens arrivent dans la [taverne](/metiers/tavernier.md). Ils ne servent à rien tant qu'ils n'ont pas de rôle : le roi les **affecte** à un métier (paysan, mineur, bûcheron, artisan, transporteur…). Il doit tenir compte de leurs **compétences** : un bon forgeron aux champs est une erreur ([competences.md](/regles/competences.md)). Si tous les lits de la taverne sont pris, plus personne n'arrive : il doit donc la vider.
+Des vagabonds se promènent sur la carte, avec ou sans [taverne](/metiers/tavernier.md). **On n'embauche que s'il y a un lit.** Le roi **attribue ensuite le lit** à une personne embauchée qui n'a pas d'affectation, puis, **depuis un bâtiment de travail** comme une forge, il choisit **quelqu'un qui n'a pas de métier** et l'embauche comme forgeron (ou le métier du bâtiment). Voir [propriete-et-affectation.md](/regles/propriete-et-affectation.md). Il doit tenir compte des **compétences** : un bon forgeron aux champs est une erreur ([competences.md](/regles/competences.md)).
 
 ### Fixer les priorités des ressources — décidé dans le principe
 
@@ -55,5 +55,5 @@ Lever des **taxes** et entretenir gardes et guerriers. Voir l'idée « Économie
 ## À définir
 
 - **Comment exprimer les priorités** de ressources : une liste ordonnée, des curseurs, des quantités à atteindre ?
-- Qu'est-ce que le joueur fait concrètement quand il incarne le roi ? Un menu de décisions, un plan à tracer sur la carte ?
+- Au-delà des plans et des affectations, que fait encore le joueur qui incarne le roi (priorités, finances) ?
 - Les décisions du roi s'appliquent-elles quand personne ne l'incarne (l'IA du roi) ?

@@ -14,6 +14,10 @@ Il tient la taverne. Il n'a pas encore de travail propre, mais la taverne a dés
 
 Il **se promène** dans la taverne d'un poste à l'autre et s'y arrête un moment. Il dort dans sa maison, loin du centre, au sud-est du royaume. On peut l'incarner et marcher, mais il n'a pas d'action à effectuer.
 
+## La taverne bâtie — en place
+
+Le roi peut faire bâtir une **taverne** (voir [construction.md](/regles/construction.md)) : cheminée et tables. Elle **retient les vagabonds** : ils s'y retrouvent à moitié de leurs promenades et restent quatre fois plus longtemps dans les parages (voir [vagabond.md](/metiers/vagabond.md)). Il n'y a pas encore de tavernier pour la tenir, ni d'accueil, de lits ou de profils.
+
 ## Le rôle de la taverne — décidé : accueillir des gens
 
 La taverne **accueille les gens qui arrivent dans le royaume**. Elle est la **porte d'entrée de la population**.
@@ -21,6 +25,10 @@ La taverne **accueille les gens qui arrivent dans le royaume**. Elle est la **po
 - Les arrivants s'y installent. Ils ne servent à rien tant qu'ils n'ont pas de rôle.
 - Le **roi** les **affecte** à un métier. Voir [roi.md](/metiers/roi.md).
 - La taverne a **un nombre de lits**. **Quand tous les lits sont pris, plus personne n'arrive.**
+
+### Sans taverne — décidé
+
+Des **vagabonds se promènent sur la carte sans qu'il y ait de taverne**. La taverne n'est donc pas la seule porte d'entrée de la population : elle les **accueille et les retient** à un endroit. L'embauche d'un vagabond ne dépend que d'un **lit libre** (voir [propriete-et-affectation.md](/regles/propriete-et-affectation.md)).
 
 ### Qui arrive — décidé dans le principe
 
@@ -45,7 +53,8 @@ En **améliorant la taverne**, on obtient **plus de lits**, donc plus de place. 
 ## À définir
 
 - Le **nombre de lits** de départ, et ce que coûte et apporte chaque amélioration.
-- Le **rythme d'arrivée**, et ce qui le fait varier (prospérité, réputation du royaume, améliorations de la taverne).
+- Le **rythme d'arrivée** des vagabonds, avec ou sans taverne, et ce qui le fait varier (prospérité, réputation du royaume, améliorations de la taverne).
+- Ce que **change** la taverne pour le roi, puisqu'on peut embaucher sans elle : confort, nombre, qualité des profils ?
 - Comment sont tirés les **profils** qui arrivent : au hasard, selon le niveau de la taverne, selon ce dont le royaume a besoin ?
 - Les arrivants **dorment** à la taverne, et que consomment-ils (du blé du paysan ?).
 - Un arrivant qui reste trop longtemps **s'en va-t-il** ?

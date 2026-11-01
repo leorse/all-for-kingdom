@@ -25,6 +25,18 @@ sources:
 | Enclume | extra `enclume` de la planche forgeron | Affichée via `draw_extra`. |
 | Étincelles de forge | `draw_forge_sparks` (`render.rs`) | Gerbe de `SPARKS_SECS = 0.35` s à partir de l'image d'impact. Procédural, pas dans la planche. |
 
+## Éléments dessinés avec les primitives de macroquad, au thème médiéval
+
+L'interface du roi et le départ de partie, dessinés en rectangles, cercles et triangles (pas de police ni d'image) :
+
+| Élément | Où | Aspect |
+|---|---|---|
+| Panneau des plans, barre d'information, bandeau de titre, boutons | `theme.rs`, `plan_ui.rs` | Cadre de bois sombre à veines, filet d'or, parchemin patiné, rivets de fer aux angles, bandeau de bois à queues d'aronde, titres dorés. Pictogrammes de maison, d'entrepôt et de taverne. |
+| Rectangle d'un plan | `plan_ui.rs` | Bleu `(70,140,235)` payable, rouge `(220,66,56)` pas assez de ressources, gris `(140,133,122)` hachuré impossible ; quadrillage, porte, case du tas, poignées d'angle. |
+| Feu de camp, couchages | `construction_view.rs` | Cercle de pierres, braises, deux bûches, trois flammes qui dansent ; lueur au sol la nuit. Couchage : paillasse, couverture rouge, oreiller. |
+| Fondations et échafaudage | `construction_view.rs` | Terre damée à planches, bordure de pierre, piquets d'angle et cordeau tant qu'on attend ; poteaux, mur de planches qui se remplit et toit de chaume au dernier moment ; enseigne de parchemin avec l'état et une barre. |
+| Entrepôt et taverne | `habitat_view.rs` (`draw_buildings`) | Murs, sol et fenêtres des habitats ; caisses et tonneaux contre le fond pour l'entrepôt, cheminée et tables pour la taverne. |
+
 ## Éléments encore en ancien style (rectangles de couleur)
 
 | Élément | Où | Aspect actuel |
@@ -50,7 +62,7 @@ Le **château** : il aura son propre fonctionnement. Ne pas le redessiner sans d
 
 ## Métiers existants (`Role`) et planches
 
-Paysan, forgeron, roi, chef de guerre, tavernier, garde, mineur, bûcheron, transporteur. **Seule la planche forgeron existe** (`SHEETS: [SheetSpec; 1]`). Tout autre métier est dessiné en rectangles.
+Paysan, forgeron, roi, chef de guerre, tavernier, garde, mineur, bûcheron, transporteur, artisan, vagabond (artisan `(188,134,70)` et vagabond `(132,120,108)` en rectangles). **Seule la planche forgeron existe** (`SHEETS: [SheetSpec; 1]`). Tout autre métier est dessiné en rectangles.
 
 ## Idées déjà évoquées touchant au visuel ([idées](/idees.md) et [habitat](/regles/habitat.md))
 

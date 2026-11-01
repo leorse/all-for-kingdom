@@ -41,6 +41,10 @@ Personne ne leur dit quoi porter. **Les transporteurs décident eux-mêmes où i
 
 Il arrive que deux métiers aient besoin du même matériau (le fer pour les lingots et pour les armes, le bois pour deux chantiers…). C'est le **roi qui définit les priorités**. Le transporteur les respecte pour arbitrer. Comment le roi les exprime n'est pas encore défini : voir [roi.md](/metiers/roi.md).
 
+### Les chantiers — en place
+
+Quand un plan est validé et que **toutes les ressources sont disponibles**, les transporteurs **déposent les matériaux devant les fondations** ; le chantier commence quand tout est là, et ils **continuent ensuite leur travail habituel** (voir [construction.md](/regles/construction.md)). Au tout début de la partie, il n'y a **pas encore de transporteur** : ce sont les **artisans** qui livrent, car un artisan sans chantier fait le travail d'un transporteur, tout le temps (voir [artisan.md](/metiers/artisan.md)).
+
 ## Ce que ça change dans le jeu
 
 Avant les transporteurs, une ressource apparaissait dans un compteur global dès que le travail était fini (voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md)). Avec eux :
