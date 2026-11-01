@@ -574,7 +574,8 @@ impl Character {
             self.activity = Activity::Idle;
             return;
         }
-        let speed = PLAYER_SPEED * self.speed_factor(env.cfg) * self.efficiency();
+        let king = if self.role == Role::King { env.cfg.king_speed_factor } else { 1.0 };
+        let speed = PLAYER_SPEED * self.speed_factor(env.cfg) * king * self.efficiency();
         self.try_move(dir * (speed * env.dt), env.map);
         self.facing = Facing::from_dir(dir); // même contre un obstacle : on le regarde
         self.activity = Activity::Walking;

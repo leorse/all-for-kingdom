@@ -75,6 +75,8 @@ pub struct Config {
     pub transport_load: u32,
     /// Vitesse des transporteurs par rapport aux autres personnages (ils courent).
     pub transporter_speed_factor: f32,
+    /// Vitesse du roi quand le joueur l'incarne, par rapport aux autres : il traverse la carte pour placer ses plans.
+    pub king_speed_factor: f32,
     /// Bûches qu'un bûcheron peut porter à la main.
     pub lumberjack_carry: u32,
     /// Blé qu'un paysan peut porter à la main.
@@ -151,6 +153,7 @@ impl Default for Config {
             container_capacity: 200,
             transport_load: 10,
             transporter_speed_factor: 1.5,
+            king_speed_factor: 1.6,
             lumberjack_carry: 9,
             farmer_carry: 20,
             camp_capacity: 100,

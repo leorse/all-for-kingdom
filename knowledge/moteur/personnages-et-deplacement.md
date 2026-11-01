@@ -17,7 +17,7 @@ Source : `crates/afk-core/src/character.rs`.
 
 - **Rôles** (`Role`) : `Farmer`, `Blacksmith`, `King`, `Warlord`, `Innkeeper`, `Guard`, `Miner`, `Lumberjack`, `Transporter`, `Artisan`, `Vagabond`. Chaque rôle a une routine d'IA (`farm_routine`, `forge_routine`, `mine_routine`, `chop_routine`, `transport_routine`, `patrol_routine`...). **Il n'y a pas de rôle artisan en jeu** (voir [l'artisan](/metiers/artisan.md)).
 - **Activités** (`Activity`) : `Idle`, `Walking`, `Working`, `Sleeping`. Orientation : `Facing` (Down, Up, Left, Right).
-- **Vitesses** : `PLAYER_SPEED` (joueur) et `AI_SPEED` (IA, deux fois plus lente), en tuiles par seconde ; les transporteurs sont multipliés par `transporter_speed_factor`. Valeurs : voir le fichier.
+- **Vitesses** : `PLAYER_SPEED` (joueur) et `AI_SPEED` (IA, deux fois plus lente), en tuiles par seconde ; les transporteurs sont multipliés par `transporter_speed_factor`, et le roi **incarné** par `king_speed_factor` (il traverse la carte pour poser ses plans ; l'IA du roi garde la vitesse normale). Valeurs : voir le fichier.
 - **Efficacité** (`efficiency()`) : 1 jusqu'à 50 de fatigue, puis décroît linéairement jusqu'à 0,5 à 100. Elle multiplie la vitesse de marche **et** la vitesse de travail.
 - **Le terrain ne ralentit pas** : route ou herbe, même vitesse. Il agit seulement sur le choix du chemin (voir [la carte et les chemins](/moteur/carte-et-chemins.md)). Temps de trajet = longueur réelle du chemin / (vitesse x facteur x efficacité).
 - **Travail** : `WorkKind` (Till, Plant, Harvest, Forge, Mine, Chop...) et `work_secs` donnent les durées ; le joueur avance `player_work_speed` fois plus vite. Un travail progresse de `dt / durée x vitesse x efficacité`.

@@ -789,6 +789,7 @@ impl Game {
             progress: 0.0,
             total_secs: plan_build_secs(kind, w, h, beds, &self.config),
             pile: None,
+            pile_ground: Tile::Grass,
         });
     }
 
@@ -809,6 +810,7 @@ impl Game {
                     if !blocked && self.can_afford(site.cost) {
                         let needs = site.cost.as_needs();
                         self.containers.push(Container::new_site(i, pile_tile, needs));
+                        self.sites[i].pile_ground = if self.map.get(pile_tile) == Tile::Path { Tile::Path } else { Tile::Grass };
                         self.map.set(pile_tile, Tile::Crate);
                         self.sites[i].pile = Some(self.containers.len() - 1);
                         self.sites[i].state = SiteState::Delivering;
@@ -887,7 +889,7 @@ impl Game {
                 self.containers[p].become_depot(self.config.warehouse_capacity);
             } else {
                 self.containers[p].retire();
-                self.map.set(site.pile_tile(), Tile::Grass);
+                self.map.set(site.pile_tile(), site.pile_ground); // le chemin qui passait là reste un chemin
             }
         }
         self.sites[i].state = SiteState::Done;
@@ -895,14 +897,28 @@ impl Game {
     }
 
     /// Trace la route de `from` jusqu'au camp de base : le trajet ordinaire (qui préfère les routes déjà là) dont les
-    /// tuiles d'herbe deviennent des chemins.
+    /// tuiles d'herbe deviennent des chemins. La route est continue par les côtés : un pas en diagonale est complété par
+    /// une case voisine, pour que chaque virage fasse un angle (et non un creux) et que les sprites d'angle s'y raccordent.
     fn lay_road(&mut self, from: TilePos) {
         let Some(camp) = self.camp else { return };
         let path = self.map.find_path_mode(from, camp, PathMode::Roads(self.config.grass_cost));
+        let mut prev = from;
         for t in std::iter::once(from).chain(path) {
+            if t.x != prev.x && t.y != prev.y {
+                let corners = [TilePos::new(t.x, prev.y), TilePos::new(prev.x, t.y)];
+                let is_road = |g: &Game, c: TilePos| g.map.get(c) == Tile::Path;
+                let corner = corners
+                    .into_iter()
+                    .find(|&c| is_road(self, c))
+                    .or_else(|| corners.into_iter().find(|&c| self.map.get(c) == Tile::Grass));
+                if let Some(c) = corner {
+                    self.map.set(c, Tile::Path);
+                }
+            }
             if self.map.get(t) == Tile::Grass {
                 self.map.set(t, Tile::Path);
             }
+            prev = t;
         }
     }
 
@@ -3097,6 +3113,31 @@ mod camp_tests {
         run_until(&mut game, 300.0, |g| g.sites()[i].state == SiteState::Done);
         assert_eq!(grass_on_way(&game), 0, "la route mène au camp");
         assert_eq!(game.map().get(front), Tile::Path);
+        // la route se suit par les côtés : aucun pas en diagonale sans case de route à côté (pas de creux dans les angles)
+        let is_path = |t: TilePos| game.map().get(t) == Tile::Path;
+        let steps = game.map().find_path_mode(front, camp, PathMode::Roads(game.config().grass_cost));
+        let mut prev = front;
+        for t in steps {
+            if t.x != prev.x && t.y != prev.y {
+                assert!(
+                    is_path(TilePos::new(t.x, prev.y)) || is_path(TilePos::new(prev.x, t.y)),
+                    "creux en diagonale entre {prev:?} et {t:?}"
+                );
+            }
+            prev = t;
+        }
+    }
+
+    #[test]
+    fn the_pile_spot_gives_back_the_path_it_was_laid_on() {
+        let mut game = camp_game();
+        let i = place_min(&mut game, PlanKind::House, 0);
+        let pile = game.sites()[i].pile_tile();
+        game.map.set(pile, Tile::Path); // un chemin passait là avant le tas
+        run_until(&mut game, 120.0, |g| g.sites()[i].state == SiteState::Delivering);
+        assert_eq!(game.map().get(pile), Tile::Crate);
+        run_until(&mut game, 300.0, |g| g.sites()[i].state == SiteState::Done);
+        assert_eq!(game.map().get(pile), Tile::Path, "le chemin n'est pas effacé par la fin du chantier");
     }
 
     #[test]

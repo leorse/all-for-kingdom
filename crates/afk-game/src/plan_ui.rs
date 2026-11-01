@@ -16,6 +16,8 @@ use macroquad::prelude::*;
 
 const PANEL_X: f32 = 8.0;
 const PANEL_Y: f32 = 150.0;
+/// Hauteur du panneau réduit : juste l'en-tête et son bouton.
+const COLLAPSED_H: f32 = 46.0;
 const PANEL_W: f32 = 276.0;
 const CARD_H: f32 = 80.0;
 const CARD_GAP: f32 = 6.0;
@@ -39,6 +41,14 @@ pub struct PlanUi {
     message: Option<(String, f32)>,
     escape_used: bool,
     captured: bool,
+    /// Le coin haut-gauche du panneau : on peut le déplacer en tirant son en-tête.
+    panel: (f32, f32),
+    /// Le panneau est réduit à son en-tête.
+    collapsed: bool,
+    /// Le panneau est tenu : écart entre la souris et son coin.
+    drag: Option<(f32, f32)>,
+    /// Où le bouton droit a été enfoncé (un clic bref annule, un glissé tire la carte).
+    right_press: Option<(f32, f32)>,
 }
 
 /// La forme du plan en cours, d'après le mode et la souris : coin haut-gauche et taille.
@@ -57,12 +67,26 @@ fn inside(p: (f32, f32), x: f32, y: f32, w: f32, h: f32) -> bool {
     p.0 >= x && p.0 <= x + w && p.1 >= y && p.1 <= y + h
 }
 
-fn panel_height() -> f32 {
-    HEADER_H + PlanKind::ALL.len() as f32 * (CARD_H + CARD_GAP) + 34.0
+fn panel_height(collapsed: bool) -> f32 {
+    if collapsed {
+        COLLAPSED_H
+    } else {
+        HEADER_H + PlanKind::ALL.len() as f32 * (CARD_H + CARD_GAP) + 34.0
+    }
 }
 
-fn card_rect(i: usize) -> (f32, f32, f32, f32) {
-    (PANEL_X + 16.0, PANEL_Y + HEADER_H + i as f32 * (CARD_H + CARD_GAP), PANEL_W - 32.0, CARD_H)
+fn card_rect(origin: (f32, f32), i: usize) -> (f32, f32, f32, f32) {
+    (origin.0 + 16.0, origin.1 + HEADER_H + i as f32 * (CARD_H + CARD_GAP), PANEL_W - 32.0, CARD_H)
+}
+
+/// Le bouton qui réduit ou rouvre le panneau, à droite de l'en-tête.
+fn toggle_rect(origin: (f32, f32)) -> (f32, f32, f32, f32) {
+    (origin.0 + PANEL_W - 40.0, origin.1 + 18.0, 24.0, 24.0)
+}
+
+/// L'en-tête, par où l'on tire le panneau : le ruban et la bande dessous.
+fn header_rect(origin: (f32, f32)) -> (f32, f32, f32, f32) {
+    (origin.0, origin.1 - 14.0, PANEL_W, HEADER_H + 14.0)
 }
 
 fn bar_origin() -> (f32, f32) {
@@ -75,9 +99,9 @@ fn bed_buttons() -> ((f32, f32, f32, f32), (f32, f32, f32, f32)) {
     ((bx + BAR_W - 214.0, by + 22.0, 28.0, 28.0), (bx + BAR_W - 70.0, by + 22.0, 28.0, 28.0))
 }
 
-fn card_at(mouse: (f32, f32)) -> Option<PlanKind> {
+fn card_at(origin: (f32, f32), mouse: (f32, f32)) -> Option<PlanKind> {
     PlanKind::ALL.iter().enumerate().find(|&(i, _)| {
-        let (x, y, w, h) = card_rect(i);
+        let (x, y, w, h) = card_rect(origin, i);
         inside(mouse, x, y, w, h)
     }).map(|(_, &k)| k)
 }
@@ -94,7 +118,16 @@ fn error_text(e: PlanError) -> &'static str {
 
 impl PlanUi {
     pub fn new() -> PlanUi {
-        PlanUi { mode: Mode::Browse, message: None, escape_used: false, captured: false }
+        PlanUi {
+            mode: Mode::Browse,
+            message: None,
+            escape_used: false,
+            captured: false,
+            panel: (PANEL_X, PANEL_Y),
+            collapsed: false,
+            drag: None,
+            right_press: None,
+        }
     }
 
     /// La souris est-elle prise par l'interface (panneau, barre, ou un plan en cours de placement) ? Alors un clic ne
@@ -159,12 +192,45 @@ impl PlanUi {
 
         let mouse = mouse_position();
         let (bx, by) = bar_origin();
-        let over_panel = inside(mouse, PANEL_X, PANEL_Y, PANEL_W, panel_height());
+        let clicked = is_mouse_button_pressed(MouseButton::Left);
+        let esc = is_key_pressed(KeyCode::Escape);
+
+        // le panneau : réduire, rouvrir, tirer par l'en-tête
+        let toggle = toggle_rect(self.panel);
+        let header = header_rect(self.panel);
+        if clicked && inside(mouse, toggle.0, toggle.1, toggle.2, toggle.3) {
+            self.collapsed = !self.collapsed;
+        } else if clicked && inside(mouse, header.0, header.1, header.2, header.3) {
+            self.drag = Some((mouse.0 - self.panel.0, mouse.1 - self.panel.1));
+        }
+        if !is_mouse_button_down(MouseButton::Left) {
+            self.drag = None;
+        }
+        if let Some((dx, dy)) = self.drag {
+            let h = panel_height(self.collapsed);
+            self.panel = (
+                (mouse.0 - dx).clamp(0.0, (screen_width() - PANEL_W).max(0.0)),
+                (mouse.1 - dy).clamp(14.0, (screen_height() - h).max(14.0)),
+            );
+        }
+        let dragging = self.drag.is_some();
+        let over_panel = dragging || inside(mouse, self.panel.0, self.panel.1 - 14.0, PANEL_W, panel_height(self.collapsed) + 14.0);
         let placing = self.mode != Mode::Browse;
         let over_bar = placing && inside(mouse, bx, by, BAR_W, BAR_H);
         self.captured = over_panel || placing;
-        let clicked = is_mouse_button_pressed(MouseButton::Left);
-        let esc = is_key_pressed(KeyCode::Escape);
+
+        // bouton droit : un clic bref annule (un plan en cours de taille revient au déplacement, puis au panneau) ;
+        // en glissant, il tire la carte et n'annule rien
+        let mut cancel = false;
+        if is_mouse_button_pressed(MouseButton::Right) {
+            self.right_press = Some(mouse);
+        }
+        if is_mouse_button_released(MouseButton::Right) {
+            if let Some(start) = self.right_press.take() {
+                cancel = (mouse.0 - start.0).abs() < 6.0 && (mouse.1 - start.1).abs() < 6.0;
+            }
+        }
+        let cards_open = !self.collapsed && !dragging;
 
         // les boutons de lits de la barre
         let mut bed_delta = 0;
@@ -179,20 +245,20 @@ impl PlanUi {
 
         match self.mode {
             Mode::Browse => {
-                if clicked && over_panel {
-                    if let Some(kind) = card_at(mouse) {
+                if clicked && over_panel && cards_open {
+                    if let Some(kind) = card_at(self.panel, mouse) {
                         self.mode = Mode::Move { kind, beds: kind.min_beds() };
                     }
                 }
             }
             Mode::Move { kind, beds } => {
-                if esc {
+                if esc || cancel {
                     self.mode = Mode::Browse;
-                    self.escape_used = true;
+                    self.escape_used = esc;
                 } else if bed_delta != 0 {
                     self.mode = Mode::Move { kind, beds: (beds as i32 + bed_delta).max(0) as u32 };
                 } else if clicked && over_panel {
-                    if let Some(k) = card_at(mouse) {
+                    if let Some(k) = card_at(self.panel, mouse).filter(|_| cards_open) {
                         self.mode = Mode::Move { kind: k, beds: k.min_beds() };
                     }
                 } else if clicked && !over_bar {
@@ -202,12 +268,12 @@ impl PlanUi {
                 }
             }
             Mode::Size { kind, anchor, beds } => {
-                if esc || is_key_pressed(KeyCode::Backspace) {
+                if esc || cancel || is_key_pressed(KeyCode::Backspace) {
                     self.mode = Mode::Move { kind, beds };
                     self.escape_used = esc;
                 } else if bed_delta != 0 {
                     self.mode = Mode::Size { kind, anchor, beds: (beds as i32 + bed_delta).max(0) as u32 };
-                } else if (clicked && !over_bar) || is_key_pressed(KeyCode::Enter) {
+                } else if (clicked && !over_bar && !over_panel) || is_key_pressed(KeyCode::Enter) {
                     if let Some(mut shape) = self.shape(view) {
                         Self::fit_beds(&mut shape);
                         match game.check_plan(shape.kind, shape.x, shape.y, shape.w, shape.h, shape.beds) {
@@ -252,16 +318,15 @@ impl PlanUi {
     /// Le panneau des plans, la barre d'information du plan en cours et les messages : par-dessus tout.
     pub fn draw(&self, game: &Game, view: &View, me: PlayerId) {
         if !game.is_king(me) {
-            draw_hint_box();
             self.draw_message();
             return;
         }
-        let hover = card_at(mouse_position());
+        let hover = if self.collapsed { None } else { card_at(self.panel, mouse_position()) };
         let selected = match self.mode {
             Mode::Browse => None,
             Mode::Move { kind, .. } | Mode::Size { kind, .. } => Some(kind),
         };
-        draw_panel(game, hover, selected);
+        draw_panel(game, self.panel, self.collapsed, hover, selected);
         if let Some(mut shape) = self.shape(view) {
             Self::fit_beds(&mut shape);
             draw_bar(game, &shape);
@@ -282,14 +347,6 @@ impl PlanUi {
     }
 }
 
-fn draw_hint_box() {
-    let (x, y, w, h) = (PANEL_X, PANEL_Y, PANEL_W, 92.0);
-    theme::panel(x, y, w, h);
-    theme::ink("Plans du royaume", x + 20.0, y + 34.0, 22.0);
-    theme::ink("Incarnez le Roi (touche 1)", x + 20.0, y + 58.0, 18.0);
-    theme::ink("pour poser des plans.", x + 20.0, y + 76.0, 18.0);
-}
-
 fn cost_tokens(x: f32, y: f32, wood: u32, stone: u32, size: f32, wood_short: bool, stone_short: bool) -> f32 {
     let mut cx = x;
     for (resource, n, short) in [(Resource::Wood, wood, wood_short), (Resource::Stone, stone, stone_short)] {
@@ -302,12 +359,18 @@ fn cost_tokens(x: f32, y: f32, wood: u32, stone: u32, size: f32, wood_short: boo
     cx
 }
 
-fn draw_panel(game: &Game, hover: Option<PlanKind>, selected: Option<PlanKind>) {
-    let (x, y, w, h) = (PANEL_X, PANEL_Y, PANEL_W, panel_height());
+fn draw_panel(game: &Game, origin: (f32, f32), collapsed: bool, hover: Option<PlanKind>, selected: Option<PlanKind>) {
+    let (x, y, w, h) = (origin.0, origin.1, PANEL_W, panel_height(collapsed));
     theme::panel(x, y, w, h);
     theme::ribbon(x + 22.0, y - 14.0, w - 44.0, "Plans du Roi");
+    let (tx, ty, tw, th) = toggle_rect(origin);
+    theme::button(tx, ty, tw, th, inside(mouse_position(), tx, ty, tw, th), false);
+    theme::ink(if collapsed { "+" } else { "-" }, tx + 7.0, ty + 19.0, 24.0);
+    if collapsed {
+        return;
+    }
     for (i, &kind) in PlanKind::ALL.iter().enumerate() {
-        let (cx, cy, cw, ch) = card_rect(i);
+        let (cx, cy, cw, ch) = card_rect(origin, i);
         let is_hover = hover == Some(kind);
         let is_selected = selected == Some(kind);
         theme::button(cx, cy, cw, ch, is_hover, is_selected);
@@ -324,7 +387,7 @@ fn draw_panel(game: &Game, hover: Option<PlanKind>, selected: Option<PlanKind>) 
         };
         draw_text(blurb, cx + 74.0, cy + 76.0 - 0.0, 13.0, with_alpha(theme::INK_SOFT, 0.9));
     }
-    let hint = "Clic : choisir un plan";
+    let hint = "Clic : choisir | Droit : annuler";
     draw_text(hint, x + 24.0, y + h - 14.0, 16.0, theme::INK_SOFT);
 }
 
@@ -467,6 +530,6 @@ fn draw_bar(game: &Game, shape: &Shape) {
     };
     let status_color = if ok { Color::new(0.12, 0.34, 0.16, 1.0) } else { Color::new(0.62, 0.14, 0.10, 1.0) };
     draw_text(status, x + 22.0, y + BAR_H - 36.0, 16.0, status_color);
-    let gesture = if shape.sizing { "Clic : poser | Retour : deplacer | Echap : terminer" } else { "Clic : fixer le coin | Echap : terminer" };
+    let gesture = if shape.sizing { "Clic : poser | Droit : deplacer | Echap : terminer" } else { "Clic : fixer le coin | Droit : terminer" };
     draw_text(gesture, x + 22.0, y + BAR_H - 20.0, 15.0, theme::INK_SOFT);
 }

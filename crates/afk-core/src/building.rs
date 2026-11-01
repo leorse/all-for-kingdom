@@ -152,6 +152,8 @@ pub struct Site {
     pub total_secs: f32,
     /// Le tas de matériaux devant le chantier (indice dans la liste des contenants), dès que la livraison commence.
     pub pile: Option<usize>,
+    /// Ce que la case du tas était avant d'y poser le coffre (herbe ou chemin) : on la rend telle quelle à la fin.
+    pub pile_ground: Tile,
 }
 
 impl Site {
@@ -280,6 +282,7 @@ pub fn check_plan(
         progress: 0.0,
         total_secs: 0.0,
         pile: None,
+        pile_ground: Tile::Grass,
     };
     let free = |t: TilePos| map.in_bounds(t) && matches!(map.get(t), Tile::Grass | Tile::Path);
     // l'emprise, la case devant la porte et le tas de matériaux : de l'herbe ou un chemin, loin du bord d'eau
@@ -409,6 +412,7 @@ mod tests {
             progress: 0.0,
             total_secs: 10.0,
             pile: None,
+            pile_ground: Tile::Grass,
         };
         let all = site.work_tiles(&map);
         assert_eq!(all.len(), 2 * 6 + 2 * 5);

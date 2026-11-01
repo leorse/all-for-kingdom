@@ -14,7 +14,7 @@ sources:
   - resource: crates/afk-game/src/plan_ui.rs
     title: l'interface du roi
   - resource: crates/afk-game/src/construction_view.rs
-    title: fondations, échafaudage, enseigne
+    title: fondations, planches dans la zone, enseigne
 ---
 
 # Construire
@@ -23,13 +23,13 @@ Le [roi](/metiers/roi.md) place des plans ; les [artisans](/metiers/artisan.md) 
 
 ## L'interface du roi — en place
 
-Quand on incarne le roi (touche `1`), un **panneau de parchemin** à cadre de bois liste les plans : nom, taille minimale, coût minimal, pictogramme.
+Quand on incarne le roi (touche `1`), un **panneau de parchemin** à cadre de bois liste les plans : nom, taille minimale, coût minimal, pictogramme. Le panneau **se réduit** à son en-tête (bouton `-` / `+`) et **se déplace** (on tire l'en-tête), pour ne pas cacher l'endroit où l'on veut bâtir.
 
 1. **Clic sur un plan** de la liste : il est choisi.
 2. **Déplacer** : un rectangle en surbrillance suit la souris, à la taille minimale.
 3. **Clic** : le coin haut-gauche est fixé. **Agrandir** : la souris étire le rectangle (jamais sous le minimum). Pour une maison, des boutons `-` et `+` règlent le **nombre de lits**, dans ce que la taille permet.
 4. Une **barre d'information** montre le coût en bois et en pierre, le stock, la durée de construction et ce qui bloque ; elle se recalcule à chaque tuile.
-5. **Clic** : on **valide**. On peut alors en poser un autre. `Retour arrière` revient de l'agrandissement au déplacement ; `Échap` annule l'étape puis le plan (il ne quitte le jeu que s'aucun plan n'est en cours).
+5. **Clic** : on **valide**. On peut alors en poser un autre. **Bouton droit** (un clic bref ; en glissant il tire la carte) ou `Retour arrière` revient de l'agrandissement au déplacement, puis annule le plan ; `Échap` fait de même l'étape puis le plan (il ne quitte le jeu que s'aucun plan n'est en cours).
 
 La zone est **bleue** si le royaume a les ressources, **rouge** s'il ne les a pas, **grise** si le terrain ne permet pas de poser (eau, arbre, filon, coffre, bord de carte, quelqu'un dessus). Un plan rouge peut être validé ; un plan gris non. Sur le rectangle : la porte (milieu du mur sud) et la case du tas de matériaux.
 
@@ -46,8 +46,8 @@ Le coût en bois et en pierre est la **surface** (murs compris) au prix du type,
 1. À la validation, des **fondations** apparaissent sur toute l'emprise et **bloquent le passage**. Le chantier est « en attente ».
 2. **Un chantier ne commence que si toutes les ressources sont disponibles** (dans les coffres, moins ce qui est promis aux autres chantiers). Tant qu'elles ne le sont pas, il attend, sans rien prendre. Les chantiers sont servis **dans l'ordre des placements**, un chantier trop cher ne bloquant pas les suivants.
 3. Quand il peut démarrer, un **tas de matériaux** apparaît devant le chantier (coin sud-ouest) ; si quelqu'un se tient sur cette case, on l'écarte d'un pas (sauf le personnage d'un joueur, qui bouge quand il veut), et les **transporteurs** et les **artisans** sans chantier à construire y portent le bois et la pierre. Le tas affiche `Bois 12/26`.
-4. **Dès que tout est là, le chantier commence** : les artisans construisent, **à plusieurs leur travail s'additionne** (deux artisans vont deux fois plus vite). Un **échafaudage** monte avec l'avancement, avec une barre et un pourcentage.
-5. À la fin, **le bâtiment prend la place des fondations**, les matériaux sont consommés, et **une route se génère** de la porte jusqu'au camp de base (pas avant la fin).
+4. **Dès que tout est là, le chantier commence** : les artisans construisent, **à plusieurs leur travail s'additionne** (deux artisans vont deux fois plus vite). Les **planches recouvrent la fondation** de la gauche vers la droite avec l'avancement (tout reste dans la zone du chantier), avec une barre et un pourcentage dans l'enseigne.
+5. À la fin, **le bâtiment prend la place des fondations**, les matériaux sont consommés, et **une route se génère** de la porte jusqu'au camp de base (pas avant la fin). La route est **continue par les côtés** : un virage fait un angle, jamais un creux en diagonale (les futurs sprites d'angle s'y raccordent). Si le tas de matériaux était posé sur un chemin, **le chemin est rendu** quand le tas disparaît.
 
 Un artisan a **toujours pour priorité de construire** ; il ne transporte que s'il n'a rien d'autre à faire. Le joueur qui incarne un artisan peut construire en regardant les fondations (`E`).
 

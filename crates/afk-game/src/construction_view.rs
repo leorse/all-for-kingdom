@@ -1,5 +1,5 @@
 //! L'aspect du camp de base et des chantiers : le feu de camp et les couchages, puis les fondations, l'échafaudage qui
-//! monte avec l'avancement, et l'étiquette de chaque chantier. Les bâtiments finis sont dessinés par `habitat_view`.
+//! (les planches qui recouvrent la zone avec l'avancement), et l'étiquette de chaque chantier. Les bâtiments finis sont dessinés par `habitat_view`.
 
 use crate::render::View;
 use crate::theme;
@@ -142,27 +142,24 @@ fn draw_foundation(game: &Game, view: &View, site: &Site) {
             }
         }
         SiteState::Building => {
-            // l'échafaudage monte : des poteaux le long des quatre côtés, une poutre qui court au sommet
-            let max_h = (site.h.min(5) as f32 * 0.55 + 1.2) * t;
-            let height = max_h * p.max(0.04);
-            let posts = |x: f32, y: f32| {
-                draw_rectangle(x - 2.0 * s, y - height, 4.0 * s, height, PLANK);
-                draw_rectangle(x - 2.0 * s, y - height, 1.5 * s, height, PLANK_DARK);
-            };
-            for tx in (0..=site.w).step_by(2) {
-                posts(px + tx as f32 * t, py);
-            }
-            // les murs : une planche pleine hauteur qui se remplit de la gauche vers la droite
-            let wall_w = w * p;
-            draw_rectangle(px, py - height, wall_w, height, with_alpha_c(PLANK, 0.85));
+            // tout reste dans la zone : les planches recouvrent la fondation de la gauche vers la droite
+            let inner = (px + b, py + b, w - 2.0 * b, h - 2.0 * b);
+            let wall_w = inner.2 * p;
+            draw_rectangle(inner.0, inner.1, wall_w, inner.3, with_alpha_c(PLANK, 0.95));
             for i in 1..(wall_w / (6.0 * s)) as i32 {
-                draw_line(px + i as f32 * 6.0 * s, py - height, px + i as f32 * 6.0 * s, py, 1.0, PLANK_DARK);
+                let x = inner.0 + i as f32 * 6.0 * s;
+                draw_line(x, inner.1, x, inner.1 + inner.3, 1.0, PLANK_DARK);
             }
-            draw_rectangle(px, py - height - 2.0 * s, w, 3.0 * s, PLANK_DARK); // la poutre
+            // l'arête de travail : une poutre à la limite des planches posées
+            if p < 1.0 {
+                draw_rectangle(inner.0 + wall_w - 1.5 * s, inner.1, 3.0 * s, inner.3, theme::GOLD_LIGHT);
+            }
             if p > 0.85 {
-                // le toit de chaume se pose en dernier
-                draw_rectangle(px - 3.0 * s, py - height - 9.0 * s, w + 6.0 * s, 9.0 * s, Color::from_rgba(196, 164, 84, 255));
-                draw_rectangle(px - 3.0 * s, py - height - 9.0 * s, w + 6.0 * s, 2.5 * s, Color::from_rgba(224, 196, 112, 255));
+                // le toit de chaume se pose en dernier : une bande sur le faîte
+                let roof_h = (inner.3 * 0.3).max(4.0 * s);
+                let y = inner.1 + inner.3 / 2.0 - roof_h / 2.0;
+                draw_rectangle(inner.0, y, wall_w, roof_h, Color::from_rgba(196, 164, 84, 255));
+                draw_rectangle(inner.0, y, wall_w, 2.5 * s, Color::from_rgba(224, 196, 112, 255));
             }
         }
         SiteState::Done => {}
@@ -193,7 +190,7 @@ fn draw_site_label(game: &Game, view: &View, site: &Site) {
     let tw = measure_text(&state, None, size as u16, 1.0).width.max(measure_text(title, None, size as u16, 1.0).width);
     let (bw, bh) = (tw + 16.0, size * 2.4);
     let bx = px + w / 2.0 - bw / 2.0;
-    let by = py - bh - 20.0 * s - if site.state == SiteState::Building { (site.h.min(5) as f32 * 0.55 + 1.2) * view.tile_px * site.progress.max(0.04) } else { 0.0 };
+    let by = py - bh - 20.0 * s;
     draw_rectangle(bx, by, bw, bh, theme::WOOD_DARK);
     draw_rectangle(bx + 2.0, by + 2.0, bw - 4.0, bh - 4.0, theme::PARCHMENT);
     draw_rectangle_lines(bx + 2.0, by + 2.0, bw - 4.0, bh - 4.0, 1.0, theme::GOLD);

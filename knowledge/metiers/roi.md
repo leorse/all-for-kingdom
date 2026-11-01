@@ -12,7 +12,7 @@ Il dirige le royaume. Son vrai rôle n'existe pas encore : c'est le métier qui 
 
 ## Aujourd'hui — en place
 
-Au camp de base, le roi se promène autour du feu et dort dans l'un des trois lits. **Incarné, il pose des plans** : choisir dans la liste, placer un rectangle, valider (voir [construction.md](/regles/construction.md)). Dans le village (`--village`), il se promène dans le château et peut aussi poser des plans. Quand personne ne l'incarne, il ne pose rien.
+Au camp de base, le roi se promène autour du feu et dort dans l'un des trois lits. **Incarné, il pose des plans** (et marche plus vite que les autres : `king_speed_factor`) : choisir dans la liste, placer un rectangle, valider (voir [construction.md](/regles/construction.md)). Dans le village (`--village`), il se promène dans le château et peut aussi poser des plans. Quand personne ne l'incarne, il ne pose rien.
 
 ## Le modèle : un roi qui répartit — décidé
 
