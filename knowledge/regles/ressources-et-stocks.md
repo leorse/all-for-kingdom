@@ -17,7 +17,7 @@ sources:
 
 ## Aujourd'hui — en place
 
-Le royaume a sept ressources. Elles vivent dans des **coffres** (un par lieu de travail, plafonnés à 200 de chaque ressource) ; les compteurs affichés en haut à droite de l'écran en sont le **total**.
+Le royaume a huit ressources (blé, graines, bois, fer, cuivre, or, pierre, outils). Elles vivent dans des **coffres** (un par lieu de travail, plafonnés à 200 de chaque ressource) ; les compteurs affichés en haut à droite de l'écran en sont le **total**.
 
 | Ressource | D'où elle vient | À quoi elle sert |
 |---|---|---|
@@ -42,6 +42,12 @@ Le [mineur](/metiers/mineur.md) apporte quatre minerais, un par nature de filon 
 - **fer** et **or** : le forgeron en fait des **lingots** ;
 - **pierre** : sert à construire (voir plus bas) ;
 - **cuivre** : usage à définir.
+
+## En place : le coffre du camp, l'entrepôt et les tas de chantier
+
+- Au départ (`Scenario::camp`), le **pécule** (bois, pierre, graines) est dans le **coffre du camp**, qui contient toutes les ressources, **100 de chacune au plus**. Les graines n'ont pas encore de consommateur.
+- Un **entrepôt** bâti par le roi a un coffre beaucoup plus grand (`warehouse_capacity`).
+- Les matériaux d'un chantier sont posés dans un **tas** devant lui, qui n'accepte que ce qu'il lui faut. Le bois et la pierre qui y sont déposés sont consommés à la fin de la construction. Voir [construction.md](/regles/construction.md).
 
 ## Décidé : le départ avec un pécule, sans entrepôt
 
@@ -88,7 +94,7 @@ La capacité d'un stock peut grandir grâce aux améliorations de la maison (voi
 
 - La **capacité de l'entrepôt** et celle du coffre du camp (100 par ressource, ou au total ?).
 
-- La **composition du pécule** de départ et ce qu'il permet de construire.
+- La **composition du pécule** de départ et ce qu'il permet de construire (en place : de quoi bâtir un entrepôt et deux maisons, mais aucun producteur de bois ou de pierre n'est constructible).
 - Le **stock de chantier** : où sont posés les matériaux livrés devant les fondations, et que devient le surplus ?
 
 - La **capacité** de chaque stock.

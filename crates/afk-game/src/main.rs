@@ -4,6 +4,7 @@
 //! Options de lancement :
 //!   --day-seconds N   durée d'une journée de jeu en secondes réelles (défaut : 600 = 10 minutes)
 //!   --speed X         accélère la simulation X fois (défaut : 1). La touche T change la vitesse en jeu.
+//!   --village         le village déjà bâti (banc d'essai) au lieu du départ au camp de base
 //!
 //! Exemples :
 //!   cargo run -- --day-seconds 10     journée de 10 s (tout le rythme de vie suit)
@@ -13,10 +14,13 @@ mod camera;
 #[allow(dead_code)] // une partie du gabarit ne sert qu'à l'outil `spritegen`
 mod character_sprites;
 mod character_view;
+mod construction_view;
 mod habitat_view;
 mod input;
+mod plan_ui;
 mod render;
 mod sprites;
+mod theme;
 
 use afk_core::{CharacterId, Command, Config, Game, PlayerId, Scenario, TICK};
 use macroquad::prelude::*;
@@ -46,13 +50,16 @@ async fn main() {
     let mut speed = arg_f32("--speed").unwrap_or(1.0).clamp(0.1, 200.0);
 
     let me = PlayerId(0);
-    let mut game = Game::new(Scenario::village(), 1, config);
+    // par défaut : le départ de partie (le camp de base, le roi et deux artisans) ; `--village` garde le village bâti
+    let scenario = if std::env::args().any(|a| a == "--village") { Scenario::village() } else { Scenario::camp() };
+    let mut game = Game::new(scenario, 1, config);
     game.apply(Command::Possess { player: me, character: CharacterId(0) });
 
     let mut view = render::View::new();
     // les sprites des habitats : construits une fois, la fenêtre étant ouverte
     let art = habitat_view::Art::new();
     let sheets = character_view::Sheets::new();
+    let mut plan_ui = plan_ui::PlanUi::new();
     // Le personnage que la caméra suit : le dernier incarné (elle continue de le suivre en mode AFK).
     let mut followed: Option<CharacterId> = None;
 
@@ -65,8 +72,10 @@ async fn main() {
     let mut was_possessed = true;
 
     loop {
-        let input = input::poll(me, &view, &game);
-        if input.quit {
+        // l'interface du roi lit la souris en premier : un clic sur le panneau ne doit pas incarner quelqu'un
+        let plan_commands = plan_ui.update(&game, &view, me, get_frame_time());
+        let input = input::poll(me, &view, &game, plan_ui.captures_mouse());
+        if input.quit && !plan_ui.consumed_escape() {
             break;
         }
         if input.cycle_speed {
@@ -78,7 +87,7 @@ async fn main() {
                 1.0
             };
         }
-        for command in input.commands {
+        for command in plan_commands.into_iter().chain(input.commands) {
             game.apply(command);
         }
 
@@ -118,7 +127,7 @@ async fn main() {
         let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
         view.update(&game, target, recenter, get_frame_time());
 
-        render::draw(&game, &view, &art, &sheets, me, speed);
+        render::draw(&game, &view, &art, &sheets, &plan_ui, me, speed);
         next_frame().await;
     }
 }

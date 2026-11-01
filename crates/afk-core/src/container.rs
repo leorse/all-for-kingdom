@@ -21,8 +21,12 @@ pub enum ContainerKind {
     Lodge(usize),
     /// Le coffre de la forge.
     Forge,
-    /// L'entrepôt central, qui reçoit ce que personne ne consomme.
+    /// L'entrepôt (central, ou bâti par le roi), qui reçoit ce que personne ne consomme.
     Depot,
+    /// Le coffre du camp de base : il contient tout, comme un entrepôt, mais en petite quantité.
+    Camp,
+    /// Les matériaux livrés devant un chantier (indice dans la liste des chantiers).
+    Site(usize),
 }
 
 /// Un contenant tel que le scénario le décrit : où il est et à qui il sert.
@@ -42,6 +46,8 @@ pub struct Container {
     product: Option<Resource>,
     /// Ce que son métier consomme : les transporteurs doivent le lui apporter.
     consumes: Option<Resource>,
+    /// Pour un chantier : ce qu'il lui faut de chaque ressource (et pas plus). Vide pour les autres contenants.
+    needs: BTreeMap<Resource, u32>,
 }
 
 impl Container {
@@ -51,9 +57,22 @@ impl Container {
             ContainerKind::Mine(i) => (veins.get(i).map(|v| v.kind.resource()), None),
             ContainerKind::Lodge(_) => (Some(Resource::Wood), None),
             ContainerKind::Forge => (Some(Resource::Tools), Some(Resource::Iron)),
-            ContainerKind::Depot => (None, None),
+            ContainerKind::Depot | ContainerKind::Camp | ContainerKind::Site(_) => (None, None),
         };
-        Container { kind: spec.kind, tile: spec.tile, capacity, stock: BTreeMap::new(), product, consumes }
+        Container { kind: spec.kind, tile: spec.tile, capacity, stock: BTreeMap::new(), product, consumes, needs: BTreeMap::new() }
+    }
+
+    /// Le tas de matériaux d'un chantier : il reçoit exactement `needs`, et rien d'autre.
+    pub fn new_site(site: usize, tile: TilePos, needs: BTreeMap<Resource, u32>) -> Container {
+        Container {
+            kind: ContainerKind::Site(site),
+            tile,
+            capacity: 0,
+            stock: BTreeMap::new(),
+            product: None,
+            consumes: None,
+            needs,
+        }
     }
 
     pub fn capacity(&self) -> u32 {
@@ -64,8 +83,11 @@ impl Container {
         self.stock.get(&resource).copied().unwrap_or(0)
     }
 
-    /// Place restante pour cette ressource.
+    /// Place restante pour cette ressource. Un chantier n'accepte que ce qu'il lui manque.
     pub fn room(&self, resource: Resource) -> u32 {
+        if self.is_site() {
+            return self.needs.get(&resource).copied().unwrap_or(0).saturating_sub(self.get(resource));
+        }
         self.capacity.saturating_sub(self.get(resource))
     }
 
@@ -100,14 +122,50 @@ impl Container {
         self.consumes
     }
 
+    /// Reçoit tout ce que personne ne consomme : l'entrepôt, et le coffre du camp qui en tient lieu au départ.
     pub fn is_depot(&self) -> bool {
-        self.kind == ContainerKind::Depot
+        matches!(self.kind, ContainerKind::Depot | ContainerKind::Camp)
+    }
+
+    pub fn is_site(&self) -> bool {
+        matches!(self.kind, ContainerKind::Site(_))
+    }
+
+    /// Les transporteurs doivent-ils lui apporter cette ressource ? Ce que son métier consomme, ou ce qui manque
+    /// encore à un chantier.
+    pub fn wants(&self, resource: Resource) -> bool {
+        self.consumes == Some(resource) || (self.is_site() && self.room(resource) > 0)
+    }
+
+    /// Ce qu'il faut à un chantier, par ressource (vide pour les autres contenants).
+    pub fn needs(&self) -> &BTreeMap<Resource, u32> {
+        &self.needs
+    }
+
+    /// Le chantier est livré : tout ce qu'il lui faut est là.
+    pub fn is_complete(&self) -> bool {
+        self.is_site() && self.needs.iter().all(|(&r, &n)| self.get(r) >= n)
+    }
+
+    /// Un chantier fini : on garde le contenant (les indices ne doivent pas bouger) mais il disparaît du monde.
+    pub(crate) fn retire(&mut self) {
+        self.stock.clear();
+        self.needs.clear();
+        self.tile = TilePos::new(-1000, -1000);
+    }
+
+    /// Le tas devient l'entrepôt qu'on vient de bâtir : vidé de ses matériaux, il reçoit tout, en grande quantité.
+    pub(crate) fn become_depot(&mut self, capacity: u32) {
+        self.kind = ContainerKind::Depot;
+        self.capacity = capacity;
+        self.stock.clear();
+        self.needs.clear();
     }
 
     /// Un porteur (bûcheron, joueur) peut y déposer cette ressource : ce que le contenant consomme,
     /// sa propre production, ou n'importe quoi à l'entrepôt central.
     pub fn accepts(&self, resource: Resource) -> bool {
-        self.is_depot() || self.consumes == Some(resource) || self.product == Some(resource)
+        self.is_depot() || self.wants(resource) || self.product == Some(resource)
     }
 
     /// Les ressources à afficher sur le coffre : celles qu'il produit ou consomme, même à zéro,

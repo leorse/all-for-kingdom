@@ -15,8 +15,11 @@ generated: { by: claude-code/claude-sonnet-5-5, at: 2026-10-30T12:00:00Z }
 
 Source : `crates/afk-core/src/map.rs`. Le royaume fait 64x40 tuiles (voir [le royaume](/regles/royaume.md)).
 
-- **Tuiles** (`Tile`) : Grass, Path, Water, Field, Wall, Floor, Tree, Sapling, Bed, Anvil, Ore, Crate, Furniture. Certaines sont solides (mur, arbre, filon, coffre, enclume, meuble) ; le lit se traverse.
+- **Tuiles** (`Tile`) : Grass, Path, Water, Field, Wall, Floor, Tree, Sapling, Bed, Anvil, Ore, Crate, Furniture, Campfire, Foundation. Certaines sont solides (mur, arbre, filon, coffre, enclume, meuble, feu de camp, fondations) ; le lit se traverse.
 - **Chemins** : A* à 8 voisins, diagonales à coût 1,414 et ordre de voisins fixe pour départager de façon déterministe (`NEIGHBORS`).
 - **Deux modes** (`PathMode`) : `Roads(grass_cost)` pour les trajets ordinaires (route, sol intérieur et lit coûtent 1, l'herbe `grass_cost`, 3 par défaut) ; `Direct` (tout coûte 1) pour la fuite d'un voleur et ses poursuivants (pas encore en jeu, voir [le garde](/metiers/garde.md)).
 - `find_path_cost` renvoie le chemin **et** son coût : c'est la façon de mesurer une distance réelle entre deux lieux.
 - Les coordonnées : `TilePos` (entières) et `Vec2` (flottantes, en tuiles), dans `math.rs`.
+- **Les routes qu'on bâtit** : à la fin d'un chantier, `Game::lay_road` calcule le trajet ordinaire (`Roads`, qui préfère les routes existantes) de la case devant la porte au camp et change l'herbe en `Path`. Voir [construire](/regles/construction.md).
+- **`Scenario::camp()`** : carte sans bâtiment (lacs, forêts, filons, arbres), camp au milieu ; `Scenario::camp` expose la case de la place (`camp`) vers laquelle mènent les routes.
+

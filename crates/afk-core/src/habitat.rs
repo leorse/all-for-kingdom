@@ -1,8 +1,10 @@
-//! Les habitats : des bâtiments de taille fixe où l'on dort.
+//! Les habitats : des bâtiments où l'on dort.
 //!
-//! Il y a trois classes : la petite maison (7×5, une place), la maison moyenne (9×5, jusqu'à trois places)
-//! et la grande maison (9×7, jusqu'à six places). Une « place » est un lit ; les places d'un même habitat
-//! se partagent une table, une étagère et un bac d'eau (pièce commune).
+//! Il y a deux sortes d'habitats. Ceux du village de départ ont une taille fixe, en trois classes : la petite
+//! maison (7×5, une place), la maison moyenne (9×5, jusqu'à trois places) et la grande maison (9×7, jusqu'à six
+//! places). Ceux que le roi fait bâtir (`HabitatSpec::house`) ont une taille libre au-dessus d'un minimum, et autant
+//! de lits que la place le permet. Une « place » est un lit ; les places d'un même habitat se partagent une table, un
+//! bac d'eau et, au village, une étagère (pièce commune).
 //!
 //! Le mobilier a une taille fixe : le lit, la table et l'étagère font 2 tuiles, le bac 1. Chaque meuble se
 //! pose dans une des quatre rotations (`Rotation`), à partir de sa pose de base : empreinte horizontale 2×1,
@@ -36,6 +38,16 @@ impl HabitatClass {
             HabitatClass::Small => 1,
             HabitatClass::Medium => 3,
             HabitatClass::Large => 6,
+        }
+    }
+
+    /// La classe qui sert de référence à un habitat de taille libre dont l'intérieur compte `interior` tuiles : elle
+    /// décide du nombre de fenêtres dessinées.
+    pub fn for_interior(interior: i32) -> HabitatClass {
+        match interior {
+            ..=15 => HabitatClass::Small,
+            16..=24 => HabitatClass::Medium,
+            _ => HabitatClass::Large,
         }
     }
 
@@ -102,15 +114,21 @@ pub struct HabitatSpec {
     /// Coin haut-gauche (le mur).
     pub x: i32,
     pub y: i32,
+    /// Largeur et hauteur, murs compris.
+    w: i32,
+    h: i32,
+    /// La classe de référence (nombre de fenêtres) ; pour un habitat de taille fixe, elle donne aussi sa taille.
     pub class: HabitatClass,
+    /// Taille libre (un habitat bâti par le roi) : la taille ne dépend pas de la classe.
+    pub free: bool,
     /// La porte, dans un mur (hors angle).
     pub door: TilePos,
     /// Les lits (2 tuiles) : une place chacun.
     pub beds: Vec<Furniture>,
     /// La table (2 tuiles).
     pub table: Furniture,
-    /// L'étagère (2 tuiles).
-    pub shelf: Furniture,
+    /// L'étagère (2 tuiles), facultative dans une maison bâtie par le roi.
+    pub shelf: Option<Furniture>,
     /// Le bac d'eau (1 tuile).
     pub trough: Furniture,
 }
@@ -126,15 +144,74 @@ impl HabitatSpec {
         shelf: Furniture,
         trough: Furniture,
     ) -> HabitatSpec {
-        HabitatSpec { x, y, class, door: TilePos::new(door.0, door.1), beds: beds.to_vec(), table, shelf, trough }
+        let (w, h) = class.size();
+        HabitatSpec {
+            x,
+            y,
+            w,
+            h,
+            class,
+            free: false,
+            door: TilePos::new(door.0, door.1),
+            beds: beds.to_vec(),
+            table,
+            shelf: Some(shelf),
+            trough,
+        }
+    }
+
+    /// Le plus petit habitat que le roi puisse faire bâtir : murs compris, 6 de large et 5 de haut (un intérieur
+    /// de 4×3 pour un lit, une table et un bac d'eau).
+    pub const MIN_HOUSE: (i32, i32) = (6, 5);
+
+    /// Combien de lits tiennent dans une maison de ce gabarit (murs compris), sans gêner le passage.
+    /// Les lits (2×1) se rangent par rangées le long du mur nord, une rangée sur deux ; les deux dernières rangées
+    /// de l'intérieur restent libres pour l'entrée, la table et le bac d'eau. `None` : maison trop petite.
+    pub fn max_house_beds(w: i32, h: i32) -> Option<u32> {
+        let (iw, ih) = (w - 2, h - 2);
+        if w < Self::MIN_HOUSE.0 || h < Self::MIN_HOUSE.1 {
+            return None;
+        }
+        let rows = (ih - 3) / 2 + 1;
+        Some((rows * (iw / 2)) as u32)
+    }
+
+    /// Une maison de taille libre, meublée au minimum et avec `beds` lits (au moins 1, au plus `max_house_beds`).
+    /// La porte est au milieu du mur sud. Les lits sont rangés au nord, la table et le bac d'eau au sud de part et
+    /// d'autre de l'entrée. `None` si la maison est trop petite ou que les lits demandés ne tiennent pas.
+    pub fn house(x: i32, y: i32, w: i32, h: i32, beds: u32) -> Option<HabitatSpec> {
+        let max = Self::max_house_beds(w, h)?;
+        if beds == 0 || beds > max {
+            return None;
+        }
+        let (iw, ih) = (w - 2, h - 2);
+        let per_row = iw / 2;
+        let bed_list: Vec<Furniture> = (0..beds as i32)
+            .map(|i| Furniture::new(x + 1 + 2 * (i % per_row), y + 1 + 2 * (i / per_row), Rotation::Deg0))
+            .collect();
+        let bottom = y + h - 2;
+        let spec = HabitatSpec {
+            x,
+            y,
+            w,
+            h,
+            class: HabitatClass::for_interior(iw * ih),
+            free: true,
+            door: TilePos::new(x + w / 2, y + h - 1),
+            beds: bed_list,
+            table: Furniture::new(x + 1, bottom, Rotation::Deg0),
+            shelf: None,
+            trough: Furniture::new(x + w - 2, bottom, Rotation::Deg0),
+        };
+        spec.validate().is_ok().then_some(spec)
     }
 
     pub fn width(&self) -> i32 {
-        self.class.size().0
+        self.w
     }
 
     pub fn height(&self) -> i32 {
-        self.class.size().1
+        self.h
     }
 
     /// Le bâtiment (murs compris) couvre-t-il cette tuile ?
@@ -179,7 +256,9 @@ impl HabitatSpec {
     /// Les tuiles des meubles infranchissables : table, étagère et bac.
     pub fn solid_tiles(&self) -> Vec<TilePos> {
         let mut tiles = self.table.tiles(2);
-        tiles.extend(self.shelf.tiles(2));
+        if let Some(shelf) = &self.shelf {
+            tiles.extend(shelf.tiles(2));
+        }
         tiles.extend(self.trough.tiles(1));
         tiles
     }
@@ -197,7 +276,7 @@ impl HabitatSpec {
         if self.beds.is_empty() {
             return Err("un habitat a au moins un lit".into());
         }
-        if self.beds.len() > self.class.max_places() {
+        if !self.free && self.beds.len() > self.class.max_places() {
             return Err(format!("{} lits pour {:?} (maximum {})", self.beds.len(), self.class, self.class.max_places()));
         }
         // chaque meuble tient dans l'intérieur (une fois tourné), et deux meubles ne se chevauchent pas
@@ -206,11 +285,9 @@ impl HabitatSpec {
             .beds
             .iter()
             .map(|b| ("un lit", b.tiles(2)))
-            .chain([
-                ("la table", self.table.tiles(2)),
-                ("l'étagère", self.shelf.tiles(2)),
-                ("le bac d'eau", self.trough.tiles(1)),
-            ])
+            .chain([("la table", self.table.tiles(2))])
+            .chain(self.shelf.iter().map(|s| ("l'étagère", s.tiles(2))))
+            .chain([("le bac d'eau", self.trough.tiles(1))])
             .collect();
         for (name, tiles) in &furniture {
             for &t in tiles {
@@ -271,6 +348,9 @@ impl HabitatSpec {
     /// Peut-on agrandir l'habitat ? La classe suivante, ancrée au même coin haut-gauche, ne doit couvrir
     /// que des cases libres (herbe ou chemin) dans la carte, hors de l'emprise actuelle.
     pub fn can_expand(&self, map: &TileMap) -> bool {
+        if self.free {
+            return false; // une maison de taille libre s'agrandit à la demande, pas par classes
+        }
         let Some(next) = self.class.next() else { return false };
         let (w, h) = next.size();
         for y in self.y..self.y + h {
@@ -533,5 +613,57 @@ mod tests {
         assert!(medium().can_expand(&down));
         down.set(TilePos::new(6, 29), Tile::Tree);
         assert!(!medium().can_expand(&down));
+    }
+
+    #[test]
+    fn a_free_size_house_is_valid_at_the_minimum_and_beyond() {
+        for (w, h) in [(6, 5), (7, 5), (6, 6), (9, 7), (12, 9), (18, 12)] {
+            let max = HabitatSpec::max_house_beds(w, h).expect("assez grande");
+            for beds in 1..=max {
+                let house = HabitatSpec::house(10, 10, w, h, beds).unwrap_or_else(|| panic!("{w}x{h} avec {beds} lits"));
+                assert_eq!(house.validate(), Ok(()), "{w}x{h} avec {beds} lits");
+                assert_eq!((house.width(), house.height()), (w, h), "la taille est libre");
+                assert_eq!(house.bed_homes().len() as u32, beds);
+                assert!(house.free && house.shelf.is_none(), "une maison bâtie n'a pas d'étagère d'office");
+            }
+            assert!(HabitatSpec::house(10, 10, w, h, max + 1).is_none(), "{w}x{h} : pas plus de {max} lits");
+        }
+    }
+
+    #[test]
+    fn a_house_smaller_than_the_minimum_does_not_exist() {
+        assert!(HabitatSpec::house(10, 10, 5, 5, 1).is_none());
+        assert!(HabitatSpec::house(10, 10, 6, 4, 1).is_none());
+        assert_eq!(HabitatSpec::max_house_beds(5, 5), None);
+        assert!(HabitatSpec::house(10, 10, 6, 5, 0).is_none(), "au moins un lit");
+    }
+
+    #[test]
+    fn every_free_house_has_the_minimum_assets_and_can_be_walked_into() {
+        for (w, h, beds) in [(6, 5, 1), (8, 6, 3), (10, 8, 4)] {
+            let house = HabitatSpec::house(10, 10, w, h, beds).unwrap();
+            let mut map = TileMap::new(40, 40, Tile::Grass);
+            house.build(&mut map);
+            assert_eq!(map.find_tiles(Tile::Bed).len() as u32, 2 * beds, "{w}x{h}");
+            assert!(!house.table.tiles(2).is_empty() && !house.trough.tiles(1).is_empty());
+            // de la porte jusqu'à chaque lit, à pied
+            let front = TilePos::new(house.door.x, house.door.y + 1);
+            for bed in house.bed_homes() {
+                assert!(!map.find_path(front, bed).is_empty(), "{w}x{h} : le lit en {bed:?} est inaccessible");
+            }
+        }
+    }
+
+    #[test]
+    fn a_bigger_free_house_has_room_for_more_beds() {
+        assert!(HabitatSpec::max_house_beds(12, 9) > HabitatSpec::max_house_beds(6, 5));
+        assert_eq!(HabitatSpec::max_house_beds(6, 5), Some(2));
+    }
+
+    #[test]
+    fn a_free_house_is_never_expandable_by_class() {
+        let house = HabitatSpec::house(10, 10, 6, 5, 1).unwrap();
+        let map = TileMap::new(40, 40, Tile::Grass);
+        assert!(!house.can_expand(&map));
     }
 }

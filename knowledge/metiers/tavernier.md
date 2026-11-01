@@ -14,6 +14,10 @@ Il tient la taverne. Il n'a pas encore de travail propre, mais la taverne a dés
 
 Il **se promène** dans la taverne d'un poste à l'autre et s'y arrête un moment. Il dort dans sa maison, loin du centre, au sud-est du royaume. On peut l'incarner et marcher, mais il n'a pas d'action à effectuer.
 
+## La taverne bâtie — en place
+
+Le roi peut faire bâtir une **taverne** (voir [construction.md](/regles/construction.md)) : cheminée et tables. Elle **retient les vagabonds** : ils s'y retrouvent à moitié de leurs promenades et restent quatre fois plus longtemps dans les parages (voir [vagabond.md](/metiers/vagabond.md)). Il n'y a pas encore de tavernier pour la tenir, ni d'accueil, de lits ou de profils.
+
 ## Le rôle de la taverne — décidé : accueillir des gens
 
 La taverne **accueille les gens qui arrivent dans le royaume**. Elle est la **porte d'entrée de la population**.

@@ -46,11 +46,15 @@ pub enum Tile {
     Furniture,
     /// Une pousse d'arbre : praticable, redevient un arbre après un délai.
     Sapling,
+    /// Le feu du camp de base : solide, il brûle au milieu de la place.
+    Campfire,
+    /// Les fondations d'un chantier : solides, elles bloquent le passage jusqu'à la fin de la construction.
+    Foundation,
 }
 
 impl Tile {
     pub fn is_solid(self) -> bool {
-        matches!(self, Tile::Water | Tile::Wall | Tile::Tree | Tile::Anvil | Tile::Ore | Tile::Crate | Tile::Furniture)
+        matches!(self, Tile::Water | Tile::Wall | Tile::Tree | Tile::Anvil | Tile::Ore | Tile::Crate | Tile::Furniture | Tile::Foundation | Tile::Campfire)
     }
 }
 

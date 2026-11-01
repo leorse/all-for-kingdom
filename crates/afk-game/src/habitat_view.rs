@@ -124,7 +124,7 @@ impl Art {
 
 /// Cette tuile appartient-elle à un habitat (murs compris) ? Le dessin des tuiles la laisse alors à `draw_habitats`.
 pub fn is_habitat_tile(game: &Game, tile: TilePos) -> bool {
-    game.habitats().iter().any(|h| h.covers(tile))
+    game.habitats().iter().any(|h| h.covers(tile)) || game.buildings().iter().any(|b| b.covers(tile))
 }
 
 /// L'échelle d'affichage : la taille d'une tuile à l'écran divisée par la tuile de 16 pixels sur laquelle les habitats
@@ -142,6 +142,31 @@ fn quarter_turns(r: Rotation) -> u8 {
     r.quarter_turns()
 }
 
+/// Dessine les murs, la porte et le sol d'un bâtiment de `w` sur `h` tuiles dont le coin haut-gauche est en (`x`, `y`).
+fn draw_shell(view: &View, art: &Art, x: i32, y: i32, w: i32, h: i32, door: TilePos, s: f32) {
+    let (x0, y0, x1, y1) = (x, y, x + w - 1, y + h - 1);
+    for yy in y0..=y1 {
+        for xx in x0..=x1 {
+            let t = TilePos::new(xx, yy);
+            let (px, py) = view.tile_origin(t);
+            let v = floor_variant(t);
+            let is_door = t == door;
+            let sprite = if yy == y0 {
+                if is_door { &art.wall_north_door } else { &art.wall_north }
+            } else if yy == y1 {
+                if is_door { &art.wall_south_door[v] } else { &art.wall_south }
+            } else if xx == x0 {
+                if is_door { &art.side_door_west[v] } else { &art.wall_west }
+            } else if xx == x1 {
+                if is_door { &art.side_door_east[v] } else { &art.wall_east }
+            } else {
+                &art.floors[v]
+            };
+            sprite.draw(px, py, s);
+        }
+    }
+}
+
 /// Dessine tous les habitats visibles : sol, murs, décor mural, paillasson, puis meubles.
 pub fn draw_habitats(game: &Game, view: &View, art: &Art) {
     let s = scale(view);
@@ -152,27 +177,8 @@ pub fn draw_habitats(game: &Game, view: &View, art: &Art) {
         if !view.point_visible(center, h.width().max(h.height()) as f32) {
             continue;
         }
-        let (x0, y0, x1, y1) = (h.x, h.y, h.x + h.width() - 1, h.y + h.height() - 1);
-        for y in y0..=y1 {
-            for x in x0..=x1 {
-                let t = TilePos::new(x, y);
-                let (px, py) = view.tile_origin(t);
-                let v = floor_variant(t);
-                let is_door = t == h.door;
-                let sprite = if y == y0 {
-                    if is_door { &art.wall_north_door } else { &art.wall_north }
-                } else if y == y1 {
-                    if is_door { &art.wall_south_door[v] } else { &art.wall_south }
-                } else if x == x0 {
-                    if is_door { &art.side_door_west[v] } else { &art.wall_west }
-                } else if x == x1 {
-                    if is_door { &art.side_door_east[v] } else { &art.wall_east }
-                } else {
-                    &art.floors[v]
-                };
-                sprite.draw(px, py, s);
-            }
-        }
+        draw_shell(view, art, h.x, h.y, h.width(), h.height(), h.door, s);
+        let y0 = h.y;
         // le décor du mur nord : fenêtres, puis cheminée dont le conduit dépasse du toit
         let decor = wall_decor(h);
         for &wx in &decor.windows {
@@ -189,9 +195,75 @@ pub fn draw_habitats(game: &Game, view: &View, art: &Art) {
             let (bx, by) = view.tile_origin(bed.anchor);
             art.bed.get(quarter_turns(bed.rotation)).draw(bx, by, s);
         }
-        for (piece, turns) in [(&h.table, &art.table), (&h.shelf, &art.shelf), (&h.trough, &art.trough)] {
+        for (piece, turns) in [(Some(&h.table), &art.table), (h.shelf.as_ref(), &art.shelf), (Some(&h.trough), &art.trough)] {
+            let Some(piece) = piece else { continue };
             let (px, py) = view.tile_origin(piece.anchor);
             turns.get(quarter_turns(piece.rotation)).draw(px, py, s);
+        }
+    }
+}
+
+/// Où poser la cheminée et les fenêtres d'un entrepôt ou d'une taverne sur son mur nord : la cheminée au milieu pour
+/// une taverne, des fenêtres réparties de part et d'autre.
+pub fn building_decor(b: &afk_core::Building) -> WallDecor {
+    let mid = b.x + b.w / 2;
+    match b.kind {
+        afk_core::PlanKind::Tavern => WallDecor { fireplace: mid, windows: vec![b.x + b.w / 4 + 1, b.x + b.w - b.w / 4 - 2] },
+        _ => WallDecor { fireplace: -1000, windows: vec![mid] },
+    }
+}
+
+/// Dessine les entrepôts et les tavernes : les murs des habitats, puis un décor propre à chacun.
+pub fn draw_buildings(game: &Game, view: &View, art: &Art) {
+    let s = scale(view);
+    let t = view.tile_px;
+    let night = game.clock().daylight() < 0.5;
+    let frame = ((game.time() * 6.0) as usize) % 3;
+    for b in game.buildings() {
+        if !view.point_visible(TilePos::new(b.x + b.w / 2, b.y + b.h / 2).center(), b.w.max(b.h) as f32) {
+            continue;
+        }
+        draw_shell(view, art, b.x, b.y, b.w, b.h, b.door(), s);
+        let decor = building_decor(b);
+        for &wx in &decor.windows {
+            let (px, py) = view.tile_origin(TilePos::new(wx, b.y));
+            let window = if night { &art.window_lit } else { &art.window_day };
+            window.draw(px + 4.0 * s, py + 6.0 * s, s);
+        }
+        if b.kind == afk_core::PlanKind::Tavern {
+            let (fx, fy) = view.tile_origin(TilePos::new(decor.fireplace, b.y));
+            art.fireplace[frame].draw(fx, fy - 4.0 * s, s);
+        }
+        let (mx, my) = view.tile_origin(TilePos::new(b.door().x, b.door().y - 1));
+        art.doormat.draw(mx, my, s);
+        let u = t / 32.0;
+        match b.kind {
+            afk_core::PlanKind::Tavern => {
+                let top = b.y + 1;
+                for ax in [b.x + 1, b.x + b.w - 3] {
+                    let (px, py) = view.tile_origin(TilePos::new(ax, top));
+                    art.table.get(0).draw(px, py, s);
+                }
+            }
+            afk_core::PlanKind::Warehouse => {
+                // des tas de caisses et de tonneaux contre le mur du fond
+                for (i, c) in b.decor_tiles().into_iter().enumerate() {
+                    let (px, py) = view.tile_origin(c);
+                    draw_rectangle(px + 3.0 * u, py + 20.0 * u, 26.0 * u, 6.0 * u, Color::from_rgba(40, 30, 24, 120)); // ombre
+                    if i % 2 == 0 {
+                        draw_rectangle(px + 4.0 * u, py + 6.0 * u, 24.0 * u, 20.0 * u, Color::from_rgba(122, 86, 50, 255));
+                        draw_rectangle(px + 4.0 * u, py + 6.0 * u, 24.0 * u, 4.0 * u, Color::from_rgba(166, 122, 74, 255));
+                        draw_rectangle(px + 14.0 * u, py + 6.0 * u, 4.0 * u, 20.0 * u, Color::from_rgba(70, 70, 78, 255));
+                        draw_rectangle(px + 8.0 * u, py + 13.0 * u, 16.0 * u, 3.0 * u, Color::from_rgba(90, 62, 36, 255));
+                    } else {
+                        draw_rectangle(px + 7.0 * u, py + 4.0 * u, 18.0 * u, 22.0 * u, Color::from_rgba(142, 98, 56, 255));
+                        draw_rectangle(px + 7.0 * u, py + 9.0 * u, 18.0 * u, 3.0 * u, Color::from_rgba(70, 70, 78, 255));
+                        draw_rectangle(px + 7.0 * u, py + 18.0 * u, 18.0 * u, 3.0 * u, Color::from_rgba(70, 70, 78, 255));
+                        draw_rectangle(px + 9.0 * u, py + 5.0 * u, 14.0 * u, 3.0 * u, Color::from_rgba(180, 134, 84, 255));
+                    }
+                }
+            }
+            afk_core::PlanKind::House => {}
         }
     }
 }
@@ -222,6 +294,24 @@ pub fn draw_habitat_lights(game: &Game, view: &View) {
         if dark > 0.3 {
             for &wx in &decor.windows {
                 glow(wx, h.y + 1, 0.12 * dark);
+            }
+        }
+    }
+    // la taverne : un feu dans la cheminée et des fenêtres éclairées
+    for b in game.buildings().iter().filter(|b| b.kind == afk_core::PlanKind::Tavern) {
+        let decor = building_decor(b);
+        let t = view.tile_px;
+        let glow = |tx: i32, ty: i32, alpha: f32| {
+            let (px, py) = view.tile_origin(TilePos::new(tx, ty));
+            draw_rectangle(px, py, t, t, Color::new(1.0, 0.62, 0.2, alpha));
+        };
+        let base = (0.05 + 0.13 * dark) * pulse;
+        glow(decor.fireplace, b.y + 1, base * 1.6);
+        glow(decor.fireplace - 1, b.y + 1, base);
+        glow(decor.fireplace + 1, b.y + 1, base);
+        if dark > 0.3 {
+            for &wx in &decor.windows {
+                glow(wx, b.y + 1, 0.12 * dark);
             }
         }
     }
@@ -429,7 +519,8 @@ mod tests {
             let turns = (bed.rotation.quarter_turns() + 4 - 1) % 4;
             preview.blit(&sprites::bed_head_up().rotated(turns), bx, by, scale);
         }
-        for (piece, sprite) in [(&h.table, sprites::table()), (&h.shelf, sprites::shelf()), (&h.trough, sprites::trough())] {
+        for (piece, sprite) in [(Some(&h.table), sprites::table()), (h.shelf.as_ref(), sprites::shelf()), (Some(&h.trough), sprites::trough())] {
+            let Some(piece) = piece else { continue };
             let (px, py) = at(piece.anchor.x, piece.anchor.y);
             preview.blit(&sprite.rotated(piece.rotation.quarter_turns()), px, py, scale);
         }

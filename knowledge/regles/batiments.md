@@ -1,19 +1,21 @@
 ---
 type: Règle
 title: Les bâtiments
-description: Un bâtiment est un type, une taille minimale et des assets obligatoires ; la taille est libre au-dessus du minimum ; chaque asset améliore la vie des occupants ; un lit égale une personne. Décidé, pas encore en jeu.
-etat_en_jeu: décidé (remplace les trois classes de taille fixe en place)
+description: Un bâtiment est un type, une taille minimale et des assets obligatoires ; la taille est libre au-dessus du minimum ; chaque asset améliore la vie des occupants ; un lit égale une personne. En place pour la maison, l'entrepôt et la taverne (assets de base seulement).
+etat_en_jeu: en place (maison, entrepôt, taverne, assets de base) + décidé
 tags: [regle, batiment, habitat, confort]
 sources:
+  - resource: crates/afk-core/src/building.rs
+    title: PlanKind, tailles minimales, Building
   - resource: crates/afk-core/src/habitat.rs
-    title: habitats actuels (classes fixes, mobilier, rotations) : le point de départ du modèle
+    title: HabitatSpec::house (maison de taille libre), classes fixes du village
   - resource: crates/afk-core/src/game.rs
     title: free_places, can_hire
 ---
 
 # Les bâtiments
 
-Page de **règles décidées dans leur principe, pas encore dans le jeu**. Aujourd'hui les habitats ont trois classes de taille fixe (voir [habitat.md](/regles/habitat.md)) ; le modèle ci-dessous les remplace.
+Les maisons, entrepôts et tavernes **bâtis par le roi** suivent ce modèle (voir [construction.md](/regles/construction.md)). Les habitats du village de départ gardent trois classes de taille fixe (voir [habitat.md](/regles/habitat.md)).
 
 ## Le principe — décidé
 
@@ -46,11 +48,19 @@ Le coût en **bois et en pierre** dépend de la forme choisie : il se recalcule 
 
 Un bâtiment **appartient à quelqu'un**, et chaque lit a son occupant. Voir [propriete-et-affectation.md](/regles/propriete-et-affectation.md).
 
-## Aujourd'hui, en place, et ce qui change
+## En place
 
-- En place : trois classes de taille fixe (petite 7×5, moyenne 9×5, grande 9×7), un lit, une table, une étagère et un bac d'eau au minimum, des lits qui se partagent la pièce commune. Le mobilier a déjà des tailles (lit, table, étagère en 2×1 ; bac en 1×1) et quatre rotations (`Rotation`, `Furniture`), ce qui sert de base aux assets.
-- **Différence à trancher** : la règle décidée parle d'un minimum de **lit, bac d'eau, table** (sans étagère). La règle en place exige aussi une étagère. L'étagère devient-elle un asset facultatif ?
-- Les classes fixes, et la spec OpenSpec `housing` qui les décrit, disparaîtront avec l'implémentation de ce modèle. Le code prime tant qu'il n'est pas changé.
+- **Trois types** : maison (taille minimale 6×5, murs compris), entrepôt (8×6), taverne (9×7). Taille maximale 18×12 (un garde-fou).
+- **La maison** a, au minimum, un lit (2×1), une table (2×1) et un bac d'eau (1×1), posés automatiquement (`HabitatSpec::house`) : les lits rangés au nord (une rangée sur deux), la table et le bac de part et d'autre de la porte, au milieu du mur sud. **Le nombre de lits** se règle à la pose, dans ce que la taille permet ; plus elle est grande, plus il y a de places. Pas d'étagère d'office.
+- **L'entrepôt** : murs, porte, des tas de caisses contre le mur du fond ; son coffre est grand (`warehouse_capacity`).
+- **La taverne** : murs, porte, cheminée, deux tables dans les coins du fond.
+- Les assets obligatoires sont dans le prix (voir [construction.md](/regles/construction.md)). Ajouter des assets de confort après coup n'existe pas encore.
+
+## Le village de départ, et ce qui change
+
+- Le village garde trois classes de taille fixe (petite 7×5, moyenne 9×5, grande 9×7), un lit, une table, une étagère et un bac d'eau au minimum, des lits qui se partagent la pièce commune. Le mobilier a des tailles (lit, table, étagère en 2×1 ; bac en 1×1) et quatre rotations (`Rotation`, `Furniture`), ce qui sert de base aux assets.
+- **Différence** : la règle décidée parle d'un minimum de **lit, bac d'eau, table** (sans étagère) ; les maisons bâties suivent cette règle (l'étagère est facultative), les habitats du village gardent leur étagère.
+- Les classes fixes du village et la spec OpenSpec `housing` qui les décrit restent valables pour lui ; la spec `housing` du changement `start-from-camp` ajoute les maisons de taille libre.
 - La vérification « l'espace autour est libre » (`can_expand`) reste utile pour l'agrandissement.
 
 ## À définir

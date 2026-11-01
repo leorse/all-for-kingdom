@@ -1,14 +1,18 @@
 ---
 type: Métier
 title: L'artisan
-description: L'artisan : construit les plans du roi avec du bois et de la pierre. Décidé, pas encore en jeu.
-etat_en_jeu: décidé
+description: L'artisan : construit les plans du roi avec du bois et de la pierre ; sans chantier, il fait le travail d'un transporteur. En place.
+etat_en_jeu: en place
 tags: [metier, construction]
 ---
 
 # L'artisan
 
-Il **construit** ce que le roi a décidé de bâtir. Ce métier est **décidé dans son principe, pas encore dans le jeu**.
+Il **construit** ce que le roi a décidé de bâtir. Ce métier est **en place** : il y a deux artisans au départ, qui construisent et qui livrent les matériaux (voir [construction.md](/regles/construction.md)).
+
+## En place : comment il travaille
+
+Sa routine (`artisan_routine`) : si un chantier a tout son matériel, il va sur la case libre la plus proche autour des fondations et construit (le joueur qui l'incarne construit en regardant les fondations, `E`) ; sinon il fait le travail d'un transporteur (`transport_routine`) ; sans rien à porter, il traîne au camp. Il dort au camp la nuit.
 
 ## Le principe — décidé
 
@@ -18,17 +22,17 @@ Il **construit** ce que le roi a décidé de bâtir. Ce métier est **décidé d
 
 Sans artisan, un plan reste un plan. Sans ressources, l'artisan ne peut pas avancer.
 
-## Au départ — décidé
+## Au départ — en place
 
 Il y a **deux artisans dès le début de la partie**, avec le roi (voir [depart-et-camp.md](/regles/depart-et-camp.md)). Ce sont les seuls à pouvoir bâtir tant qu'on n'en embauche pas d'autres.
 
-## Artisan et transporteur — décidé
+## Artisan et transporteur — en place
 
 **Quand un artisan n'a pas de travail, il fait le travail d'un [transporteur](/metiers/transporteur.md)**, **au début comme tout le temps**. Les deux artisans livrent la matière aux chantiers quand ils ne construisent pas.
 
 **Un artisan a toujours pour priorité de construire.** Il ne transporte que s'il n'a rien d'autre à faire : plus de question de priorité entre construire et livrer.
 
-## Le chantier — décidé
+## Le chantier — en place
 
 Le roi pose un plan, des **fondations** apparaissent (elles bloquent le passage). **Le chantier ne commence que si toutes les ressources sont disponibles** : elles sont alors apportées devant par les **transporteurs** (ou les artisans libres), et dès que tout est là, les artisans construisent, pendant que les transporteurs continuent leur travail habituel. Les routes se génèrent quand le bâtiment est **terminé**. Les plans sont pris **dans l'ordre où ils ont été placés**. Voir [construction.md](/regles/construction.md).
 

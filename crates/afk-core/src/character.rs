@@ -5,6 +5,7 @@
 //! Un personnage ne modifie jamais le monde directement : quand un travail se termine, il renvoie un
 //! `WorkDone` et c'est `Game` qui en applique les effets (parcelle, stock...).
 
+use crate::building::{Site, SiteState};
 use crate::config::Config;
 use crate::container::Container;
 use crate::farm::Farm;
@@ -47,6 +48,12 @@ pub(crate) struct Env<'a> {
     pub claimed: &'a [TilePos],
     pub veins: &'a [Vein],
     pub forests: &'a [Forest],
+    /// Les chantiers, dans l'ordre où le roi les a posés.
+    pub sites: &'a [Site],
+    /// Le camp de base (une case de la place du camp), s'il y en a un : vers lui mènent toutes les routes.
+    pub camp: Option<TilePos>,
+    /// La case devant la porte d'une taverne bâtie, s'il y en a une : les vagabonds s'y retrouvent.
+    pub tavern: Option<TilePos>,
 }
 
 impl Env<'_> {
@@ -104,6 +111,10 @@ pub enum Role {
     Miner,
     Lumberjack,
     Transporter,
+    /// Construit les plans du roi ; sans chantier, il fait le travail d'un transporteur.
+    Artisan,
+    /// Un vagabond qui passe par là : sans métier, sans lit, il se promène puis repart.
+    Vagabond,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -189,6 +200,8 @@ pub struct Character {
     pub cargo: Option<(Resource, u32)>,
     /// Son contenant : celui où il dépose sa production ou livre son bois.
     pub container: Option<usize>,
+    /// Un vagabond reparti : il n'est plus dans le royaume (il n'est ni mis à jour ni dessiné).
+    pub gone: bool,
     /// Le voyage d'un transporteur en cours.
     pub(crate) job: Option<Job>,
 
@@ -208,6 +221,12 @@ pub struct Character {
     heading: Vec2,
     /// Part d'arbre abattue pendant ce pas par ce bûcheron (voir `Game::step`, qui additionne les coups).
     chop_delta: f32,
+    /// Part de chantier construite pendant ce pas par cet artisan (voir `Game::step`, qui additionne le travail).
+    build_delta: f32,
+    /// Un vagabond : heures de jeu qu'il reste dans les parages avant de repartir.
+    stay_hours: f32,
+    /// Un vagabond qui repart : la tuile du bord de la carte vers laquelle il marche.
+    leaving: Option<TilePos>,
     /// Un porteur qui s'est couché avec du bois en main le livre à son réveil avant de reprendre le travail.
     deliver_first: bool,
     /// Chargement ou déchargement demandé pendant ce pas : c'est `Game` qui l'applique.
@@ -242,11 +261,15 @@ impl Character {
             forest: None,
             cargo: None,
             container: None,
+            gone: false,
             job: None,
             deliver_first: false,
             outcome: None,
             approach: None,
             chop_delta: 0.0,
+            build_delta: 0.0,
+            stay_hours: 0.0,
+            leaving: None,
             work_spots,
             path: VecDeque::new(),
             goal: None,
@@ -270,7 +293,7 @@ impl Character {
     pub fn claimed_tile(&self) -> Option<TilePos> {
         // qui mine ou abat occupe une case voisine de sa cible : c'est elle qui est réservée, pas la cible
         // (un filon est infini, un arbre se coupe à plusieurs)
-        let worked = self.work.map(|w| if matches!(w.kind, WorkKind::Mine | WorkKind::Chop) { self.tile() } else { w.tile });
+        let worked = self.work.map(|w| if matches!(w.kind, WorkKind::Mine | WorkKind::Chop | WorkKind::Build) { self.tile() } else { w.tile });
         worked.or(self.work_target)
     }
 
@@ -324,6 +347,7 @@ impl Character {
     /// `control` : `Some(direction)` s'il est incarné par un joueur, `None` s'il est piloté par l'IA.
     pub(crate) fn update(&mut self, env: &Env, control: Option<Vec2>, rng: &mut Rng) -> Option<Outcome> {
         self.chop_delta = 0.0;
+        self.build_delta = 0.0;
         self.outcome = None;
         if self.asleep {
             self.sleep_tick(env); // dort, qu'il soit incarné ou non
@@ -421,7 +445,17 @@ impl Character {
         self.chop_delta
     }
 
-    /// Affiche l'avancement partagé de l'arbre sur la barre de ce bûcheron.
+    /// Part de chantier que cet artisan a construite pendant le dernier pas (0 s'il ne construit pas).
+    pub(crate) fn build_delta(&self) -> f32 {
+        self.build_delta
+    }
+
+    /// Un vagabond arrive pour `hours` heures de jeu.
+    pub(crate) fn set_stay_hours(&mut self, hours: f32) {
+        self.stay_hours = hours;
+    }
+
+    /// Affiche l'avancement partagé de l'arbre (ou du chantier) sur la barre de ce travailleur.
     pub(crate) fn set_work_progress(&mut self, progress: f32) {
         if let Some(work) = self.work.as_mut() {
             work.progress = progress;
@@ -437,6 +471,13 @@ impl Character {
         if work.kind == WorkKind::Chop {
             // un arbre se coupe à plusieurs : `Game` additionne les coups de tous et décide de la chute
             self.chop_delta = env.dt / work.secs * speed * efficiency;
+            work.progress = 0.0;
+            self.activity = Activity::Working;
+            return None;
+        }
+        if work.kind == WorkKind::Build {
+            // un chantier se construit à plusieurs : `Game` additionne le travail de tous et décide de la fin
+            self.build_delta = env.dt / work.secs * speed * efficiency;
             work.progress = 0.0;
             self.activity = Activity::Working;
             return None;
@@ -609,6 +650,10 @@ impl Character {
     /// Routine de l'IA, par ordre de priorité : dormir (à son heure, ou par épuisement), finir son
     /// travail en cours, puis la routine propre à son métier.
     fn run_ai(&mut self, env: &Env, rng: &mut Rng) {
+        if self.role == Role::Vagabond {
+            self.vagabond_routine(env, rng); // il n'a ni lit ni heure de dormir
+            return;
+        }
         let exhausted = self.fatigue >= env.cfg.exhausted_fatigue;
         if self.is_sleep_time(env.night) || exhausted {
             self.work = None;
@@ -630,6 +675,7 @@ impl Character {
             Role::Miner => self.mine_routine(env, rng),
             Role::Lumberjack => self.chop_routine(env, rng),
             Role::Transporter => self.transport_routine(env, rng),
+            Role::Artisan => self.artisan_routine(env, rng),
             Role::Guard => self.patrol_routine(env, rng),
             _ => self.wander_routine(env, rng),
         }
@@ -1035,6 +1081,128 @@ impl Character {
         list
     }
 
+    /// L'artisan : sa priorité est de construire. Il va se placer sur la case libre la plus proche du premier chantier
+    /// dont tout le matériel est là, et construit jusqu'à la fin. Sans chantier à construire, il fait le travail d'un
+    /// transporteur (les matériaux des chantiers en attente, entre autres) ; sans rien à porter, il traîne au camp.
+    fn artisan_routine(&mut self, env: &Env, rng: &mut Rng) {
+        // un chantier à construire passe avant tout, même avant de finir un voyage commencé
+        let Some(site) = env.sites.iter().find(|s| s.state == SiteState::Building) else {
+            self.transport_routine(env, rng);
+            return;
+        };
+        if self.wait > 0.0 {
+            self.wait -= env.dt;
+            self.activity = Activity::Idle;
+            return;
+        }
+        if !self.path.is_empty() {
+            if self.follow_path(env) {
+                self.goal = None;
+            }
+            return;
+        }
+        self.work_target = None;
+        let here = self.tile();
+        // déjà contre le chantier, sur une case que personne d'autre n'occupe : on le regarde et on construit
+        if !env.claimed.contains(&here) {
+            if let Some(t) = [(0, -1), (1, 0), (0, 1), (-1, 0)]
+                .iter()
+                .map(|&(dx, dy)| TilePos::new(here.x + dx, here.y + dy))
+                .find(|&t| site.contains(t))
+            {
+                self.facing = Facing::from_dir(t.center() - self.pos);
+                self.start_work(WorkKind::Build, site.center(), site.total_secs);
+                return;
+            }
+        }
+        // sinon : on marche jusqu'à la case libre la plus proche
+        let best = site
+            .work_tiles(env.map)
+            .into_iter()
+            .filter(|p| !env.claimed.contains(p))
+            .filter_map(|p| {
+                if p == here {
+                    return None;
+                }
+                let (path, cost) = env.path_cost(here, p)?;
+                (!path.is_empty()).then(|| (cost, p, path))
+            })
+            .min_by(|a, b| a.0.total_cmp(&b.0));
+        if let Some((_, post, path)) = best {
+            self.goal = Some(post);
+            self.path = path;
+            self.work_target = Some(post);
+            self.activity = Activity::Idle;
+            return;
+        }
+        self.wait = 1.0; // toutes les places autour du chantier sont prises ou inaccessibles : on réessaiera
+        self.activity = Activity::Idle;
+    }
+
+    /// Le vagabond : il se promène autour du camp (et à la taverne, si elle existe) puis, son temps écoulé, repart par
+    /// le bord de la carte. Il ne travaille pas et ne dort pas ; une taverne le retient bien plus longtemps.
+    fn vagabond_routine(&mut self, env: &Env, rng: &mut Rng) {
+        let hours = if env.tavern.is_some() { env.dt_hours * 0.25 } else { env.dt_hours };
+        self.stay_hours -= hours;
+        if self.stay_hours <= 0.0 && self.leaving.is_none() {
+            // il repart par le bord le plus proche
+            let (w, h) = (env.map.width(), env.map.height());
+            let here = self.tile();
+            let edges = [
+                TilePos::new(1, here.y.clamp(1, h - 2)),
+                TilePos::new(w - 2, here.y.clamp(1, h - 2)),
+                TilePos::new(here.x.clamp(1, w - 2), 1),
+                TilePos::new(here.x.clamp(1, w - 2), h - 2),
+            ];
+            let exit = edges.into_iter().min_by_key(|e| (e.x - here.x).abs() + (e.y - here.y).abs()).unwrap_or(here);
+            self.leaving = Some(exit);
+            self.path.clear();
+            self.goal = None;
+        }
+        if self.wait > 0.0 {
+            self.wait -= env.dt;
+            self.activity = Activity::Idle;
+            return;
+        }
+        if !self.path.is_empty() {
+            if self.follow_path(env) {
+                self.goal = None;
+                if self.leaving == Some(self.tile()) {
+                    self.gone = true;
+                } else {
+                    self.wait = rng.range_f32(2.0, 6.0); // arrivé : il flâne un instant
+                }
+            }
+            return;
+        }
+        let here = self.tile();
+        if let Some(exit) = self.leaving {
+            if here == exit {
+                self.gone = true;
+                return;
+            }
+            self.path = env.map.find_path_mode(here, exit, PathMode::Direct);
+            if self.path.is_empty() {
+                self.gone = true; // pas de chemin jusqu'au bord : il disparaît à la prochaine occasion
+            }
+            return;
+        }
+        // une destination : la taverne une fois sur deux si elle existe, sinon un point au hasard près du camp
+        let center = env.camp.unwrap_or(here);
+        let target = match env.tavern.filter(|_| rng.index(2) == 0) {
+            Some(t) => t,
+            None => TilePos::new(center.x + rng.index(23) as i32 - 11, center.y + rng.index(15) as i32 - 7),
+        };
+        if env.map.in_bounds(target) && !env.map.get(target).is_solid() && target != here {
+            self.path = env.map.find_path_mode(here, target, PathMode::Direct);
+            self.goal = Some(target);
+        }
+        if self.path.is_empty() {
+            self.wait = 0.5; // but inaccessible : on en essaiera un autre
+        }
+        self.activity = Activity::Idle;
+    }
+
     /// Le garde : fait sa ronde, point par point dans l'ordre, et s'arrête un instant à chacun.
     fn patrol_routine(&mut self, env: &Env, rng: &mut Rng) {
         if self.wait > 0.0 {
@@ -1141,6 +1309,9 @@ mod tests {
                 claimed: &[],
                 veins: &[],
                 forests: &[],
+                sites: &[],
+                camp: None,
+                tavern: None,
             };
             if night {
                 c.go_to_bed(&env);
@@ -1230,6 +1401,9 @@ mod tests {
             claimed: &[],
             veins: &[],
             forests: &[],
+            sites: &[],
+            camp: None,
+            tavern: None,
         };
         let on_road = |p: &VecDeque<TilePos>| p.iter().filter(|t| map.get(**t) == Tile::Path).count();
         let chase = env.direct_path(tp(0, 2), tp(27, 27));

@@ -1,56 +1,68 @@
 ---
 type: Règle
 title: Construire : le plan, le chantier et l'interface du roi
-description: Le roi choisit un plan dans une liste puis place un rectangle ; les fondations bloquent le passage ; les transporteurs livrent les matériaux, les artisans construisent ; les routes se tracent vers le camp de base. Décidé, pas encore en jeu.
-etat_en_jeu: décidé
+description: Le roi choisit un plan dans une liste puis place un rectangle (bleu, rouge ou gris) ; les fondations bloquent le passage ; le chantier démarre quand tout est disponible, les matériaux sont portés devant, les artisans construisent ; une route mène au camp. En place pour la maison, l'entrepôt et la taverne.
+etat_en_jeu: en place (trois types de plan) + décidé
 tags: [regle, construction, interface, roi]
 sources:
-  - resource: crates/afk-core/src/scenario.rs
-    title: aujourd'hui, tout est préconstruit ici
+  - resource: crates/afk-core/src/building.rs
+    title: PlanKind, coûts, durées, check_plan, Site, Building
   - resource: crates/afk-core/src/game.rs
-    title: Command, la voie d'entrée des intentions du joueur
+    title: PlacePlan, update_sites, build_sites, finish_site, lay_road
+  - resource: crates/afk-core/src/character.rs
+    title: artisan_routine
+  - resource: crates/afk-game/src/plan_ui.rs
+    title: l'interface du roi
+  - resource: crates/afk-game/src/construction_view.rs
+    title: fondations, échafaudage, enseigne
 ---
 
 # Construire
 
-Règles **décidées, pas encore dans le jeu**. Aujourd'hui tous les bâtiments sont préconstruits dans le scénario de départ. À terme la carte est vide au départ (voir [depart-et-camp.md](/regles/depart-et-camp.md)) et c'est le [roi](/metiers/roi.md) qui place les bâtiments, construits par les [artisans](/metiers/artisan.md).
+Le [roi](/metiers/roi.md) place des plans ; les [artisans](/metiers/artisan.md) les construisent. En place pour trois types : **maison**, **entrepôt**, **taverne** (voir [batiments.md](/regles/batiments.md)). Le départ de partie est décrit dans [depart-et-camp.md](/regles/depart-et-camp.md).
 
-## L'interface du roi — décidé
+## L'interface du roi — en place
 
-1. On **incarne le roi**.
-2. On choisit un **plan** dans une **liste** (maison, forge, taverne…).
-3. On **place ce plan** : une forme **rectangulaire ou carrée** en **surbrillance**, qu'on **déplace** et qu'on **agrandit** autant qu'on veut.
-4. Pendant qu'on la change, on voit **le coût en pierre et en bois** se recalculer.
-5. La zone est **bleue** quand le royaume a les ressources, **rouge** quand il ne les a pas.
-6. On **valide**. Même en rouge, on peut poser le plan : les fondations apparaissent, et le chantier attend d'avoir toutes ses ressources.
+Quand on incarne le roi (touche `1`), un **panneau de parchemin** à cadre de bois liste les plans : nom, taille minimale, coût minimal, pictogramme.
 
-**Le temps ne change jamais** : le royaume continue de tourner à la même vitesse pendant qu'on place un plan (pas de pause, pas de ralenti).
+1. **Clic sur un plan** de la liste : il est choisi.
+2. **Déplacer** : un rectangle en surbrillance suit la souris, à la taille minimale.
+3. **Clic** : le coin haut-gauche est fixé. **Agrandir** : la souris étire le rectangle (jamais sous le minimum). Pour une maison, des boutons `-` et `+` règlent le **nombre de lits**, dans ce que la taille permet.
+4. Une **barre d'information** montre le coût en bois et en pierre, le stock, la durée de construction et ce qui bloque ; elle se recalcule à chaque tuile.
+5. **Clic** : on **valide**. On peut alors en poser un autre. `Retour arrière` revient de l'agrandissement au déplacement ; `Échap` annule l'étape puis le plan (il ne quitte le jeu que s'aucun plan n'est en cours).
 
-Les assets de base du bâtiment sont **compris dans le prix et placés automatiquement** (voir [batiments.md](/regles/batiments.md)).
+La zone est **bleue** si le royaume a les ressources, **rouge** s'il ne les a pas, **grise** si le terrain ne permet pas de poser (eau, arbre, filon, coffre, bord de carte, quelqu'un dessus). Un plan rouge peut être validé ; un plan gris non. Sur le rectangle : la porte (milieu du mur sud) et la case du tas de matériaux.
 
-## Le chantier — décidé
+**Le temps ne change jamais** : pas de pause, pas de ralenti pendant qu'on place. Un clic pris par l'interface n'incarne personne.
 
-1. À la validation, des **fondations** apparaissent à l'endroit choisi. Elles **bloquent le passage**.
-2. **Un chantier ne commence que si toutes les ressources sont disponibles.** Tant qu'elles ne le sont pas, le plan attend.
-3. Quand elles le sont, les **matériaux sont apportés devant le chantier** (par les transporteurs ; les artisans qui n'ont rien à faire font aussi ce travail, voir [artisan.md](/metiers/artisan.md)).
-4. **Dès que tout est là, le chantier commence** : les **artisans** s'activent et construisent. Pendant ce temps, les **transporteurs continuent leur travail habituel**.
+Les assets de base sont **compris dans le prix et placés automatiquement**.
 
-Une fois le chantier commencé, il n'y a donc plus d'arbitrage entre construire et livrer : **un artisan a toujours pour priorité de construire**, et il ne transporte que s'il n'a rien d'autre à faire.
+## Le coût et la durée — en place
 
-## Les routes — décidé
+Le coût en bois et en pierre est la **surface** (murs compris) au prix du type, plus les assets de base, plus chaque lit au-delà du premier (`plan_cost`). La durée suit la même logique (`plan_build_secs`) : par tuile, plus les assets, plus les lits. Ils croissent donc avec la surface et dépendent du type. Les valeurs (`plan_*` dans `Config`) sont des ordres de grandeur à calibrer.
 
-**Dès que le bâtiment est terminé**, **une route se génère toute seule** (pas à la pose des fondations). **Toutes les routes mènent au camp de base** (voir [depart-et-camp.md](/regles/depart-et-camp.md)). Le joueur n'a pas à les tracer. Décidé pour l'instant : cela pourra changer plus tard.
+## Le chantier — en place
 
-## Les priorités — provisoire
+1. À la validation, des **fondations** apparaissent sur toute l'emprise et **bloquent le passage**. Le chantier est « en attente ».
+2. **Un chantier ne commence que si toutes les ressources sont disponibles** (dans les coffres, moins ce qui est promis aux autres chantiers). Tant qu'elles ne le sont pas, il attend, sans rien prendre. Les chantiers sont servis **dans l'ordre des placements**, un chantier trop cher ne bloquant pas les suivants.
+3. Quand il peut démarrer, un **tas de matériaux** apparaît devant le chantier (coin sud-ouest), et les **transporteurs** et les **artisans** sans chantier à construire y portent le bois et la pierre. Le tas affiche `Bois 12/26`.
+4. **Dès que tout est là, le chantier commence** : les artisans construisent, **à plusieurs leur travail s'additionne** (deux artisans vont deux fois plus vite). Un **échafaudage** monte avec l'avancement, avec une barre et un pourcentage.
+5. À la fin, **le bâtiment prend la place des fondations**, les matériaux sont consommés, et **une route se génère** de la porte jusqu'au camp de base (pas avant la fin).
 
-Quand plusieurs chantiers attendent, les artisans les prennent **dans l'ordre des placements**. Ce n'est pas arrêté définitivement : le créateur ne sait pas encore s'il faudra une vraie priorité.
+Un artisan a **toujours pour priorité de construire** ; il ne transporte que s'il n'a rien d'autre à faire. Le joueur qui incarne un artisan peut construire en regardant les fondations (`E`).
+
+## Ce qui est produit
+
+- **Maison** : un habitat de taille libre, meublé au minimum (un lit par place, une table, un bac d'eau) ; chaque lit est une **place libre** (voir [habitat.md](/regles/habitat.md)).
+- **Entrepôt** : un bâtiment dont le tas devient le coffre de l'entrepôt, grand et vide.
+- **Taverne** : un bâtiment avec cheminée et tables, qui retient les vagabonds (ce n'est pas un habitat).
 
 ## À définir
 
 - Peut-on **annuler** un chantier, et que devient la matière déjà livrée ?
 - **Agrandir** un bâtiment existant : par la même interface (on étire un côté et on paie la différence) ?
-- Le **coût** de chaque plan et de chaque asset, la **durée** d'un chantier, et le fait que les **deux artisans** bâtissent ensemble.
-- Quand les ressources deviennent disponibles pour un plan, sont-elles **mises de côté** pour lui, afin qu'un plan posé après ne les prenne pas ? Avec l'ordre des placements comme ordre de service ?
-- Le tracé d'une route **vers le camp** : plus court chemin, ou suit-elle les routes existantes ?
-- Une construction **interdite** (arbre, eau, filon, autre bâtiment dans le rectangle) : la zone devient-elle d'une autre couleur ?
-- Ce que fait **l'IA du roi** quand personne ne l'incarne : place-t-elle des plans ? (voir [roi.md](/metiers/roi.md))
+- Le **coût** et la **durée** exacts de chaque plan (game designer) ; ajouter des **assets** après coup.
+- Quand les ressources deviennent disponibles pour un plan, elles sont **mises de côté** (en place : réservées par calcul, pas physiquement) ; comment le roi exprimera des **priorités** plus fines que l'ordre des placements.
+- Le tracé d'une route **vers le camp** : en place, le trajet ordinaire qui préfère les routes déjà là.
+- Ce que fait **l'IA du roi** quand personne ne l'incarne : elle ne pose aucun plan.
+- Les plans de **production** (cabane de bûcheron, mine, champ, forge) ne sont pas encore dans la liste.

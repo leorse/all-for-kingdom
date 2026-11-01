@@ -139,6 +139,8 @@ fn tile_color(tile: Tile, x: i32, y: i32) -> Color {
         Tile::Ore => Color::from_rgba(120, 118, 124, 255), // recouvert par `draw_veins`, qui connaît la nature
         Tile::Sapling => Color::from_rgba(88 + v, 140 + v, 70, 255), // de l'herbe, la tige est dessinée par `draw_map`
         Tile::Crate => Color::from_rgba(88 + v, 140 + v, 70, 255), // de l'herbe, le coffre est dessiné par `draw_map`
+        Tile::Campfire => Color::from_rgba(176 + v, 150 + v, 108, 255), // la terre battue du camp, le feu est dessiné à part
+        Tile::Foundation => Color::from_rgba(122, 96, 66, 255), // la terre damée, dessinée à part par `construction_view`
         Tile::Furniture => Color::from_rgba(150 + v, 120 + v, 90, 255), // le sol ; les meubles des habitats sont dessinés par `habitat_view`
     }
 }
@@ -154,6 +156,8 @@ fn role_color(role: Role) -> Color {
         Role::Miner => Color::from_rgba(150, 104, 66, 255),
         Role::Lumberjack => Color::from_rgba(70, 150, 90, 255),
         Role::Transporter => Color::from_rgba(60, 190, 190, 255),
+        Role::Artisan => Color::from_rgba(188, 134, 70, 255),
+        Role::Vagabond => Color::from_rgba(132, 120, 108, 255),
     }
 }
 
@@ -177,6 +181,7 @@ fn work_verb(kind: WorkKind) -> &'static str {
         WorkKind::Forge => "forge",
         WorkKind::Mine => "mine",
         WorkKind::Chop => "abat un arbre",
+        WorkKind::Build => "construit",
     }
 }
 
@@ -188,12 +193,14 @@ fn work_hint(kind: WorkKind) -> &'static str {
         WorkKind::Forge => "E : forger",
         WorkKind::Mine => "E : miner",
         WorkKind::Chop => "E : abattre",
+        WorkKind::Build => "E : construire",
     }
 }
 
-fn resource_label(resource: Resource) -> &'static str {
+pub(crate) fn resource_label(resource: Resource) -> &'static str {
     match resource {
         Resource::Wheat => "Ble",
+        Resource::Seeds => "Graines",
         Resource::Wood => "Bois",
         Resource::Iron => "Fer",
         Resource::Copper => "Cuivre",
@@ -204,9 +211,10 @@ fn resource_label(resource: Resource) -> &'static str {
 }
 
 /// La couleur d'une ressource : sur le bloc que porte un transporteur ou un bûcheron.
-fn resource_color(resource: Resource) -> Color {
+pub(crate) fn resource_color(resource: Resource) -> Color {
     match resource {
         Resource::Wheat => Color::from_rgba(232, 200, 70, 255),
+        Resource::Seeds => Color::from_rgba(196, 160, 92, 255),
         Resource::Wood => Color::from_rgba(140, 92, 50, 255),
         Resource::Iron => Color::from_rgba(132, 138, 150, 255),
         Resource::Copper => Color::from_rgba(188, 108, 56, 255),
@@ -229,19 +237,33 @@ fn fitness_color(fitness: f32) -> Color {
 
 // ---------------------------------------------------------------- dessin
 
-pub fn draw(game: &Game, view: &View, art: &crate::habitat_view::Art, sheets: &Sheets, me: PlayerId, speed: f32) {
+pub fn draw(
+    game: &Game,
+    view: &View,
+    art: &crate::habitat_view::Art,
+    sheets: &Sheets,
+    plan_ui: &crate::plan_ui::PlanUi,
+    me: PlayerId,
+    speed: f32,
+) {
     clear_background(Color::from_rgba(20, 24, 30, 255));
     draw_map(game, view);
     draw_veins(game, view);
     draw_farm(game, view);
     crate::habitat_view::draw_habitats(game, view, art);
+    crate::habitat_view::draw_buildings(game, view, art);
+    crate::construction_view::draw_sites(game, view);
+    crate::construction_view::draw_campfire(game, view);
     draw_target(game, view, me);
     draw_characters(game, view, sheets, me);
     draw_containers(game, view);
     draw_forge_sparks(game, view);
     draw_daylight(game, view);
     crate::habitat_view::draw_habitat_lights(game, view);
+    crate::construction_view::draw_campfire_light(game, view);
+    plan_ui.draw_world(game, view, me);
     draw_hud(game, view, me, speed);
+    plan_ui.draw(game, view, me);
 }
 
 fn draw_map(game: &Game, view: &View) {
@@ -256,7 +278,9 @@ fn draw_map(game: &Game, view: &View) {
                 continue; // les habitats se dessinent à part (voir `habitat_view`)
             }
             let (px, py) = view.tile_origin(TilePos::new(x, y));
-            draw_rectangle(px, py, t, t, tile_color(tile, x, y));
+            // un lit au camp est posé sur la terre battue, pas sur un plancher
+            let ground = if tile == Tile::Bed && game.camp().is_some() { Tile::Path } else { tile };
+            draw_rectangle(px, py, t, t, tile_color(ground, x, y));
             match tile {
                 Tile::Wall => draw_rectangle(px, py, t, 4.0 * s, Color::from_rgba(120, 114, 124, 255)),
                 Tile::Crate => {
@@ -275,6 +299,8 @@ fn draw_map(game: &Game, view: &View) {
                 Tile::Field if (x + y) % 2 == 0 => {
                     draw_rectangle(px, py + 14.0 * s, t, 4.0 * s, Color::from_rgba(110, 80, 48, 255))
                 }
+                // un couchage du camp de base
+                Tile::Bed if game.camp().is_some() => crate::construction_view::draw_bedroll(view, TilePos::new(x, y)),
                 // le lit d'une seule tuile (celui du château)
                 Tile::Bed => {
                     draw_rectangle(px + 3.0 * s, py + 6.0 * s, 26.0 * s, 20.0 * s, Color::from_rgba(104, 68, 40, 255)); // cadre
@@ -398,7 +424,7 @@ fn draw_characters(game: &Game, view: &View, sheets: &Sheets, me: PlayerId) {
         Character(&'a Character),
         Anvil(TilePos),
     }
-    let mut bodies: Vec<(f32, Body)> = game.characters().iter().map(|c| (c.pos.y, Body::Character(c))).collect();
+    let mut bodies: Vec<(f32, Body)> = game.characters().iter().filter(|c| !c.gone).map(|c| (c.pos.y, Body::Character(c))).collect();
     bodies.extend(game.map().find_tiles(Tile::Anvil).into_iter().map(|a| (a.y as f32 + 0.5, Body::Anvil(a))));
     bodies.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
 
@@ -448,7 +474,7 @@ fn draw_characters(game: &Game, view: &View, sheets: &Sheets, me: PlayerId) {
 
     // par-dessus tout le monde : le « z » des dormeurs, ce qu'on porte, le marqueur du personnage incarné et la barre
     // de travail
-    for c in game.characters() {
+    for c in game.characters().iter().filter(|c| !c.gone) {
         if !view.point_visible(c.pos, 2.0) {
             continue;
         }
@@ -509,17 +535,26 @@ fn draw_containers(game: &Game, view: &View) {
             continue;
         }
         let (px, py) = view.tile_origin(container.tile);
-        let shown = container.shown();
+        // le tas d'un chantier montre ce qu'il lui faut : « Bois 12/28 »
+        let shown: Vec<Resource> = if container.is_site() { container.needs().keys().copied().collect() } else { container.shown() };
         for (i, resource) in shown.iter().enumerate() {
             let count = container.get(*resource);
-            let label = format!("{} {}/{}", resource_label(*resource), count, container.capacity());
+            let cap = if container.is_site() { container.needs().get(resource).copied().unwrap_or(0) } else { container.capacity() };
+            let label = format!("{} {}/{}", resource_label(*resource), count, cap);
             let w = measure_text(&label, None, size as u16, 1.0).width;
             let x = px + view.tile_px / 2.0 - w / 2.0;
             let y = py + 6.0 * s - (shown.len() - 1 - i) as f32 * line - 2.0;
-            let full = count >= container.capacity();
+            let full = count >= cap;
             // un fond sombre pour lire sur n'importe quel sol
             draw_rectangle(x - 2.0, y - size + 1.0, w + 4.0, size + 2.0, Color::new(0.0, 0.0, 0.0, 0.55));
-            let color = if full { Color::from_rgba(255, 110, 100, 255) } else { WHITE };
+            // un tas de chantier complet est une bonne nouvelle : vert ; un coffre au plafond, une mauvaise : rouge
+            let color = if full && container.is_site() {
+                Color::from_rgba(150, 240, 150, 255)
+            } else if full {
+                Color::from_rgba(255, 110, 100, 255)
+            } else {
+                WHITE
+            };
             draw_text(&label, x, y, size, color);
         }
     }
@@ -632,9 +667,9 @@ fn blocked_message(game: &Game, c: &Character) -> Option<&'static str> {
 fn draw_hud(game: &Game, view: &View, me: PlayerId, speed: f32) {
     let possessed = game.possessed_by(me);
 
-    // une pastille par personnage, avec sa jauge de forme
-    for c in game.characters() {
-        let x = 8.0 + c.id.0 as f32 * 34.0;
+    // une pastille par habitant (les vagabonds de passage n'en ont pas), avec sa jauge de forme
+    for (slot, c) in game.characters().iter().filter(|c| !c.gone && c.role != Role::Vagabond).enumerate() {
+        let x = 8.0 + slot as f32 * 34.0;
         let border = if Some(c.id) == possessed { WHITE } else { Color::from_rgba(30, 30, 30, 255) };
         draw_rectangle(x, 8.0, 30.0, 30.0, border);
         draw_rectangle(x + 3.0, 11.0, 24.0, 24.0, role_color(c.role));
@@ -692,6 +727,14 @@ fn draw_hud(game: &Game, view: &View, me: PlayerId, speed: f32) {
         let w = measure_text(&line, None, 24, 1.0).width;
         text(&line, right - w, y, 24.0);
         y += 24.0;
+    }
+
+    // les lits libres : de quoi embaucher (au camp de base, les trois lits sont pris)
+    if game.camp().is_some() {
+        let line = format!("Lits libres : {}", game.free_places());
+        let w = measure_text(&line, None, 24, 1.0).width;
+        text(&line, right - w, y + 4.0, 24.0);
+        y += 26.0;
     }
 
     if (speed - 1.0).abs() > 0.01 {

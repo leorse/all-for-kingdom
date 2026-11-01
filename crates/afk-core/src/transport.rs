@@ -49,7 +49,7 @@ fn distance(a: TilePos, b: TilePos) -> i32 {
 fn gives(containers: &[Container], source: &Container, resource: Resource) -> bool {
     if source.is_depot() {
         // l'entrepôt central redonne ce qu'un consommateur réclame, jamais le reste
-        containers.iter().any(|c| !c.is_depot() && c.consumes() == Some(resource))
+        containers.iter().any(|c| !c.is_depot() && c.wants(resource))
     } else {
         source.product() == Some(resource)
     }
@@ -79,7 +79,7 @@ pub fn best_trip(
                 if di == si {
                     continue;
                 }
-                let priority = if dest.consumes() == Some(resource) {
+                let priority = if dest.wants(resource) {
                     0
                 } else if dest.is_depot() && !source.is_depot() {
                     1
@@ -121,7 +121,7 @@ pub fn best_destination(
         .iter()
         .enumerate()
         .filter_map(|(i, c)| {
-            let priority = if c.consumes() == Some(resource) {
+            let priority = if c.wants(resource) {
                 0
             } else if c.is_depot() {
                 1

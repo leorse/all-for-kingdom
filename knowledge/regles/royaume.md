@@ -44,9 +44,10 @@ Comme les maisons et les champs, ils seront **loin du centre**.
 
 Les **routes se tracent d'elles-mêmes** pour alléger le travail du joueur, dès que le bâtiment est terminé, et **toutes mènent au camp de base**. Elles servent aux déplacements et aux [transporteurs](/metiers/transporteur.md). Le roi place des plans rectangulaires ([construction.md](/regles/construction.md)) ; la partie commence avec le roi et deux artisans, un camp de base et un petit pécule ([depart-et-camp.md](/regles/depart-et-camp.md)). Les **fondations bloquent le passage**.
 
-### La carte actuelle est en dur — volontairement
+### Deux cartes de départ
 
-Pour l'instant, **tout est posé à la main** dans le scénario de départ. C'est volontaire : cela permet de **tout tester** sans avoir à construire le royaume. Le passage à la carte vide viendra plus tard.
+- **Le camp** (`Scenario::camp`, par défaut) : une carte **sans bâtiment** mais avec sa nature (deux lacs, deux forêts, des filons, des arbres) et un camp au milieu. Le roi bâtit le reste (voir [depart-et-camp.md](/regles/depart-et-camp.md)). Les routes se tracent à la fin de chaque chantier, vers le camp.
+- **Le village** (`Scenario::village`, avec `--village`) : tout est **posé à la main**. C'est volontaire : cela permet de **tout tester** sans avoir à construire le royaume.
 
 ## Décidé : les forêts sont limitées
 

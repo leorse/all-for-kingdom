@@ -15,11 +15,12 @@ Le principe du jeu : on incarne tour à tour les habitants d'une cité médiéva
 * [Mineur](/metiers/mineur.md) - filons 2x2, qualité, coups de pioche, mine-maison
 * [Bûcheron](/metiers/bucheron.md) - forêts, abattage à plusieurs, repousse
 * [Transporteur](/metiers/transporteur.md) - porte les ressources entre coffres
-* [Artisan](/metiers/artisan.md) - construit les plans du roi (décidé, pas en jeu)
+* [Artisan](/metiers/artisan.md) - construit les plans du roi, et transporte quand il est libre
 * [Garde](/metiers/garde.md) - rondes de jour et de nuit
 * [Roi](/metiers/roi.md) - répartit rôles, ressources et territoire
 * [Chef de guerre](/metiers/chef-de-guerre.md) - pas encore de travail propre
-* [Tavernier](/metiers/tavernier.md) - la taverne, porte d'entrée de la population
+* [Tavernier](/metiers/tavernier.md) - la taverne, qui retient les vagabonds ; porte d'entrée de la population
+* [Vagabond](/metiers/vagabond.md) - une personne de passage, sans métier ni lit ; l'embauche reste à faire
 
 ## Les règles communes
 
@@ -28,9 +29,9 @@ Le principe du jeu : on incarne tour à tour les habitants d'une cité médiéva
 * [Ressources et stocks](/regles/ressources-et-stocks.md) - sept ressources, coffres de 200, chaîne de production
 * [La maison et son entrepôt](/regles/habitat.md) - trois classes d'habitat en place, à remplacer, lits, améliorations
 * [Les bâtiments](/regles/batiments.md) - type, taille minimale, assets obligatoires, taille libre, un lit = une personne (décidé)
-* [Construire](/regles/construction.md) - plan dans une liste, rectangle bleu/rouge, fondations, chantier qui démarre quand tout est là, routes vers le camp (décidé)
+* [Construire](/regles/construction.md) - plan dans une liste, rectangle bleu/rouge/gris, fondations, chantier qui démarre quand tout est là, routes vers le camp (en place : maison, entrepôt, taverne)
 * [Propriété et affectation](/regles/propriete-et-affectation.md) - un bâtiment appartient à quelqu'un, embauche liée au lit, métier depuis le bâtiment (décidé)
-* [Le départ de partie et le camp de base](/regles/depart-et-camp.md) - carte vide mais avec sa nature, camp temporaire de 3 lits, feu et coffre, entrepôt à bâtir en priorité (décidé)
+* [Le départ de partie et le camp de base](/regles/depart-et-camp.md) - carte sans bâtiment mais avec sa nature, camp temporaire de 3 lits, feu et coffre, pécule, vagabonds (en place) ; entrepôt à bâtir en priorité
 * [Le royaume](/regles/royaume.md) - la carte, la disposition, les déplacements
 
 ## Le moteur

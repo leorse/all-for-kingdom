@@ -42,6 +42,8 @@ pub struct Scenario {
     /// Les habitats : bâtiments où l'on dort, à taille fixe (le château n'en fait pas partie).
     pub habitats: Vec<HabitatSpec>,
     pub characters: Vec<CharacterSpec>,
+    /// Une case de la place du camp de base, s'il y en a un : toutes les routes qu'on bâtit y mènent.
+    pub camp: Option<TilePos>,
 }
 
 fn spots(list: &[(i32, i32)]) -> Vec<TilePos> {
@@ -284,7 +286,84 @@ impl Scenario {
             }
         }
 
-        Scenario { map, veins, mines, forests, lodges, containers, habitats, characters }
+        Scenario { map, veins, mines, forests, lodges, containers, habitats, characters, camp: None }
+    }
+
+    /// Le départ d'une vraie partie : une carte sans bâtiment, avec sa nature (forêts, filons, lacs, arbres) et au
+    /// milieu un camp de base : une place de terre battue avec un feu, trois lits et un coffre. Le roi et ses deux
+    /// artisans y dorment. Rien d'autre : c'est au roi de bâtir le royaume.
+    pub fn camp() -> Scenario {
+        let (w, h) = (64, 40);
+        let mut map = TileMap::new(w, h, Tile::Grass);
+        map.fill_rect(0, 0, w, 1, Tile::Water);
+        map.fill_rect(0, h - 1, w, 1, Tile::Water);
+        map.fill_rect(0, 0, 1, h, Tile::Water);
+        map.fill_rect(w - 1, 0, 1, h, Tile::Water);
+
+        // deux lacs, aux angles arrondis
+        for &(x, y, lw, lh) in &[(46, 5, 10, 6), (6, 29, 9, 5)] {
+            map.fill_rect(x, y, lw, lh, Tile::Water);
+            for &(cx, cy) in &[(x, y), (x + lw - 1, y), (x, y + lh - 1), (x + lw - 1, y + lh - 1)] {
+                map.set(TilePos::new(cx, cy), Tile::Grass);
+            }
+        }
+
+        // les filons : de la pierre près du camp, du fer et de l'or plus loin
+        let veins = vec![
+            Vein::new(41, 26, OreKind::Stone, Quality::Pure),
+            Vein::new(52, 20, OreKind::Iron, Quality::Medium),
+            Vein::new(20, 33, OreKind::Gold, Quality::Impure),
+        ];
+        for vein in &veins {
+            vein.place(&mut map);
+        }
+
+        // deux forêts, avec leurs couloirs
+        let forests = vec![Forest::new(12, 3, 14, 8), Forest::new(40, 31, 14, 6)];
+        for forest in &forests {
+            forest.plant(&mut map);
+        }
+
+        // quelques arbres isolés (seulement sur l'herbe, jamais dans une forêt)
+        for &(x, y) in &[
+            (10, 14), (24, 16), (27, 26), (36, 10), (44, 16), (18, 24), (34, 33), (58, 26), (8, 20),
+            (50, 36), (30, 6), (4, 8), (22, 36), (60, 12), (47, 24), (14, 18),
+        ] {
+            let p = TilePos::new(x, y);
+            if map.get(p) == Tile::Grass && !forests.iter().any(|f| f.contains(p)) {
+                map.set(p, Tile::Tree);
+            }
+        }
+
+        // le camp : une place de terre battue, le feu au milieu, trois lits autour, le coffre à côté
+        let (cx, cy) = (32, 20);
+        map.fill_rect(cx - 4, cy - 2, 9, 5, Tile::Path);
+        map.set(TilePos::new(cx, cy), Tile::Campfire);
+        let beds = [(cx - 3, cy - 1), (cx + 3, cy - 1), (cx - 3, cy + 1)];
+        for &(x, y) in &beds {
+            map.set(TilePos::new(x, y), Tile::Bed);
+        }
+        let containers = vec![ContainerSpec { kind: ContainerKind::Camp, tile: TilePos::new(cx + 3, cy + 1) }];
+        place_crates(&mut map, &containers);
+
+        let around = &[(cx - 1, cy - 1), (cx + 1, cy - 1), (cx - 1, cy + 1), (cx + 1, cy + 1)];
+        let characters = vec![
+            spec("Roi", Role::King, beds[0], around),
+            spec("Artisan 1", Role::Artisan, beds[1], &[(cx + 1, cy + 2), (cx - 1, cy + 2)]),
+            spec("Artisan 2", Role::Artisan, beds[2], &[(cx - 1, cy + 2), (cx + 1, cy + 2)]),
+        ];
+
+        Scenario {
+            map,
+            veins,
+            mines: Vec::new(),
+            forests,
+            lodges: Vec::new(),
+            containers,
+            habitats: Vec::new(),
+            characters,
+            camp: Some(TilePos::new(cx, cy + 2)),
+        }
     }
 }
 
@@ -391,7 +470,7 @@ mod tests {
                     ContainerKind::Farm => distance_to(fields.clone(), spec.tile),
                     ContainerKind::Mine(i) => distance_to(scenario.veins[i].tiles(), spec.tile),
                     ContainerKind::Lodge(i) => distance_to(scenario.forests[i].trees(&scenario.map), spec.tile),
-                    ContainerKind::Forge | ContainerKind::Depot => continue,
+                    ContainerKind::Forge | ContainerKind::Depot | ContainerKind::Camp | ContainerKind::Site(_) => continue,
                 };
                 assert!(near <= 2, "le coffre {:?} est à {near} cases de son lieu d'extraction", spec.kind);
                 // il ne masque ni un poste de travail ni un poste de mineur

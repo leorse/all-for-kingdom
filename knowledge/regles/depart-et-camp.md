@@ -1,48 +1,48 @@
 ---
 type: Règle
 title: Le départ de partie et le camp de base
-description: La partie commence avec le roi et deux artisans dans un camp de base temporaire (trois lits, un feu, un coffre de 100), sur une carte sans bâtiment mais avec sa nature, et un entrepôt à bâtir en priorité. Décidé pour l'instant, pas encore en jeu.
-etat_en_jeu: décidé dans le principe
-tags: [regle, depart, camp, ressources]
+description: La partie commence avec le roi et deux artisans dans un camp de base temporaire (trois lits, un feu, un coffre de 100), sur une carte sans bâtiment mais avec sa nature, avec un pécule et des vagabonds qui passent. En place ; un entrepôt à bâtir en priorité.
+etat_en_jeu: en place (banc d'essai : le village bâti, `--village`)
+tags: [regle, depart, camp, ressources, vagabonds]
 sources:
   - resource: crates/afk-core/src/scenario.rs
-    title: le village de départ, préconstruit, qui sert de banc d'essai
+    title: Scenario::camp (le départ) et Scenario::village (le banc d'essai)
+  - resource: crates/afk-core/src/game.rs
+    title: pécule dans le coffre du camp, apparition des vagabonds
+  - resource: crates/afk-core/src/config.rs
+    title: camp_capacity, starting_wood, starting_stone, starting_seeds, vagabond_*
 ---
 
 # Le départ de partie et le camp de base
 
-Règles **décidées dans leur principe, pas encore dans le jeu**. Le village préconstruit de `scenario.rs` reste le banc d'essai : il permet de **tout tester** sans avoir à construire le royaume.
+`cargo run` démarre une partie au camp de base. `cargo run -- --village` garde le village préconstruit de `Scenario::village()`, qui reste le banc d'essai : il permet de **tout tester** sans avoir à construire le royaume (sans camp, sans vagabonds).
 
-## Au départ — décidé
+## Au départ — en place
 
-- La **carte est vide** : aucun bâtiment.
-- La partie commence avec **le roi et deux artisans**, qui dorment au **camp de base** (trois lits).
-- Les artisans qui n'ont rien à construire font le **travail de transporteur** : ils livrent la matière aux chantiers (voir [artisan.md](/metiers/artisan.md)).
-- Le **roi place les premiers bâtiments** (voir [construction.md](/regles/construction.md)). Les artisans les construisent : c'est leur métier (voir [artisan.md](/metiers/artisan.md)).
-- Un **petit pécule** de ressources de départ : du **bois**, de la **pierre**, des **graines**… Sa composition et ses quantités ne sont pas arrêtées. Le **nombre de ressources** du jeu non plus : il se déduira des besoins des bâtiments.
-- **Pas d'entrepôt** au départ. Les ressources sont **dans des coffres, et c'est tout** (voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md)).
-- Des **vagabonds se promènent** sur la carte **sans qu'il y ait de taverne** (voir [tavernier.md](/metiers/tavernier.md)).
-- La **nature est déjà là** : forêts, filons, eau, lacs, arbres. Seuls les bâtiments manquent.
+- La **carte est sans bâtiment** (64×40) mais **la nature est déjà là** : deux lacs, deux forêts, des filons (pierre, fer, or ; pas de cuivre posé), des arbres isolés.
+- La partie commence avec **le roi et deux artisans**, qui dorment chacun dans l'un des **trois lits** du camp.
+- Le **roi place les premiers bâtiments** avec l'interface des plans, et les artisans les construisent (voir [construction.md](/regles/construction.md)).
+- Un **petit pécule** dans le coffre du camp : du **bois**, de la **pierre** et des **graines** (`starting_wood`, `starting_stone`, `starting_seeds`). Les graines n'ont pas encore de consommateur. Le **nombre de ressources** du jeu se déduira des besoins des bâtiments ; il n'est pas arrêté.
+- **Pas d'entrepôt** au départ : les ressources sont **dans le coffre du camp, et c'est tout** (voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md)).
+- Des **vagabonds se promènent** sans qu'il y ait de taverne (voir [vagabond.md](/metiers/vagabond.md)).
 
-## Le camp de base — décidé pour l'instant
+## Le camp de base — en place, temporaire
 
-Le camp de base est **une zone temporaire** qui contient :
+Le camp est **une place de terre battue** (9×5) qui contient :
 
-- **trois lits** : ceux du roi et des deux artisans ;
-- **un feu de camp** ;
-- **un coffre**, qui peut contenir **absolument tout** : du bois, du blé, de la pierre, sans être réservé à un matériau, avec des limites (voir plus bas).
+- **trois lits** (des couchages à même le sol) : ceux du roi et des deux artisans ;
+- **un feu de camp**, animé, qui éclaire le sol la nuit ;
+- **un coffre**, qui contient **absolument tout** (bois, blé, pierre…) sans être réservé à un matériau, avec une limite de **100 de chaque ressource** (`camp_capacity`).
 
-Décidé **pour l'instant** : cela pourra changer plus tard.
-
-**Toutes les routes mènent au camp de base** (voir [construction.md](/regles/construction.md)).
+**Toutes les routes qu'on bâtit mènent au camp de base** : à la fin de chaque chantier, une route se trace de la porte du bâtiment jusqu'à la place du camp (voir [construction.md](/regles/construction.md)).
 
 ## L'entrepôt, première urgence — décidé
 
-Le coffre du camp ne contient que **100 éléments**. Le joueur a **tout intérêt à construire un entrepôt dès les premières minutes** : il contient des quantités **beaucoup plus grandes**. L'entrepôt est le premier grand objectif de la partie (voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md)).
+Le coffre du camp ne contient que 100 de chaque ressource. Le joueur a **tout intérêt à construire un entrepôt dès les premières minutes** : il contient des quantités beaucoup plus grandes (`warehouse_capacity`). C'est le premier grand objectif de la partie.
 
 ## À définir
 
-- La **limite de 100** du coffre du camp : par ressource, ou au total ? Les coffres actuels du jeu sont à **200 de chaque ressource** : le créateur dit « les mêmes limites que d'habitude » et aussi « 100 éléments chacun ». À trancher.
-- Le **pécule** est-il dans le coffre du camp ? Sa composition et ses quantités ne sont pas arrêtées.
+- La **limite de 100** du coffre du camp : le créateur parle de « 100 éléments chacun » et de « mêmes limites que d'habitude » (200 par ressource ailleurs). Elle est **par ressource** dans le jeu ; à confirmer.
 - Que devient la **zone temporaire** : améliorée, ou remplacée (un château, des maisons) ? Le roi dort-il toujours au camp ?
-- La **capacité de l'entrepôt**, et ce qu'il coûte : assez bas pour être bâti dans les premières minutes.
+- La **composition et les quantités du pécule**, et la **capacité de l'entrepôt**, à calibrer avec le game designer.
+- Aucun métier de production ne peut encore être bâti : bois et pierre ne se renouvellent pas tant qu'on ne peut pas poser de cabane de bûcheron ni de mine.

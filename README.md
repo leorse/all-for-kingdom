@@ -6,7 +6,8 @@ Sans personne d'incarné, la cité tourne seule : c'est le mode AFK.
 
 ## Lancer
 
-    cargo run                          # jeu, journée de 10 minutes
+    cargo run                          # jeu au camp de base, journée de 10 minutes
+    cargo run -- --village             # le village déjà bâti (banc d'essai)
     cargo run -- --day-seconds 10      # journée de 10 secondes (tout le rythme de vie suit)
     cargo run -- --speed 20            # journée normale, vue en accéléré
     cargo test                         # tests de la logique
@@ -26,13 +27,15 @@ Tous les autres réglages (heure de départ, aube, crépuscule, rythme de fatigu
 |---|---|
 | ZQSD / WASD / flèches | bouger |
 | Tab, 1 à 9, clic | incarner un personnage (la caméra glisse jusqu'à lui) |
-| E | travailler la parcelle visée (paysan) / forger (forgeron) / miner le filon visé (mineur) / abattre l'arbre visé (bûcheron) / se coucher près de son lit / se lever / annuler le travail en cours |
+| E | travailler la parcelle visée (paysan) / forger (forgeron) / miner le filon visé (mineur) / abattre l'arbre visé (bûcheron) / construire les fondations visées (artisan) / se coucher près de son lit / se lever / annuler le travail en cours |
+| Clic dans le panneau des plans (roi) | choisir un plan ; puis clic sur la carte pour fixer le coin, la souris agrandit, second clic pour valider |
+| Retour arrière | du dimensionnement d'un plan au déplacement |
 | C | vider l'entrepôt central (toutes ses ressources disparaissent) |
 | Espace | mode AFK on/off (en vue libre, reprend aussi le dernier personnage) |
 | Bouton droit maintenu + souris | déplacer la vue : on tire la carte |
 | Molette | zoomer / dézoomer autour du curseur |
 | T | vitesse de simulation (debug) |
-| Échap | quitter |
+| Échap | annuler l'étape d'un plan ; sans plan en cours, quitter |
 
 ## Le royaume et la caméra
 
@@ -54,6 +57,16 @@ glissement, marge de suivi, paliers de zoom) est dans `crates/afk-game/src/camer
 ## Direction artistique
 
 Le jeu s'habille d'un **pixel art net et chaleureux** (bois, chaume, pierre, lumière ambrée), dont le guide est `knowledge/graphisme/direction-artistique.md` : tuile de base de 16×16 pixels, palette commune, affichage sans lissage à une échelle entière. Les **habitats** sont les premiers redessinés (coupe de la maison : toit de chaume, mur de rondins, fenêtres qui s'éclairent la nuit, cheminée au feu animé, sol en planches, paillasson, lits, table, étagère et baquet) ; tout le reste (terrain, arbres, champs, forge, personnages, interface) suivra, un élément à la fois. Les meubles se posent dans quatre rotations (`Rotation`, `Furniture` dans `crates/afk-core/src/habitat.rs`). Les sprites sont dessinés dans `crates/afk-game/src/sprites.rs` ; un aperçu des maisons se génère avec `PREVIEW_OUT=maisons.bmp cargo test -p afk-game preview_houses -- --ignored`.
+
+## Le départ de partie
+
+Le jeu démarre au **camp de base** : une carte sans bâtiment mais avec sa nature (lacs, forêts, filons, arbres), au milieu une place de terre battue avec un feu, trois lits et un coffre qui contient un petit pécule (bois, pierre, graines). Le **roi** et **deux artisans** y dorment. Des **vagabonds** passent par là, se promènent, puis repartent ; une taverne les retient plus longtemps.
+
+Le **roi** (touche `1`) fait tout le gameplay du début : il choisit un **plan** dans la liste à gauche (maison, entrepôt, taverne), place un rectangle qu'il déplace et agrandit à la souris, avec le coût en bois et en pierre et la durée de construction qui se recalculent à chaque tuile. La zone est **bleue** si le royaume a les ressources, **rouge** sinon (on peut quand même poser le plan, le chantier attendra), **grise** si le terrain ne s'y prête pas. Le temps ne s'arrête jamais pendant qu'on place.
+
+À la validation, les **fondations** (infranchissables) apparaissent. Le chantier ne démarre que si **toutes** les ressources sont disponibles : elles sont portées en tas devant le chantier par les transporteurs et par les artisans libres, puis les **artisans construisent** (à deux, deux fois plus vite). Un artisan construit d'abord, il transporte sinon. À la fin, le bâtiment prend la place des fondations et une **route** le relie au camp. Une maison a le nombre de lits qu'on choisit (au plus ce que sa taille permet) : chaque lit est une place libre.
+
+L'**entrepôt** est le premier objectif : le coffre du camp ne contient que 100 de chaque ressource. Les plans de production (cabane de bûcheron, mine, champ, forge), l'embauche des vagabonds et l'attribution des lits et des métiers ne sont pas encore dans le jeu. Voir `knowledge/regles/depart-et-camp.md` et `knowledge/regles/construction.md`.
 
 ## Règles actuelles
 
@@ -159,6 +172,7 @@ Rien dans `afk-core` ne bouge.
 - [x] Jalon 4 : filons de minerai, mineurs et mines
 - [x] Jalon 5 : forêts, arbres qui repoussent et bûcherons
 - [x] Jalon 6 : coffres limités à 200, trois transporteurs qui courent, bûcheron porteur
-- À venir : priorités du roi pour les transporteurs, décrets du roi qui orientent les priorités de l'IA
+- [x] Jalon 7 : le départ au camp de base, les plans du roi (maison, entrepôt, taverne), les chantiers, les vagabonds
+- À venir : plans de production (cabane, mine, champ, forge), embauche des vagabonds, lits et métiers attribués par le roi ; priorités du roi pour les transporteurs, décrets du roi qui orientent les priorités de l'IA
   (que forger, combien de paysans), roi / chef de guerre / tavernier avec un vrai travail
 - Plus tard : sprites en atlas, vraie lumière (carte de lumière), coop réseau

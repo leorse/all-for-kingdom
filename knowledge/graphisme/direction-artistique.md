@@ -100,10 +100,15 @@ Le PNG est commité à côté du SVG, et le jeu l'embarque. Un test échoue si l
 | `V` `v` `x` | `#5c5c6c` `#444452` `#2e2e3a` | tissu (pantalon) |
 | `i` | `#96886c` | chemise dans l'ombre |
 
+## L'interface
+
+L'interface du roi a son propre thème, **médiéval** : bois sombre, parchemin, filet d'or, rivets de fer (`theme.rs`). Elle n'utilise pas la palette du pixel art du monde : elle est dessinée au pixel d'écran, sans lissage. Les textes de l'interface restent en ASCII, comme tout le HUD (la police par défaut de macroquad ne gère pas les accents).
+
 ## Où est le code
 
 - `crates/afk-game/src/sprites.rs` : la palette, les dessins de 16 pixels (habitats, en rectangles), leur rotation exacte et leur affichage net.
-- `crates/afk-game/src/habitat_view.rs` : la coupe d'une maison (sol, murs, toit, fenêtres, cheminée, paillasson, meubles) et sa lumière.
+- `crates/afk-game/src/habitat_view.rs` : la coupe d'une maison (sol, murs, toit, fenêtres, cheminée, paillasson, meubles) et sa lumière ; aussi l'entrepôt et la taverne.
+- `crates/afk-game/src/theme.rs`, `plan_ui.rs`, `construction_view.rs` : le thème médiéval de l'interface, le panneau des plans, le camp et les chantiers.
 - `crates/afk-game/src/character_sprites.rs` : le gabarit des personnages (cellule, ancrage, animations).
 - `crates/afk-game/src/character_view.rs` : l'affichage des planches de personnages et de l'enclume.
 - `crates/afk-game/src/spritegen.rs` et `src/bin/spritegen.rs` : la conversion SVG → PNG (`sprites.bat`).
