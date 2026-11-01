@@ -23,7 +23,7 @@ Une personne qui **passe par là**, sans foyer et sans métier. Elle n'est pas u
 - Il **se promène** autour du camp, s'arrête un instant, repart ailleurs. Il **n'a ni lit ni heure de sommeil** et ne travaille pas.
 - Son temps de séjour écoulé (`vagabond_stay_hours`), il **repart** par le bord le plus proche et quitte le royaume.
 - Une **taverne** bâtie le retient : il s'y rend une fois sur deux et son séjour dure quatre fois plus longtemps.
-- On ne l'incarne pas dans le HUD (il n'a pas de pastille), mais on peut l'incarner avec Tab ou le clic.
+- Il n'est pas compté dans les habitants du HUD, mais on peut l'incarner avec Tab ou le clic.
 
 ## Décidé, pas en jeu
 

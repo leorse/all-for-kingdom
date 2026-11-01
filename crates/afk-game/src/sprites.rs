@@ -61,6 +61,7 @@ pub const PALETTE: &[(char, [u8; 4])] = &[
     ('v', [0x44, 0x44, 0x52, 255]), // tissu foncé
     ('x', [0x2e, 0x2e, 0x3a, 255]), // tissu dans l'ombre
     ('i', [0x96, 0x88, 0x6c, 255]), // chemise dans l'ombre
+    ('p', [0x5a, 0x2a, 0x7a, 255]), // pourpre foncé : l'ombre de la robe du roi (le clair est 'P')
 ];
 
 /// La couleur RGBA d'une lettre de la palette.

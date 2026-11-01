@@ -9,7 +9,7 @@
 //! Ce module traduit la souris en `Command::PlacePlan` : il ne décide d'aucune règle (le cœur valide tout).
 
 use crate::construction_view::plan_name;
-use crate::render::{resource_color, View};
+use crate::render::View;
 use crate::theme::{self, with_alpha};
 use afk_core::{Command, Game, HabitatSpec, PlanError, PlanKind, PlayerId, Resource, TilePos};
 use macroquad::prelude::*;
@@ -347,16 +347,10 @@ impl PlanUi {
     }
 }
 
+/// Le coût d'un plan, en pictogrammes (les mêmes que le HUD) ; `y` est la ligne de base des nombres.
 fn cost_tokens(x: f32, y: f32, wood: u32, stone: u32, size: f32, wood_short: bool, stone_short: bool) -> f32 {
-    let mut cx = x;
-    for (resource, n, short) in [(Resource::Wood, wood, wood_short), (Resource::Stone, stone, stone_short)] {
-        theme::token(cx, y - size + 2.0, size - 2.0, resource_color(resource));
-        let label = n.to_string();
-        let col = if short { Color::new(0.65, 0.12, 0.10, 1.0) } else { theme::INK };
-        draw_text(&label, cx + size + 2.0, y, size, col);
-        cx += size + 8.0 + measure_text(&label, None, size as u16, 1.0).width;
-    }
-    cx
+    let items = [(Resource::Wood, wood, wood_short), (Resource::Stone, stone, stone_short)];
+    crate::hud_icons::draw_cost(x, y - size * 0.33, &items, size, theme::INK)
 }
 
 fn draw_panel(game: &Game, origin: (f32, f32), collapsed: bool, hover: Option<PlanKind>, selected: Option<PlanKind>) {
@@ -376,16 +370,16 @@ fn draw_panel(game: &Game, origin: (f32, f32), collapsed: bool, hover: Option<Pl
         theme::button(cx, cy, cw, ch, is_hover, is_selected);
         draw_icon(kind, cx + 8.0, cy + 10.0, 56.0);
         let (min_w, min_h) = kind.min_size();
-        theme::ink(plan_name(kind), cx + 74.0, cy + 26.0, 24.0);
-        draw_text(&format!("Min {}x{}", min_w, min_h), cx + 74.0, cy + 44.0, 17.0, theme::INK_SOFT);
+        theme::ink(plan_name(kind), cx + 74.0, cy + 24.0, 24.0);
+        draw_text(&format!("Min {}x{}", min_w, min_h), cx + 74.0, cy + 40.0, 17.0, theme::INK_SOFT);
         let cost = game.plan_cost(kind, min_w, min_h, kind.min_beds());
-        cost_tokens(cx + 74.0, cy + 64.0, cost.wood, cost.stone, 17.0, false, false);
+        cost_tokens(cx + 74.0, cy + 62.0, cost.wood, cost.stone, 17.0, false, false);
         let blurb = match kind {
             PlanKind::House => "lits, table, bac d'eau",
             PlanKind::Warehouse => "stocke beaucoup plus",
             PlanKind::Tavern => "retient les vagabonds",
         };
-        draw_text(blurb, cx + 74.0, cy + 76.0 - 0.0, 13.0, with_alpha(theme::INK_SOFT, 0.9));
+        draw_text(blurb, cx + 74.0, cy + 75.0, 13.0, with_alpha(theme::INK_SOFT, 0.9));
     }
     let hint = "Clic : choisir | Droit : annuler";
     draw_text(hint, x + 24.0, y + h - 14.0, 16.0, theme::INK_SOFT);
@@ -500,8 +494,12 @@ fn draw_bar(game: &Game, shape: &Shape) {
 
     theme::ink(plan_name(shape.kind), x + 22.0, y + 40.0, 26.0);
     draw_text(&format!("{} x {}", shape.w, shape.h), x + 22.0, y + 60.0, 18.0, theme::INK_SOFT);
-    cost_tokens(x + 170.0, y + 38.0, cost.wood, cost.stone, 20.0, wood_short, stone_short);
-    draw_text(&format!("en stock : bois {}, pierre {}", wood_have, stone_have), x + 170.0, y + 58.0, 15.0, theme::INK_SOFT);
+    let cost_end = cost_tokens(x + 170.0, y + 38.0, cost.wood, cost.stone, 20.0, wood_short, stone_short);
+    // ce que le royaume a : un coffre, puis ses réserves
+    let (chest_x, center) = (cost_end + 16.0, y + 38.0 - 20.0 * 0.33);
+    crate::hud_icons::draw(crate::hud_icons::Icon::Chest, chest_x, center - 10.0, 2.0, 1.0);
+    let stock = [(Resource::Wood, wood_have, false), (Resource::Stone, stone_have, false)];
+    crate::hud_icons::draw_cost(chest_x + 26.0, center, &stock, 20.0, theme::INK_SOFT);
     draw_text(
         &format!("Construction : {:.0} s ({:.0} s a deux artisans)", secs, secs / 2.0),
         x + 170.0,

@@ -50,7 +50,7 @@ Tous les personnages suivent le même gabarit, défini une fois dans `crates/afk
   | 1 à 4 | `marche_bas`, `marche_haut`, `marche_droite`, `marche_gauche` | 4 : contact jambe gauche, croisé, contact jambe droite, croisé |
   | 5 | `repos` (face vers le bas) | 4 : neutre, inspiration, neutre, clignement |
   | 6 | `sommeil` (couché tête en haut, dans un lit d'une tuile de large) | 2 |
-  | 7 | `travail`, propre au métier | 6 pour le forgeron : marteau bas, lever, haut, descente, impact, rebond |
+  | 7 | `travail`, propre au métier | 6 pour le forgeron : marteau bas, lever, haut, descente, impact, rebond ; les autres métiers reprennent ces durées (`SWING`) avec leur outil à la main (pioche, hache, houe, maillet, caisse, épée, sceptre, chope) |
   | 8 | objets du métier (l'`enclume`) | 1 chacun |
 
 - **Une marche bien décomposée** : jamais la même jambe en avant sur deux pas qui se suivent, les bras à l'opposé des jambes.
@@ -94,6 +94,7 @@ Le PNG est commité à côté du SVG, et le jeu l'embarque. Un test échoue si l
 | `O` `o` `e` | `#ff9a2a` `#ffd23c` `#d8541a` | flammes, braises, métal chaud |
 | `L` `N` `P` `Q` | `#3a5fa8` `#a8403a` `#8a4ab0` `#4cb05a` | livres bleu et brun, flacons violet et vert |
 | `C` `c` | `#8a8a3a` `#5e5e26` | tapis olive |
+| `p` | `#5a2a7a` | pourpre foncé (robe du roi) |
 | `A` `a` `I` | `#f4c496` `#dea070` `#aa6846` | peau : claire, moyenne, dans l'ombre |
 | `H` `j` `J` | `#84522c` `#643a1e` `#422412` | cheveux et barbe |
 | `E` `l` `n` | `#966034` `#764624` `#4e2c16` | cuir (tablier, ceinture) |
@@ -102,13 +103,14 @@ Le PNG est commité à côté du SVG, et le jeu l'embarque. Un test échoue si l
 
 ## L'interface
 
-L'interface du roi a son propre thème, **médiéval** : bois sombre, parchemin, filet d'or, rivets de fer (`theme.rs`). Elle n'utilise pas la palette du pixel art du monde : elle est dessinée au pixel d'écran, sans lissage. Les textes de l'interface restent en ASCII, comme tout le HUD (la police par défaut de macroquad ne gère pas les accents).
+L'interface du roi a son propre thème, **médiéval** : bois sombre, parchemin, filet d'or, rivets de fer (`theme.rs`). Elle n'utilise pas la palette du pixel art du monde : elle est dessinée au pixel d'écran, sans lissage. Le HUD ne contient presque aucun mot : des **pictogrammes de 10x10 pixels** (`hud_icons.rs`, une lettre = une couleur de leur palette, agrandis de 3 pour le HUD, de 2 ou 3 sur les coffres) et des nombres, sur des planches de bois à filet d'or (`theme::plank`). Les rares textes (nombres, panneau d'aide, panneau des plans) restent en ASCII : la police par défaut de macroquad ne gère pas les accents.
 
 ## Où est le code
 
 - `crates/afk-game/src/sprites.rs` : la palette, les dessins de 16 pixels (habitats, en rectangles), leur rotation exacte et leur affichage net.
 - `crates/afk-game/src/habitat_view.rs` : la coupe d'une maison (sol, murs, toit, fenêtres, cheminée, paillasson, meubles) et sa lumière ; aussi l'entrepôt et la taverne.
 - `crates/afk-game/src/theme.rs`, `plan_ui.rs`, `construction_view.rs` : le thème médiéval de l'interface, le panneau des plans, le camp et les chantiers.
+- `crates/afk-game/src/hud.rs`, `hud_icons.rs` : le HUD (royaume, personnage incarné, horloge, ressources, aide) et ses pictogrammes.
 - `crates/afk-game/src/character_sprites.rs` : le gabarit des personnages (cellule, ancrage, animations).
 - `crates/afk-game/src/character_view.rs` : l'affichage des planches de personnages et de l'enclume.
 - `crates/afk-game/src/spritegen.rs` et `src/bin/spritegen.rs` : la conversion SVG → PNG (`sprites.bat`).
@@ -116,7 +118,7 @@ L'interface du roi a son propre thème, **médiéval** : bois sombre, parchemin,
 
 ## Ce qui est déjà dans ce style
 
-Les **habitats** (toutes les maisons, mines et cabanes, encore sur 16 pixels), le **forgeron** et l'**enclume**. Le terrain, les arbres, les champs, les filons, les coffres, la forge, la taverne, les autres personnages et l'interface gardent leur apparence d'avant, jusqu'à ce qu'on les redessine à leur tour. Le **château** n'est pas touché : il aura son propre fonctionnement.
+Les **habitats** (toutes les maisons, mines et cabanes, encore sur 16 pixels), le **forgeron**, l'**enclume** et les personnages des métiers (mineur, bûcheron, paysan, transporteur, artisan, garde, roi, chef de guerre, tavernier ; le vagabond reste une silhouette). Le terrain, les arbres, les champs, les filons, les coffres, la forge, la taverne et les blocs portés gardent leur apparence d'avant, jusqu'à ce qu'on les redessine à leur tour. Le **château** n'est pas touché : il aura son propre fonctionnement.
 
 ## Pour ajouter un dessin
 

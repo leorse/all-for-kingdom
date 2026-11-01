@@ -10,6 +10,8 @@ pub struct Input {
     pub quit: bool,
     /// Touche de debug : passer à la vitesse de simulation suivante (affecte le frontend, pas le cœur).
     pub cycle_speed: bool,
+    /// Ouvrir ou fermer le panneau des commandes (H ou F1).
+    pub toggle_help: bool,
     /// Une touche de déplacement est tenue : si la vue était libre, la caméra reprend le personnage.
     pub moving: bool,
     /// Bouton droit maintenu : la carte suit la souris (voir `View::pan_pixels`).
@@ -86,6 +88,7 @@ pub fn poll(player: PlayerId, view: &View, game: &Game, ui_has_mouse: bool) -> I
         commands,
         quit: is_key_pressed(KeyCode::Escape),
         cycle_speed: is_key_pressed(KeyCode::T),
+        toggle_help: is_key_pressed(KeyCode::H) || is_key_pressed(KeyCode::F1),
         moving,
         right_down: is_mouse_button_down(MouseButton::Right),
         mouse: mouse_position(),

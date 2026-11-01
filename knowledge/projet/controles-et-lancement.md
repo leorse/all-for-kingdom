@@ -26,6 +26,7 @@ cargo test                         # tests de la logique
 | Tab, 1 à 9, clic | incarner un personnage |
 | E | action du métier (travailler, forger, miner, abattre, charger/décharger, se coucher, se lever, annuler) |
 | C | vider l'entrepôt central |
+| H, F1 | ouvrir ou fermer le panneau des commandes (le HUD ne montre plus de légende ; Échap le referme d'abord) |
 | Espace | mode AFK on/off |
 | Bouton droit maintenu + souris | déplacer la vue |
 | Molette | zoom (4 paliers entiers) autour du curseur |
@@ -33,6 +34,6 @@ cargo test                         # tests de la logique
 | Clic dans le panneau des plans (le roi) | choisir un plan |
 | Clic sur la carte (plan choisi) | fixer le coin, puis valider le rectangle |
 | Retour arrière | du dimensionnement au déplacement du plan |
-| Échap | annuler l'étape d'un plan ; sans plan en cours, quitter |
+| Échap | fermer l'aide, sinon annuler l'étape d'un plan ; sans rien d'ouvert, quitter |
 
 La caméra suit le personnage incarné ; déplacer la vue à la souris la rend libre jusqu'à ce qu'on bouge au clavier, qu'on change de personnage ou qu'on reprenne la main avec Espace. Voir [le rendu et la caméra](/moteur/rendu-et-camera.md) et [le temps et le repos](/regles/temps-et-repos.md).

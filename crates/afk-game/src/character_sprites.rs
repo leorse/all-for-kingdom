@@ -117,17 +117,48 @@ pub fn mirror_source(id: &str) -> Option<String> {
     base.or_else(|| (id == "debout_gauche").then(|| "debout_droite".to_string()))
 }
 
+/// Les six temps d'un geste de travail à l'outil (bras bas, lever, haut, descente, impact, rebond) : ceux de la forge,
+/// repris par les métiers qui travaillent d'un geste (pioche, hache, houe...).
+const SWING: &[f32] = &[0.16, 0.12, 0.16, 0.07, 0.14, 0.12];
+
 /// Le forgeron : 6 images de forge (marteau bas, lever, haut, descente, impact, rebond) et son enclume.
 pub const BLACKSMITH: SheetSpec = SheetSpec {
     name: "forgeron",
-    work: Anim { name: "travail", row: WORK_ROW, durations: &[0.16, 0.12, 0.16, 0.07, 0.14, 0.12] },
+    work: Anim { name: "travail", row: WORK_ROW, durations: SWING },
     extras: &["enclume"],
 };
 /// L'image de la forge où le marteau touche le métal : c'est là que jaillissent les étincelles.
 pub const FORGE_IMPACT: u32 = 4;
 
+/// Le mineur : 6 images de coups de pioche, sans objet fixe.
+pub const MINER: SheetSpec = SheetSpec { name: "mineur", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// Le bûcheron : 6 images de coups de hache, sans objet fixe.
+pub const LUMBERJACK: SheetSpec = SheetSpec { name: "bucheron", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// Le paysan : 6 images de coups de houe, sans objet fixe.
+pub const FARMER: SheetSpec = SheetSpec { name: "paysan", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// Le transporteur : 6 images de portage d'une caisse, sans objet fixe.
+pub const TRANSPORTER: SheetSpec = SheetSpec { name: "transporteur", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// L'artisan : 6 images de coups de maillet, sans objet fixe.
+pub const ARTISAN: SheetSpec = SheetSpec { name: "artisan", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// Le garde : 6 images de coups d'épée, sans objet fixe.
+pub const GUARD: SheetSpec = SheetSpec { name: "garde", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// Le roi : 6 images de geste de commandement au sceptre, sans objet fixe.
+pub const KING: SheetSpec = SheetSpec { name: "roi", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// Le chef de guerre : 6 images de coups de hache d'armes, sans objet fixe.
+pub const WARLORD: SheetSpec = SheetSpec { name: "chef_de_guerre", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
+/// Le tavernier : 6 images de service d'une chope, sans objet fixe.
+pub const INNKEEPER: SheetSpec = SheetSpec { name: "tavernier", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
 /// Toutes les planches connues.
-pub const SHEETS: [SheetSpec; 1] = [BLACKSMITH];
+pub const SHEETS: [SheetSpec; 10] = [BLACKSMITH, MINER, LUMBERJACK, FARMER, TRANSPORTER, ARTISAN, GUARD, KING, WARLORD, INNKEEPER];
 
 /// Une cellule de la planche.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

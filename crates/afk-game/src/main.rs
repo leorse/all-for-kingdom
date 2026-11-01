@@ -16,6 +16,8 @@ mod character_sprites;
 mod character_view;
 mod construction_view;
 mod habitat_view;
+mod hud;
+mod hud_icons;
 mod input;
 mod plan_ui;
 mod render;
@@ -70,13 +72,22 @@ async fn main() {
     let mut last_mouse: Option<(f32, f32)> = None;
     // Un personnage était-il incarné à l'image précédente ? (Espace en quitte puis en reprend un.)
     let mut was_possessed = true;
+    // Le panneau des commandes (touche H ou F1) : fermé par défaut, le HUD ne contient aucune légende.
+    let mut help_open = false;
 
     loop {
         // l'interface du roi lit la souris en premier : un clic sur le panneau ne doit pas incarner quelqu'un
         let plan_commands = plan_ui.update(&game, &view, me, get_frame_time());
         let input = input::poll(me, &view, &game, plan_ui.captures_mouse());
+        if input.toggle_help {
+            help_open = !help_open;
+        }
         if input.quit && !plan_ui.consumed_escape() {
-            break;
+            if help_open {
+                help_open = false; // Échap referme d'abord l'aide
+            } else {
+                break;
+            }
         }
         if input.cycle_speed {
             speed = if speed < 5.0 {
@@ -127,7 +138,7 @@ async fn main() {
         let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
         view.update(&game, target, recenter, get_frame_time());
 
-        render::draw(&game, &view, &art, &sheets, &plan_ui, me, speed);
+        render::draw(&game, &view, &art, &sheets, &plan_ui, me, speed, help_open);
         next_frame().await;
     }
 }

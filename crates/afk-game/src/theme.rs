@@ -90,9 +90,22 @@ pub fn button(x: f32, y: f32, w: f32, h: f32, hot: bool, down: bool) {
     draw_rectangle_lines(x + 2.0, y + 2.0, w - 4.0, h - 4.0, 1.0, if hot || down { GOLD } else { PARCHMENT_DARK });
 }
 
-/// La pastille d'une ressource : un petit carré de sa couleur, dans un cadre sombre.
-pub fn token(x: f32, y: f32, size: f32, color: Color) {
-    draw_rectangle(x, y, size, size, INK);
-    draw_rectangle(x + 1.5, y + 1.5, size - 3.0, size - 3.0, color);
-    draw_rectangle(x + 1.5, y + 1.5, size - 3.0, 2.0, with_alpha(WHITE, 0.35));
+/// Une planche de bois à filet d'or, sans parchemin : le fond des pastilles et des compteurs du HUD (texte doré dessus).
+pub fn plank(x: f32, y: f32, w: f32, h: f32) {
+    draw_rectangle(x + 3.0, y + 4.0, w, h, with_alpha(BLACK, 0.35));
+    draw_rectangle(x, y, w, h, WOOD_DARK);
+    draw_rectangle(x + 2.0, y + 2.0, w - 4.0, h - 4.0, WOOD);
+    draw_rectangle(x + 2.0, y + 2.0, w - 4.0, 3.0, with_alpha(WOOD_LIGHT, 0.7));
+    draw_rectangle_lines(x + 4.0, y + 4.0, w - 8.0, h - 8.0, 1.0, with_alpha(GOLD, 0.8));
 }
+
+/// Une touche de clavier : un capuchon de parchemin sur une tranche sombre, la lettre au centre.
+pub fn keycap(x: f32, y: f32, size: f32, label: &str) {
+    draw_rectangle(x, y + 2.0, size, size, INK);
+    draw_rectangle(x + 1.0, y, size - 2.0, size - 2.0, PARCHMENT_LIGHT);
+    draw_rectangle_lines(x + 1.0, y, size - 2.0, size - 2.0, 1.0, PARCHMENT_DARK);
+    let text_size = size * 0.72;
+    let w = measure_text(label, None, text_size as u16, 1.0).width;
+    draw_text(label, x + (size - w) / 2.0, y + (size - 2.0) / 2.0 + text_size * 0.32, text_size, INK);
+}
+
