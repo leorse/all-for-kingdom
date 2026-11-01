@@ -31,7 +31,7 @@ L'interface du roi et le départ de partie, dessinés en rectangles, cercles et 
 
 | Élément | Où | Aspect |
 |---|---|---|
-| Panneau des plans, barre d'information, bandeau de titre, boutons | `theme.rs`, `plan_ui.rs` | Cadre de bois sombre à veines, filet d'or, parchemin patiné, rivets de fer aux angles, bandeau de bois à queues d'aronde, titres dorés. Pictogrammes de maison, d'entrepôt et de taverne. |
+| Panneau des plans, barre d'information, bandeau de titre, boutons | `theme.rs`, `plan_ui.rs` | Cadre de bois sombre à veines, filet d'or, parchemin patiné, rivets de fer aux angles, bandeau de bois à queues d'aronde, titres dorés. Pictogrammes de maison, d'entrepôt et de taverne. Les coûts (cartes, barre d'information, enseigne de chantier) utilisent les pictogrammes de ressources du HUD (`hud_icons::draw_cost`), un nombre en manque est rouge avec une croix. |
 | Rectangle d'un plan | `plan_ui.rs` | Bleu `(70,140,235)` payable, rouge `(220,66,56)` pas assez de ressources, gris `(140,133,122)` hachuré impossible ; quadrillage, porte, case du tas, poignées d'angle. |
 | Feu de camp, couchages | `construction_view.rs` | Cercle de pierres, braises, deux bûches, trois flammes qui dansent ; lueur au sol la nuit. Couchage : paillasse, couverture rouge, oreiller. |
 | Fondations et échafaudage | `construction_view.rs` | Terre damée à planches, bordure de pierre, piquets d'angle et cordeau tant qu'on attend ; poteaux, mur de planches qui se remplit et toit de chaume au dernier moment ; enseigne de parchemin avec l'état et une barre. |
@@ -45,15 +45,15 @@ L'interface du roi et le départ de partie, dessinés en rectangles, cercles et 
 | Murs | `draw_map` | Rectangle `(96,90,100)` + liseré haut de 4 px `(120,114,124)`. |
 | Arbres | `draw_map` | Carré 24x24 `(30,78,40)` centré dans la tuile. |
 | Pousses (Sapling) | `draw_map` | Tige 3x12 verte + deux feuilles 6x5. |
-| Coffres (Crate) | `draw_map` | Caisse 24x17 `(120,84,48)`, couvercle 4 px `(160,116,70)`, planche, sangle grise, ombre portée. Étiquette `ressource n/capacité` au-dessus (fond noir 55 %, texte blanc, rouge `(255,110,100)` si plein). **Candidat n°1 au redessin** (le placement des coffres vient d'être amélioré : dernier commit). |
+| Coffres (Crate) | `draw_map` | Caisse 24x17 `(120,84,48)`, couvercle 4 px `(160,116,70)`, planche, sangle grise, ombre portée. Étiquette pictogramme et `n/capacité` au-dessus (fond noir 55 %, texte blanc, rouge `(255,110,100)` si plein). **Candidat n°1 au redessin** (le placement des coffres vient d'être amélioré : dernier commit). |
 | Lits (hors habitat) | `draw_map` | Cadre `(104,68,40)`, couverture `(196,74,74)`, oreiller `(236,234,222)`. |
 | Filons | `draw_veins`, `ore_color` | Pastilles par minerai : fer `(132,138,150)`, cuivre `(188,108,56)`, or `(228,188,52)`, pierre `(196,190,170)`. |
 | Champs | `draw_farm` | Terre `(92,62,38)`, sillons `(68,44,26)` ; plant vert `(80,175,70)` qui grandit, blé mûr `(214,178,62)` / `(240,206,90)`. Parcelle visée entourée de blanc (`draw_target`). |
-| Personnages (hors forgeron) | `draw_characters` | Silhouette en rectangles : ombre, corps teinté par métier, tête `(240,200,160)`, casque garde `(160,166,184)`. Marqueur jaune `(255,230,40)` sur le personnage incarné, contour sombre, barre de progression au-dessus, bulle de texte. |
+| Personnages | `draw_characters` | Les métiers dessinés (10 planches PNG 64x64, voir ci-dessus) ; le vagabond reste une silhouette en rectangles teintée par métier. Marqueur jaune `(255,230,40)` sur le personnage incarné, placé au-dessus de la tête de la planche (`head - 19 s`, pour ne pas chevaucher la couronne), barre de progression sous les pieds, bloc de ressource porté en pastille de couleur. |
 | Couleurs par métier | `role_color` | Paysan `(214,186,76)`, forgeron `(220,110,50)`, roi `(150,60,190)`, chef de guerre `(200,50,50)`, tavernier `(70,170,190)`, garde `(112,126,170)`, mineur `(150,104,66)`, bûcheron `(70,150,90)`, transporteur `(60,190,190)`. |
 | Couleurs de ressources | `resource_color` | Blé `(232,200,70)`, bois `(140,92,50)`, fer `(132,138,150)`, cuivre `(188,108,56)`, or `(228,188,52)`, pierre `(196,190,170)`, outils `(110,150,200)`. |
-| Jauge de forme | `fitness_color`, `fitness_bar` | Vert `(90,200,90)` / orange `(235,165,50)` / rouge `(215,60,60)` selon le niveau. |
-| HUD | `draw_hud` | Texte et barres sur fonds sombres `(20,20,20)`, icône jour/nuit (soleil `(255,215,70)`, lune `(190,200,255)`), liste des personnages avec bordure blanche pour l'incarné. Police par défaut de macroquad. |
+| Jauge de forme | `fitness_color`, `hud::fitness_bar` | Vert `(90,200,90)` / orange `(235,165,50)` / rouge `(215,60,60)` selon le niveau. |
+| HUD | `hud.rs`, `hud_icons.rs` | Planches de bois (`theme::plank`) à texte doré, sans légende. En haut à gauche : couronne et nombre d'habitants, lit et lits libres (au camp), puis la tête du personnage incarné (rognée dans la cellule de face `debout_bas` de sa planche, `PORTRAIT_SRC`, au double de sa taille ; un « z » s'il dort ; le vagabond garde un visage simple), sa jauge de forme, la touche E avec le pictogramme de l'action, et ce qu'il porte. En haut à droite : soleil ou lune et `J1 07:00`, vitesse `x10` si elle change, puis la grille des 8 ressources (2 colonnes, pictogramme et total ; estompé à 0). Un panneau « ! » rouge remplace l'action quand le travail est bloqué (coffre plein, ressource manquante, mains pleines). Une touche H discrète en bas à droite ; H ou F1 ouvre l'aide. Pictogrammes : 8 ressources, couronne, lit, soleil, lune, coffre, sac, flèches, croix, pause, vitesse, 6 outils de métier. Pictogrammes redessinés par le graphiste : contour sombre d'1 pixel, lisibles sur bois et sur parchemin (aperçu : `ICONS_OUT=chemin.png cargo test -p afk-game icon_sheet -- --ignored`). Restent à contourer : faucille, pioche, hache ; flèches, pause et vitesse sont blanches, donc à n'employer que sur bois. Le blé se lit un peu comme du maïs. |
 | Fond hors carte | `draw` | `(20,24,30)`. |
 
 ## Non touché volontairement
@@ -62,7 +62,7 @@ Le **château** : il aura son propre fonctionnement. Ne pas le redessiner sans d
 
 ## Métiers existants (`Role`) et planches
 
-Paysan, forgeron, roi, chef de guerre, tavernier, garde, mineur, bûcheron, transporteur, artisan, vagabond (artisan `(188,134,70)` et vagabond `(132,120,108)` en rectangles). **Seule la planche forgeron existe** (`SHEETS: [SheetSpec; 1]`). Tout autre métier est dessiné en rectangles.
+Paysan, forgeron, roi, chef de guerre, tavernier, garde, mineur, bûcheron, transporteur, artisan, vagabond (artisan `(188,134,70)` et vagabond `(132,120,108)` en rectangles). **Dix planches existent** (`SHEETS: [SheetSpec; 10]`) : forgeron, mineur, bûcheron, paysan, transporteur, artisan, garde, roi, chef de guerre, tavernier. Seul le vagabond est encore dessiné en rectangles (et le chef de guerre et le tavernier n'apparaissent qu'avec `--village`).
 
 ## Idées déjà évoquées touchant au visuel ([idées](/idees.md) et [habitat](/regles/habitat.md))
 

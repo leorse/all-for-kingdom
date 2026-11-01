@@ -9,7 +9,23 @@ use macroquad::prelude::*;
 /// Le point de la cellule de sommeil posé sur la case de la tête du lit : le centre de la tuile du haut.
 const SLEEP_ANCHOR: (f32, f32) = (32.0, 16.0);
 
+/// La part de la cellule de face qu'on montre en portrait : `(x, y, largeur, hauteur)`, la tête et les épaules.
+pub const PORTRAIT_SRC: (f32, f32, f32, f32) = (18.0, 1.0, 28.0, 28.0);
+
 const FORGERON_PNG: &[u8] = include_bytes!("../assets/characters/forgeron.png");
+const MINEUR_PNG: &[u8] = include_bytes!("../assets/characters/mineur.png");
+const BUCHERON_PNG: &[u8] = include_bytes!("../assets/characters/bucheron.png");
+const PAYSAN_PNG: &[u8] = include_bytes!("../assets/characters/paysan.png");
+const TRANSPORTEUR_PNG: &[u8] = include_bytes!("../assets/characters/transporteur.png");
+const ARTISAN_PNG: &[u8] = include_bytes!("../assets/characters/artisan.png");
+const GARDE_PNG: &[u8] = include_bytes!("../assets/characters/garde.png");
+const ROI_PNG: &[u8] = include_bytes!("../assets/characters/roi.png");
+const CHEF_DE_GUERRE_PNG: &[u8] = include_bytes!("../assets/characters/chef_de_guerre.png");
+const TAVERNIER_PNG: &[u8] = include_bytes!("../assets/characters/tavernier.png");
+
+/// Toutes les planches embarquées, avec leur gabarit : le test d'intégrité les parcourt.
+#[cfg(test)]
+const EMBEDDED: &[(SheetSpec, &[u8])] = &[(cs::BLACKSMITH, FORGERON_PNG), (cs::MINER, MINEUR_PNG), (cs::LUMBERJACK, BUCHERON_PNG), (cs::FARMER, PAYSAN_PNG), (cs::TRANSPORTER, TRANSPORTEUR_PNG), (cs::ARTISAN, ARTISAN_PNG), (cs::GUARD, GARDE_PNG), (cs::KING, ROI_PNG), (cs::WARLORD, CHEF_DE_GUERRE_PNG), (cs::INNKEEPER, TAVERNIER_PNG)];
 
 /// Une planche chargée en texture.
 pub struct Sheet {
@@ -20,17 +36,35 @@ pub struct Sheet {
 /// Les planches des métiers déjà dessinés.
 pub struct Sheets {
     pub blacksmith: Sheet,
+    pub miner: Sheet,
+    pub lumberjack: Sheet,
+    pub farmer: Sheet,
+    pub transporter: Sheet,
+    pub artisan: Sheet,
+    pub guard: Sheet,
+    pub king: Sheet,
+    pub warlord: Sheet,
+    pub innkeeper: Sheet,
 }
 
 impl Sheets {
     pub fn new() -> Sheets {
-        Sheets { blacksmith: Sheet::load(cs::BLACKSMITH, FORGERON_PNG) }
+        Sheets { blacksmith: Sheet::load(cs::BLACKSMITH, FORGERON_PNG), miner: Sheet::load(cs::MINER, MINEUR_PNG), lumberjack: Sheet::load(cs::LUMBERJACK, BUCHERON_PNG), farmer: Sheet::load(cs::FARMER, PAYSAN_PNG), transporter: Sheet::load(cs::TRANSPORTER, TRANSPORTEUR_PNG), artisan: Sheet::load(cs::ARTISAN, ARTISAN_PNG), guard: Sheet::load(cs::GUARD, GARDE_PNG), king: Sheet::load(cs::KING, ROI_PNG), warlord: Sheet::load(cs::WARLORD, CHEF_DE_GUERRE_PNG), innkeeper: Sheet::load(cs::INNKEEPER, TAVERNIER_PNG) }
     }
 
     /// La planche d'un métier, s'il en a une ; sinon il garde son dessin d'avant.
     pub fn for_role(&self, role: Role) -> Option<&Sheet> {
         match role {
             Role::Blacksmith => Some(&self.blacksmith),
+            Role::Miner => Some(&self.miner),
+            Role::Lumberjack => Some(&self.lumberjack),
+            Role::Farmer => Some(&self.farmer),
+            Role::Transporter => Some(&self.transporter),
+            Role::Artisan => Some(&self.artisan),
+            Role::Guard => Some(&self.guard),
+            Role::King => Some(&self.king),
+            Role::Warlord => Some(&self.warlord),
+            Role::Innkeeper => Some(&self.innkeeper),
             _ => None,
         }
     }
@@ -78,6 +112,21 @@ impl Sheet {
         self.draw_cell(frame, at, cs::ANCHOR, scale, 0.0);
     }
 
+    /// Le portrait : la tête et les épaules du personnage de face (la cellule `debout_bas`, en haut à gauche de la planche), au double de leur taille, coin haut-gauche en `(x, y)`.
+    pub fn draw_portrait(&self, x: f32, y: f32) {
+        draw_texture_ex(
+            &self.texture,
+            x,
+            y,
+            WHITE,
+            DrawTextureParams {
+                dest_size: Some(vec2(PORTRAIT_SRC.2 * 2.0, PORTRAIT_SRC.3 * 2.0)),
+                source: Some(Rect::new(PORTRAIT_SRC.0, PORTRAIT_SRC.1, PORTRAIT_SRC.2, PORTRAIT_SRC.3)),
+                ..Default::default()
+            },
+        );
+    }
+
     /// Dessine un objet fixe de la planche (l'enclume...), ancré comme un personnage sur le point `center`.
     pub fn draw_extra(&self, name: &str, center: afk_core::Vec2, view: &View) {
         if let Some(frame) = self.spec.extra(name) {
@@ -112,24 +161,26 @@ mod tests {
     use crate::sprites::PALETTE;
 
     #[test]
-    fn the_embedded_sheet_has_the_layout_size_palette_colours_and_no_empty_cell() {
-        let image = Image::from_file_with_format(FORGERON_PNG, Some(ImageFormat::Png)).expect("PNG lisible");
-        let (w, h) = cs::BLACKSMITH.size();
-        assert_eq!((image.width as u32, image.height as u32), (w, h));
-        for (x, y) in (0..h).flat_map(|y| (0..w).map(move |x| (x, y))) {
-            let i = ((y * w + x) * 4) as usize;
-            let p = &image.bytes[i..i + 4];
-            let ok = p[3] == 0 || (p[3] == 255 && PALETTE.iter().any(|(_, c)| c[..] == *p));
-            assert!(ok, "pixel ({x}, {y}) {p:?} hors palette");
-        }
-        for (id, col, row) in cs::BLACKSMITH.cells() {
-            let filled = (0..CELL).any(|y| {
-                (0..CELL).any(|x| {
-                    let i = (((row * CELL + y) * w + col * CELL + x) * 4) as usize;
-                    image.bytes[i + 3] != 0
-                })
-            });
-            assert!(filled, "l'image « {id} » est vide");
+    fn the_embedded_sheets_have_the_layout_size_palette_colours_and_no_empty_cell() {
+        for (spec, png) in EMBEDDED {
+            let image = Image::from_file_with_format(png, Some(ImageFormat::Png)).expect("PNG lisible");
+            let (w, h) = spec.size();
+            assert_eq!((image.width as u32, image.height as u32), (w, h), "{} : dimensions", spec.name);
+            for (x, y) in (0..h).flat_map(|y| (0..w).map(move |x| (x, y))) {
+                let i = ((y * w + x) * 4) as usize;
+                let p = &image.bytes[i..i + 4];
+                let ok = p[3] == 0 || (p[3] == 255 && PALETTE.iter().any(|(_, c)| c[..] == *p));
+                assert!(ok, "{} : pixel ({x}, {y}) {p:?} hors palette", spec.name);
+            }
+            for (id, col, row) in spec.cells() {
+                let filled = (0..CELL).any(|y| {
+                    (0..CELL).any(|x| {
+                        let i = (((row * CELL + y) * w + col * CELL + x) * 4) as usize;
+                        image.bytes[i + 3] != 0
+                    })
+                });
+                assert!(filled, "{} : l'image « {id} » est vide", spec.name);
+            }
         }
     }
 

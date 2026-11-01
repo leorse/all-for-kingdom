@@ -145,7 +145,7 @@ fn tile_color(tile: Tile, x: i32, y: i32) -> Color {
     }
 }
 
-fn role_color(role: Role) -> Color {
+pub(crate) fn role_color(role: Role) -> Color {
     match role {
         Role::Farmer => Color::from_rgba(214, 186, 76, 255),
         Role::Blacksmith => Color::from_rgba(220, 110, 50, 255),
@@ -158,55 +158,6 @@ fn role_color(role: Role) -> Color {
         Role::Transporter => Color::from_rgba(60, 190, 190, 255),
         Role::Artisan => Color::from_rgba(188, 134, 70, 255),
         Role::Vagabond => Color::from_rgba(132, 120, 108, 255),
-    }
-}
-
-fn activity_label(c: &Character) -> &'static str {
-    match (c.activity, c.work.map(|w| w.kind), c.role) {
-        (_, Some(kind), _) => work_verb(kind),
-        (Activity::Walking, _, Role::Guard) => "patrouille",
-        (Activity::Working, _, Role::Guard) => "monte la garde",
-        (Activity::Idle, ..) => "attend",
-        (Activity::Walking, ..) => "se deplace",
-        (Activity::Working, ..) => "travaille",
-        (Activity::Sleeping, ..) => "dort",
-    }
-}
-
-fn work_verb(kind: WorkKind) -> &'static str {
-    match kind {
-        WorkKind::Till => "laboure",
-        WorkKind::Plant => "plante",
-        WorkKind::Harvest => "recolte",
-        WorkKind::Forge => "forge",
-        WorkKind::Mine => "mine",
-        WorkKind::Chop => "abat un arbre",
-        WorkKind::Build => "construit",
-    }
-}
-
-fn work_hint(kind: WorkKind) -> &'static str {
-    match kind {
-        WorkKind::Till => "E : labourer",
-        WorkKind::Plant => "E : planter",
-        WorkKind::Harvest => "E : recolter",
-        WorkKind::Forge => "E : forger",
-        WorkKind::Mine => "E : miner",
-        WorkKind::Chop => "E : abattre",
-        WorkKind::Build => "E : construire",
-    }
-}
-
-pub(crate) fn resource_label(resource: Resource) -> &'static str {
-    match resource {
-        Resource::Wheat => "Ble",
-        Resource::Seeds => "Graines",
-        Resource::Wood => "Bois",
-        Resource::Iron => "Fer",
-        Resource::Copper => "Cuivre",
-        Resource::Gold => "Or",
-        Resource::Stone => "Pierre",
-        Resource::Tools => "Outils",
     }
 }
 
@@ -225,7 +176,7 @@ pub(crate) fn resource_color(resource: Resource) -> Color {
 }
 
 /// Vert quand on est en forme, orange quand on commence à fatiguer, rouge quand on est à bout.
-fn fitness_color(fitness: f32) -> Color {
+pub(crate) fn fitness_color(fitness: f32) -> Color {
     if fitness > 50.0 {
         Color::from_rgba(90, 200, 90, 255)
     } else if fitness > 15.0 {
@@ -245,6 +196,7 @@ pub fn draw(
     plan_ui: &crate::plan_ui::PlanUi,
     me: PlayerId,
     speed: f32,
+    help_open: bool,
 ) {
     clear_background(Color::from_rgba(20, 24, 30, 255));
     draw_map(game, view);
@@ -262,8 +214,9 @@ pub fn draw(
     crate::habitat_view::draw_habitat_lights(game, view);
     crate::construction_view::draw_campfire_light(game, view);
     plan_ui.draw_world(game, view, me);
-    draw_hud(game, view, me, speed);
+    crate::hud::draw(game, sheets, me, speed);
     plan_ui.draw(game, view, me);
+    crate::hud::draw_help(help_open);
 }
 
 fn draw_map(game: &Game, view: &View) {
@@ -506,7 +459,7 @@ fn draw_characters(game: &Game, view: &View, sheets: &Sheets, me: PlayerId) {
         }
         if active {
             let bob = (t * 6.0).sin() * 3.0 * s;
-            draw_rectangle(x - 4.0 * s, head - 13.0 * s + bob, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255)); // marqueur
+            draw_rectangle(x - 4.0 * s, head - 19.0 * s + bob, 8.0 * s, 8.0 * s, Color::from_rgba(255, 230, 40, 255)); // marqueur
         }
 
         // barre de progression du travail, sous les pieds
@@ -524,29 +477,32 @@ fn draw_characters(game: &Game, view: &View, sheets: &Sheets, me: PlayerId) {
     }
 }
 
-/// Le compteur de chaque coffre : une ligne par ressource, « Fer 12/200 », au-dessus du coffre.
+/// Le compteur de chaque coffre : une ligne par ressource, son pictogramme et « 12/200 », au-dessus du coffre.
 /// Rouge quand la ressource est au plafond (le producteur est à l'arrêt, le transporteur n'y apporte plus rien).
 fn draw_containers(game: &Game, view: &View) {
     let s = view.tile_px / 32.0;
     let size = (15.0 * s).clamp(11.0, 22.0);
-    let line = size + 2.0;
+    let icon_px = if s >= 2.0 { 3.0 } else { 2.0 };
+    let icon = crate::hud_icons::GRID as f32 * icon_px;
+    let line = icon.max(size) + 2.0;
     for container in game.containers() {
         if !view.point_visible(container.tile.center(), 3.0) {
             continue;
         }
         let (px, py) = view.tile_origin(container.tile);
-        // le tas d'un chantier montre ce qu'il lui faut : « Bois 12/28 »
+        // le tas d'un chantier montre ce qu'il lui faut : « 12/28 »
         let shown: Vec<Resource> = if container.is_site() { container.needs().keys().copied().collect() } else { container.shown() };
         for (i, resource) in shown.iter().enumerate() {
             let count = container.get(*resource);
             let cap = if container.is_site() { container.needs().get(resource).copied().unwrap_or(0) } else { container.capacity() };
-            let label = format!("{} {}/{}", resource_label(*resource), count, cap);
-            let w = measure_text(&label, None, size as u16, 1.0).width;
+            let label = format!("{}/{}", count, cap);
+            let w = icon + 3.0 + measure_text(&label, None, size as u16, 1.0).width;
             let x = px + view.tile_px / 2.0 - w / 2.0;
-            let y = py + 6.0 * s - (shown.len() - 1 - i) as f32 * line - 2.0;
+            let top = py + 6.0 * s - (shown.len() - i) as f32 * line;
             let full = count >= cap;
             // un fond sombre pour lire sur n'importe quel sol
-            draw_rectangle(x - 2.0, y - size + 1.0, w + 4.0, size + 2.0, Color::new(0.0, 0.0, 0.0, 0.55));
+            draw_rectangle(x - 2.0, top, w + 4.0, line - 1.0, Color::new(0.0, 0.0, 0.0, 0.55));
+            crate::hud_icons::draw(crate::hud_icons::Icon::Res(*resource), x, top + (line - 1.0 - icon) / 2.0, icon_px, 1.0);
             // un tas de chantier complet est une bonne nouvelle : vert ; un coffre au plafond, une mauvaise : rouge
             let color = if full && container.is_site() {
                 Color::from_rgba(150, 240, 150, 255)
@@ -555,7 +511,7 @@ fn draw_containers(game: &Game, view: &View) {
             } else {
                 WHITE
             };
-            draw_text(&label, x, y, size, color);
+            draw_text(&label, x + icon + 3.0, top + (line - 1.0) / 2.0 + size * 0.33, size, color);
         }
     }
 }
@@ -609,152 +565,6 @@ fn draw_daylight(game: &Game, view: &View) {
         w,
         h,
         Color::new(mix(night_r, dusk_r), mix(night_g, dusk_g), mix(night_b, dusk_b), dark * 0.62),
-    );
-}
-
-fn text(s: &str, x: f32, y: f32, size: f32) {
-    // La police par défaut de macroquad ne gère que l'ASCII : pas d'accents dans les textes pour l'instant.
-    draw_text(s, x + 1.0, y + 1.0, size, BLACK);
-    draw_text(s, x, y, size, WHITE);
-}
-
-/// Jauge de forme : pleine quand le personnage est en forme, elle se vide avec la fatigue.
-fn fitness_bar(x: f32, y: f32, w: f32, h: f32, fitness: f32) {
-    draw_rectangle(x, y, w, h, Color::from_rgba(20, 20, 20, 255));
-    draw_rectangle(x + 1.0, y + 1.0, (w - 2.0) * (fitness / 100.0).clamp(0.0, 1.0), h - 2.0, fitness_color(fitness));
-}
-
-/// Le personnage regarde-t-il un coffre ?
-fn facing_crate(game: &Game, c: &Character) -> bool {
-    game.containers().iter().any(|k| k.tile == c.facing_tile())
-}
-
-/// Pourquoi un producteur ne peut pas travailler, quand c'est parce qu'un coffre ou ses mains sont pleins.
-fn blocked_message(game: &Game, c: &Character) -> Option<&'static str> {
-    let container = c.container.and_then(|i| game.containers().get(i));
-    match c.role {
-        Role::Blacksmith => {
-            let forge = container?;
-            if forge.get(Resource::Iron) < game.config().iron_per_tool {
-                Some("Plus de fer dans le coffre : rien a forger")
-            } else if forge.room(Resource::Tools) < game.config().tools_per_forge {
-                Some("Coffre plein : rien a forger")
-            } else {
-                None
-            }
-        }
-        Role::Miner => {
-            let mine = container?;
-            (mine.product().map_or(false, |r| mine.room(r) == 0)).then_some("Coffre plein : rien a miner")
-        }
-        Role::Farmer => {
-            let farm = container?;
-            let carried = c.cargo.map_or(0, |(_, n)| n);
-            if carried + game.config().wheat_per_harvest > game.config().farmer_carry {
-                Some(if farm.room(Resource::Wheat) == 0 { "Mains et coffre pleins : plus de recolte" } else { "Mains pleines : va deposer ton ble" })
-            } else {
-                None
-            }
-        }
-        Role::Lumberjack => {
-            let carried = c.cargo.map_or(0, |(_, n)| n);
-            (carried + game.config().logs_per_tree > game.config().lumberjack_carry).then_some("Mains pleines : va deposer ton bois")
-        }
-        _ => None,
-    }
-}
-
-fn draw_hud(game: &Game, view: &View, me: PlayerId, speed: f32) {
-    let possessed = game.possessed_by(me);
-
-    // une pastille par habitant (les vagabonds de passage n'en ont pas), avec sa jauge de forme
-    for (slot, c) in game.characters().iter().filter(|c| !c.gone && c.role != Role::Vagabond).enumerate() {
-        let x = 8.0 + slot as f32 * 34.0;
-        let border = if Some(c.id) == possessed { WHITE } else { Color::from_rgba(30, 30, 30, 255) };
-        draw_rectangle(x, 8.0, 30.0, 30.0, border);
-        draw_rectangle(x + 3.0, 11.0, 24.0, 24.0, role_color(c.role));
-        fitness_bar(x, 40.0, 30.0, 6.0, c.fitness());
-        if c.asleep {
-            text("z", x + 20.0, 24.0, 20.0);
-        }
-    }
-
-    // personnage incarné
-    match possessed.and_then(|id| game.character(id)) {
-        Some(c) => {
-            text(&format!("{} - {}", c.name, activity_label(c)), 8.0, 68.0, 22.0);
-            fitness_bar(8.0, 76.0, 150.0, 12.0, c.fitness());
-            text(&format!("forme {:.0}", c.fitness()), 166.0, 88.0, 18.0);
-            if c.asleep {
-                text("E : se lever", 8.0, 112.0, 20.0);
-            } else if game.can_lie_down(c.id) {
-                text("E : dormir", 8.0, 112.0, 20.0);
-            } else if c.work.is_some() {
-                text("E ou bouger : annuler", 8.0, 112.0, 20.0);
-            } else if let Some((kind, _)) = game.available_work(c.id) {
-                text(work_hint(kind), 8.0, 112.0, 20.0);
-            } else if let Some(msg) = blocked_message(game, c) {
-                text(msg, 8.0, 112.0, 20.0);
-            } else if facing_crate(game, c) && c.cargo.is_some() {
-                text("E : deposer", 8.0, 112.0, 20.0);
-            } else if facing_crate(game, c) && c.role == Role::Transporter {
-                text("E : charger", 8.0, 112.0, 20.0);
-            }
-            // ce que le personnage porte
-            if let Some((resource, amount)) = c.cargo {
-                text(&format!("Porte : {} {}", amount, resource_label(resource)), 8.0, 134.0, 20.0);
-            }
-        }
-        None => text("Mode AFK : la cite tourne toute seule", 8.0, 68.0, 22.0),
-    }
-
-    // horloge
-    let clock = game.clock();
-    let hour = clock.hour();
-    let (h, m) = (hour.floor() as u32, ((hour.fract()) * 60.0).floor() as u32);
-    let right = screen_width() - 8.0;
-    let label = format!("Jour {}  {:02}:{:02}", clock.day(), h, m);
-    let dims = measure_text(&label, None, 24, 1.0);
-    let icon = if clock.is_night() { Color::from_rgba(190, 200, 255, 255) } else { Color::from_rgba(255, 215, 70, 255) };
-    draw_rectangle(right - dims.width - 28.0, 12.0, 16.0, 16.0, Color::from_rgba(20, 20, 20, 255));
-    draw_rectangle(right - dims.width - 26.0, 14.0, 12.0, 12.0, icon);
-    text(&label, right - dims.width, 28.0, 24.0);
-
-    // ressources
-    let mut y = 54.0;
-    for resource in Resource::ALL {
-        let line = format!("{} : {}", resource_label(resource), game.stock().get(resource));
-        let w = measure_text(&line, None, 24, 1.0).width;
-        text(&line, right - w, y, 24.0);
-        y += 24.0;
-    }
-
-    // les lits libres : de quoi embaucher (au camp de base, les trois lits sont pris)
-    if game.camp().is_some() {
-        let line = format!("Lits libres : {}", game.free_places());
-        let w = measure_text(&line, None, 24, 1.0).width;
-        text(&line, right - w, y + 4.0, 24.0);
-        y += 26.0;
-    }
-
-    if (speed - 1.0).abs() > 0.01 {
-        let line = format!("vitesse x{}", speed);
-        let w = measure_text(&line, None, 20, 1.0).width;
-        text(&line, right - w, y + 4.0, 20.0);
-    }
-
-    text(
-        "ZQSD/fleches: bouger | Tab/1-9/clic: incarner | E: travailler/dormir | Espace: AFK | T: vitesse | Echap: quitter",
-        8.0,
-        screen_height() - 32.0,
-        18.0,
-    );
-    let free = if view.is_free() { "  (vue libre : bouger ou changer de personnage la ramene)" } else { "" };
-    text(
-        &format!("Clic droit maintenu: deplacer la vue | Molette: zoom | C: vider l'entrepot central{free}"),
-        8.0,
-        screen_height() - 10.0,
-        18.0,
     );
 }
 

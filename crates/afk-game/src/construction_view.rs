@@ -3,7 +3,7 @@
 
 use crate::render::View;
 use crate::theme;
-use afk_core::{Game, PlanKind, Site, SiteState, Tile, TilePos};
+use afk_core::{Game, PlanKind, Resource, Site, SiteState, Tile, TilePos};
 use macroquad::prelude::*;
 
 /// Le nom d'un type de plan, en ASCII (la police par défaut ne gère pas les accents).
@@ -176,19 +176,20 @@ fn draw_site_label(game: &Game, view: &View, site: &Site) {
     let s = view.tile_px / 32.0;
     let (px, py) = view.tile_origin(TilePos::new(site.x, site.y));
     let w = site.w as f32 * view.tile_px;
+    // ce qui manque, en pictogrammes : un « ! » puis chaque ressource et la quantité
+    let missing: Vec<(Resource, u32, bool)> = if site.state == SiteState::Waiting { missing(game, site) } else { Vec::new() };
     let state = match site.state {
-        SiteState::Waiting => {
-            let missing = missing_text(game, site);
-            format!("En attente : {missing}")
-        }
+        SiteState::Waiting if missing.is_empty() => "En attente : libre de poser le tas".to_string(),
+        SiteState::Waiting => String::new(),
         SiteState::Delivering => "Livraison des materiaux".to_string(),
         SiteState::Building => format!("Construction {:.0}%", site.progress * 100.0),
         SiteState::Done => String::new(),
     };
     let title = plan_name(site.kind);
     let size = (15.0 * s).clamp(12.0, 22.0);
-    let tw = measure_text(&state, None, size as u16, 1.0).width.max(measure_text(title, None, size as u16, 1.0).width);
-    let (bw, bh) = (tw + 16.0, size * 2.4);
+    let missing_w = if missing.is_empty() { 0.0 } else { 24.0 + crate::hud_icons::cost_width(&missing, size) };
+    let tw = measure_text(&state, None, size as u16, 1.0).width.max(measure_text(title, None, size as u16, 1.0).width).max(missing_w);
+    let (bw, bh) = (tw + 16.0, if missing.is_empty() { size * 2.4 } else { size + 32.0 });
     let bx = px + w / 2.0 - bw / 2.0;
     let by = py - bh - 20.0 * s;
     draw_rectangle(bx, by, bw, bh, theme::WOOD_DARK);
@@ -197,6 +198,11 @@ fn draw_site_label(game: &Game, view: &View, site: &Site) {
     theme::ink(title, bx + 8.0, by + size + 1.0, size);
     let color = if site.state == SiteState::Waiting { Color::new(0.62, 0.16, 0.12, 1.0) } else { theme::INK_SOFT };
     draw_text(&state, bx + 8.0, by + size * 2.0 + 1.0, size, color);
+    if !missing.is_empty() {
+        let center = by + size + 1.0 + 4.0 + 10.0;
+        crate::hud_icons::draw(crate::hud_icons::Icon::Bang, bx + 8.0, center - 10.0, 2.0, 1.0);
+        crate::hud_icons::draw_cost(bx + 8.0 + 24.0, center, &missing, size, color);
+    }
     if site.state == SiteState::Building {
         let (barw, barh) = (bw - 16.0, 5.0 * s.max(1.0));
         draw_rectangle(bx + 8.0, by + bh + 2.0, barw, barh, theme::INK);
@@ -204,20 +210,14 @@ fn draw_site_label(game: &Game, view: &View, site: &Site) {
     }
 }
 
-/// Ce qui manque à un plan qui attend : le bois et la pierre qu'on n'a pas.
-fn missing_text(game: &Game, site: &Site) -> String {
-    use afk_core::Resource;
-    let mut parts = Vec::new();
-    for (resource, name) in [(Resource::Wood, "bois"), (Resource::Stone, "pierre")] {
-        let need = site.cost.get(resource);
-        let have = game.available(resource);
-        if have < need {
-            parts.push(format!("{} {}", need - have, name));
-        }
-    }
-    if parts.is_empty() {
-        "libre de poser le tas".to_string()
-    } else {
-        parts.join(", ")
-    }
+/// Ce qui manque à un plan qui attend : le bois et la pierre qu'on n'a pas (le booléen de `draw_cost` reste faux : toute
+/// la ligne est déjà un manque).
+fn missing(game: &Game, site: &Site) -> Vec<(Resource, u32, bool)> {
+    [Resource::Wood, Resource::Stone]
+        .into_iter()
+        .filter_map(|resource| {
+            let (need, have) = (site.cost.get(resource), game.available(resource));
+            (have < need).then(|| (resource, need - have, false))
+        })
+        .collect()
 }
