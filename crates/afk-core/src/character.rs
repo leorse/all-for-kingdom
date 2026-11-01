@@ -445,6 +445,26 @@ impl Character {
         self.chop_delta
     }
 
+    /// Pour les tests : il reste immobile (sans plan) pendant `secs` secondes.
+    #[cfg(test)]
+    pub(crate) fn stand_still_for_test(&mut self, secs: f32) {
+        self.wait = secs;
+    }
+
+    /// On le pousse sur une case voisine (quelqu'un se tenait sur l'emplacement d'un tas de matériaux) et il repart d'un
+    /// bon pied.
+    pub(crate) fn shove_to(&mut self, tile: TilePos) {
+        self.pos = tile.center();
+        self.path.clear();
+        self.goal = None;
+        self.work_target = None;
+        self.wait = 0.3;
+        self.stuck = 0.0;
+        if self.work.is_none() {
+            self.activity = Activity::Idle;
+        }
+    }
+
     /// Part de chantier que cet artisan a construite pendant le dernier pas (0 s'il ne construit pas).
     pub(crate) fn build_delta(&self) -> f32 {
         self.build_delta

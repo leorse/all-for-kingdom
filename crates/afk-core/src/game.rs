@@ -798,8 +798,13 @@ impl Game {
         for i in 0..self.sites.len() {
             match self.sites[i].state {
                 SiteState::Waiting => {
+                    let pile_tile = self.sites[i].pile_tile();
+                    // le tas se pose sur une case que personne n'occupe : on écarte ceux qui s'y tiennent (sauf le
+                    // personnage d'un joueur, qui bouge quand il veut), pour qu'un badaud ne bloque pas un chantier
+                    if self.can_afford(self.sites[i].cost) {
+                        self.clear_tile(pile_tile);
+                    }
                     let site = &self.sites[i];
-                    let pile_tile = site.pile_tile();
                     let blocked = self.characters.iter().any(|c| !c.gone && c.tile() == pile_tile);
                     if !blocked && self.can_afford(site.cost) {
                         let needs = site.cost.as_needs();
@@ -815,6 +820,21 @@ impl Game {
                     }
                 }
                 SiteState::Building | SiteState::Done => {}
+            }
+        }
+    }
+
+    /// Écarte de cette tuile les personnages que personne n'incarne, vers une case voisine libre.
+    fn clear_tile(&mut self, tile: TilePos) {
+        let occupied: Vec<TilePos> = self.characters.iter().filter(|c| !c.gone).map(|c| c.tile()).collect();
+        for ci in 0..self.characters.len() {
+            let c = &self.characters[ci];
+            if c.gone || c.tile() != tile || self.controller_of(CharacterId(ci)).is_some() {
+                continue;
+            }
+            let free = self.map.walkable_neighbors(tile).into_iter().find(|n| !occupied.contains(n));
+            if let Some(n) = free {
+                self.characters[ci].shove_to(n);
             }
         }
     }
@@ -3177,6 +3197,39 @@ mod camp_tests {
         let work = game.characters()[1].work.expect("il construit");
         assert_eq!(work.kind, WorkKind::Build);
         assert!((work.secs - site.total_secs).abs() < 0.01);
+    }
+
+    #[test]
+    fn someone_standing_on_the_pile_spot_is_pushed_aside_so_the_site_still_starts() {
+        let mut game = camp_game();
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(&game, PlanKind::House, w, h, 1, 0);
+        place(&mut game, PlanKind::House, x, y, w, h, 1);
+        let pile_tile = game.sites()[0].pile_tile();
+        // un artisan se tient exactement sur la case du futur tas, et ne bouge plus (il dort debout, en quelque sorte)
+        game.characters[1].pos = pile_tile.center();
+        game.characters[1].stand_still_for_test(1000.0);
+        run(&mut game, 3.0);
+        assert_ne!(game.sites()[0].state, SiteState::Waiting, "le chantier démarre malgré lui");
+        assert_ne!(game.characters()[1].tile(), pile_tile, "on l'a écarté");
+        assert!(!game.map().get(game.characters()[1].tile()).is_solid());
+        assert_eq!(game.map().get(pile_tile), Tile::Crate);
+    }
+
+    #[test]
+    fn a_player_character_on_the_pile_spot_is_not_moved() {
+        let mut game = camp_game();
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(&game, PlanKind::House, w, h, 1, 0);
+        place(&mut game, PlanKind::House, x, y, w, h, 1);
+        let pile_tile = game.sites()[0].pile_tile();
+        game.characters[0].pos = pile_tile.center(); // le roi, incarné
+        run(&mut game, 3.0);
+        assert_eq!(game.characters()[0].tile(), pile_tile, "le joueur bouge quand il veut");
+        assert_eq!(game.sites()[0].state, SiteState::Waiting, "le chantier attend");
+        game.apply(Command::Move { player: P0, dir: Vec2::new(0.0, 1.0) });
+        run(&mut game, 2.0);
+        assert_ne!(game.sites()[0].state, SiteState::Waiting, "il s'est écarté : le chantier démarre");
     }
 
     #[test]

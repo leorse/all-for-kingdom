@@ -70,6 +70,17 @@ Quand un chantier peut démarrer, ses matériaux SHALL être portés en tas deva
 - **WHEN** un chantier démarre
 - **THEN** un tas apparaît devant lui, se remplit, et le chantier ne passe en construction que lorsque le tas est complet
 
+### Requirement: Un badaud ne bloque pas un chantier
+Si un personnage que personne n'incarne se tient sur la case du tas de matériaux au moment de le poser, il SHALL être écarté sur une case voisine libre ; le personnage d'un joueur n'est jamais déplacé de force, le chantier attend qu'il s'écarte.
+
+#### Scenario: Sur la case du tas
+- **WHEN** un personnage de l'IA se tient sur la case du futur tas
+- **THEN** il est écarté et le chantier démarre
+
+#### Scenario: Le joueur sur la case du tas
+- **WHEN** le personnage incarné se tient sur cette case
+- **THEN** il n'est pas déplacé, et le chantier démarre dès qu'il s'écarte
+
 ### Requirement: Les artisans construisent, d'abord
 Un artisan SHALL construire dès qu'un chantier a tout son matériel, avant toute autre tâche. Les artisans qui construisent ensemble additionnent leur travail ; sans chantier à construire, un artisan fait le travail d'un transporteur. Le joueur qui incarne un artisan peut construire en regardant les fondations.
 

@@ -45,7 +45,7 @@ Le coût en bois et en pierre est la **surface** (murs compris) au prix du type,
 
 1. À la validation, des **fondations** apparaissent sur toute l'emprise et **bloquent le passage**. Le chantier est « en attente ».
 2. **Un chantier ne commence que si toutes les ressources sont disponibles** (dans les coffres, moins ce qui est promis aux autres chantiers). Tant qu'elles ne le sont pas, il attend, sans rien prendre. Les chantiers sont servis **dans l'ordre des placements**, un chantier trop cher ne bloquant pas les suivants.
-3. Quand il peut démarrer, un **tas de matériaux** apparaît devant le chantier (coin sud-ouest), et les **transporteurs** et les **artisans** sans chantier à construire y portent le bois et la pierre. Le tas affiche `Bois 12/26`.
+3. Quand il peut démarrer, un **tas de matériaux** apparaît devant le chantier (coin sud-ouest) ; si quelqu'un se tient sur cette case, on l'écarte d'un pas (sauf le personnage d'un joueur, qui bouge quand il veut), et les **transporteurs** et les **artisans** sans chantier à construire y portent le bois et la pierre. Le tas affiche `Bois 12/26`.
 4. **Dès que tout est là, le chantier commence** : les artisans construisent, **à plusieurs leur travail s'additionne** (deux artisans vont deux fois plus vite). Un **échafaudage** monte avec l'avancement, avec une barre et un pourcentage.
 5. À la fin, **le bâtiment prend la place des fondations**, les matériaux sont consommés, et **une route se génère** de la porte jusqu'au camp de base (pas avant la fin).
 
