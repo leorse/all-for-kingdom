@@ -27,7 +27,7 @@ Une personne qui **passe par là**, sans foyer et sans métier. Elle n'est pas u
 
 ## Décidé, pas en jeu
 
-- On ne l'**embauche** que s'il y a un lit libre (voir [propriete-et-affectation.md](/regles/propriete-et-affectation.md)). Le jeu sait déjà compter les lits libres (`free_places`, `can_hire`).
+- Le roi **s'adresse** à lui (bouton, quand il est proche), puis l'**affecte à un poste ou à un lit** ; un lit n'est plus nécessaire. Près du roi, il **ralentit** toujours. Un vagabond n'a pas d'autre but que d'être embauché. Voir [propriete-et-affectation.md](/regles/propriete-et-affectation.md) (spec `hire-and-assign`).
 - Les vagabonds auront des **compétences** (voir [competences.md](/regles/competences.md)) ; des personnes expérimentées ou des chevaliers pourront aussi passer.
 
 ## À définir
