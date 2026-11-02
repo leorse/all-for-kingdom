@@ -1,6 +1,7 @@
 # Journal de la base de connaissances
 
 ## 2026-11-02
+* **Forge, dormeur, satisfaction (spec `hire-and-assign` réajustée)** : la forge devient un plan du roi (enclume posée automatiquement, coffre, un poste de forgeron par enclume) ; le roi peut parler à quelqu'un qui dort, ce qui le réveille ; une idée de **satisfaction des habitants** (sans lit on s'épuise, puis on risque de quitter le royaume) est notée dans [les idées](/idees.md). Pages : [propriété et affectation](/regles/propriete-et-affectation.md), [construire](/regles/construction.md), [forgeron](/metiers/forgeron.md).
 * **Embaucher et affecter (spécifié, pas en jeu)** : le roi s'adresse à quelqu'un (la personne arrête tout et reprend exactement ensuite), un vagabond ralentit toujours près du roi ; affectation à un poste ou à un lit sur une mini-carte (vert libre, rouge occupé, on peut remplacer, le remplacé garde son métier sans poste) ; lit automatique le plus proche du poste, sans lit on ne se repose jamais ; liste des employés. **L'embauche n'exige plus de lit.** Page : [propriété et affectation](/regles/propriete-et-affectation.md), [vagabond](/metiers/vagabond.md). Spec OpenSpec : changement `hire-and-assign`, à réajuster.
 
 ## 2026-11-01

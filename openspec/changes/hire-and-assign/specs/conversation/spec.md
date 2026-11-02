@@ -6,7 +6,7 @@ Définit le roi qui s'adresse à quelqu'un : l'interruption de ce que la personn
 ## ADDED Requirements
 
 ### Requirement: S'adresser à quelqu'un
-Quand le joueur incarne le roi et qu'une personne éveillée (autre que le roi) se trouve à portée de parole, une commande SHALL lui permettre de s'adresser à elle : la personne la plus proche est choisie. Une personne endormie ne SHALL pas pouvoir être abordée. Le jeu SHALL indiquer au joueur qu'il peut parler quand quelqu'un est à portée.
+Quand le joueur incarne le roi et qu'une personne (autre que le roi) se trouve à portée de parole, une commande SHALL lui permettre de s'adresser à elle : la personne la plus proche est choisie. **Une personne endormie peut être abordée : lui parler la réveille**, sans que le roi ait à attendre son réveil. Le jeu SHALL indiquer au joueur qu'il peut parler quand quelqu'un est à portée.
 
 #### Scenario: À portée
 - **WHEN** le roi incarné est à portée de quelqu'un d'éveillé et demande à lui parler
@@ -17,11 +17,15 @@ Quand le joueur incarne le roi et qu'une personne éveillée (autre que le roi) 
 - **THEN** la demande n'a aucun effet
 
 #### Scenario: Un dormeur
-- **WHEN** la seule personne à portée dort
-- **THEN** la demande n'a aucun effet
+- **WHEN** le roi parle à quelqu'un qui dort
+- **THEN** il se réveille aussitôt et la conversation commence
+
+#### Scenario: Réveillé pour rien
+- **WHEN** le roi réveille quelqu'un puis met fin à la conversation sans rien décider, et que c'est encore son heure de dormir
+- **THEN** il retourne se coucher dans son lit, s'il en a un
 
 ### Requirement: Elle arrête tout et se tourne vers le roi
-Une personne en conversation SHALL cesser de marcher, de travailler et de porter quoi que ce soit vers un but, et se tourner vers le roi. Sa fatigue continue de suivre le temps.
+Une personne en conversation SHALL cesser de marcher, de travailler et de porter quoi que ce soit vers un but, et se tourner vers le roi. Sa fatigue continue de suivre le temps ; une personne réveillée ne se rendort pas pendant la conversation.
 
 #### Scenario: Elle travaillait
 - **WHEN** le roi parle à quelqu'un qui est en plein travail

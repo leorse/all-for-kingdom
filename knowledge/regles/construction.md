@@ -65,4 +65,4 @@ Un artisan a **toujours pour priorité de construire** ; il ne transporte que s'
 - Quand les ressources deviennent disponibles pour un plan, elles sont **mises de côté** (en place : réservées par calcul, pas physiquement) ; comment le roi exprimera des **priorités** plus fines que l'ordre des placements.
 - Le tracé d'une route **vers le camp** : en place, le trajet ordinaire qui préfère les routes déjà là.
 - Ce que fait **l'IA du roi** quand personne ne l'incarne : elle ne pose aucun plan.
-- Les plans de **production** (cabane de bûcheron, mine, champ, forge) ne sont pas encore dans la liste.
+- Les plans de **production** (cabane de bûcheron, mine, champ) ne sont pas encore dans la liste ; **la forge** est spécifiée (changement `hire-and-assign`, capacité `forge-plan`) mais pas encore en jeu.

@@ -13,11 +13,15 @@ Chaque personne SHALL avoir un métier (rôle), éventuellement un poste de trav
 - **THEN** il garde son métier, sans poste
 
 ### Requirement: Les bâtiments fournissent des postes
-Un poste SHALL être une place de travail d'un métier dans un bâtiment, tenue par une seule personne à la fois. Un entrepôt fournit des postes de transporteur, une taverne un poste de tavernier. Le camp fournit des postes d'artisan, en nombre illimité. Les postes se déduisent des bâtiments existants.
+Un poste SHALL être une place de travail d'un métier dans un bâtiment, tenue par une seule personne à la fois. Un entrepôt fournit des postes de transporteur, une taverne un poste de tavernier, **une forge un poste de forgeron par enclume**. Le camp fournit des postes d'artisan, en nombre illimité. Les postes se déduisent des bâtiments existants.
 
 #### Scenario: Un entrepôt
 - **WHEN** un entrepôt est construit
 - **THEN** de nouveaux postes de transporteur, libres, apparaissent
+
+#### Scenario: Une forge
+- **WHEN** une forge est construite
+- **THEN** un poste de forgeron, libre, apparaît à chacune de ses enclumes
 
 #### Scenario: Une taverne
 - **WHEN** une taverne est construite

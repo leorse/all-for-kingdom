@@ -26,13 +26,13 @@ Les **trois lits du camp de base** sont ceux du roi et des deux artisans (voir [
 
 ## Parler, affecter — décidé (spec `hire-and-assign`)
 
-Le roi **s'adresse** à quelqu'un : proche de lui, il appuie sur un bouton. La personne **arrête tout et garde en mémoire ce qu'elle faisait** ; si le roi ne dit rien, elle reprend exactement où elle en était. **Près d'un vagabond**, le roi le fait toujours **ralentir**, même sans lui parler (un vagabond n'a pas d'autre but que d'être embauché) ; près de n'importe qui d'autre il n'y a **aucun ralentissement** : la personne continue son travail, sauf si le roi lui parle.
+Le roi **s'adresse** à quelqu'un : proche de lui, il appuie sur un bouton. La personne **arrête tout et garde en mémoire ce qu'elle faisait** ; **lui parler alors qu'elle dort la réveille**, le roi n'attend pas ; si le roi ne dit rien, elle reprend exactement où elle en était. **Près d'un vagabond**, le roi le fait toujours **ralentir**, même sans lui parler (un vagabond n'a pas d'autre but que d'être embauché) ; près de n'importe qui d'autre il n'y a **aucun ralentissement** : la personne continue son travail, sauf si le roi lui parle.
 
 Après avoir parlé, le roi peut **réaffecter** la personne (n'importe qui, artisans compris), l'affecter à un **poste** ou à un **lit**. Une **mini-carte** très dézoomée s'ouvre : à gauche la liste des métiers (ceux qui ont des postes libres d'abord) ; choisir un métier colore ses postes en **vert** (libre) ou **rouge** (occupé) ; un clic affecte, ou remplace. **Le temps ne s'arrête pas.**
 
 ## Métier, poste, lit — décidé
 
-Trois choses distinctes. Le **métier** reste à la personne même sans poste. Un **poste** est une place de travail dans un bâtiment (une enclume, un poste de transporteur…), tenu par une seule personne. Un **lit** est une place. Un titulaire **remplacé** garde son métier mais n'a plus de poste : **il ne fait plus rien**.
+Trois choses distinctes. Le **métier** reste à la personne même sans poste. Un **poste** est une place de travail dans un bâtiment (une enclume pour un forgeron, un poste de transporteur à l'entrepôt, le tavernier à la taverne…), tenu par une seule personne. La **forge** est un nouveau plan du roi, avec son enclume : un poste de forgeron par enclume. Un **lit** est une place. Un titulaire **remplacé** garde son métier mais n'a plus de poste : **il ne fait plus rien**.
 
 ## Le lit — décidé
 
@@ -55,6 +55,8 @@ Les **trois lits du camp de base** sont ceux du roi et des deux artisans (voir [
 - Les **compétences** (voir [competences.md](/regles/competences.md)) : tirées au hasard à l'arrivée, affichées dans la liste ?
 - Un **coût** ou un **salaire** d'embauche, avec l'économie ?
 - Le titulaire remplacé **garde-t-il son lit** (proposé : oui) ?
-- Les postes des métiers de production : voir le changement compagnon `production-plans` (pas encore écrit).
+- Le **fer** de la forge : un peu dans le pécule, ou attendre un plan de mine ?
+- Les postes des autres métiers de production (bûcheron, mine, champ) : changement compagnon `production-plans` (pas encore écrit).
+- Une **satisfaction** des habitants (voir [les idées](/idees.md)), pas décidée.
 
 La spec détaillée est le changement OpenSpec `hire-and-assign` (`openspec/changes/hire-and-assign/`), à réajuster à l'usage.

@@ -14,13 +14,16 @@ Les vagabonds passent par le camp sans but, et les maisons bâties n'ont aucun u
 - **L'embauche n'exige plus de lit** (la règle « on n'embauche que s'il y a une place libre » est **abandonnée**) : c'est la fatigue qui sanctionne le manque de lits.
 - **La mini-carte** : une vue très dézoomée, à gauche la liste des métiers (ceux qui ont des postes libres d'abord) ; choisir un métier colore ses postes en vert (libre) ou rouge (occupé) ; un clic affecte ou remplace. Le temps ne s'arrête pas.
 - **La liste des employés** du roi : nom, métier, poste, symbole de lit.
-- Postes fournis par les bâtiments qui existent : **entrepôt** (transporteurs) et **taverne** (tavernier). Les artisans n'ont pas de bâtiment : leur poste est le camp, en nombre illimité.
-- Hors périmètre : les **plans de production** (cabane de bûcheron, mine, champ, forge) et leurs postes, les compétences, un salaire ou un coût d'embauche, l'IA du roi qui embaucherait seule, l'annulation d'une conversation par l'éloignement du roi pendant un menu.
+- Postes fournis par les bâtiments : **entrepôt** (transporteurs), **taverne** (tavernier) et **forge** (un forgeron par enclume). Les artisans n'ont pas de bâtiment : leur poste est le camp, en nombre illimité.
+- **Le plan de forge** : un nouveau type de plan, avec son enclume posée automatiquement, son coffre et son poste de forgeron.
+- **Parler à un dormeur le réveille** : le roi n'attend pas qu'il se réveille.
+- Hors périmètre : les autres **plans de production** (cabane de bûcheron, mine, champ) et leurs postes, l'**approvisionnement en fer** de la forge (aucune mine n'est constructible), les compétences, un salaire ou un coût d'embauche, l'IA du roi qui embaucherait seule, l'annulation d'une conversation par l'éloignement du roi pendant un menu.
 
 ## Capabilities
 
 ### New Capabilities
-- `conversation`: le roi qui s'adresse à quelqu'un, l'interruption et la reprise, le ralentissement des vagabonds.
+- `conversation`: le roi qui s'adresse à quelqu'un (même endormi), l'interruption et la reprise, le ralentissement des vagabonds.
+- `forge-plan`: la forge dans la liste des plans, son enclume, son coffre, son poste de forgeron.
 - `posts-and-roles`: métiers, postes, titulaires, affectation, remplacement, réaffectation, personne sans poste.
 - `bed-assignment`: attribution automatique et manuelle des lits, fatigue sans lit.
 - `assignment-interface`: la mini-carte, la liste des métiers, le vert et le rouge, la liste des employés.
@@ -30,7 +33,7 @@ Les vagabonds passent par le camp sans but, et les maisons bâties n'ont aucun u
 
 ## Impact
 
-- `afk-core` : `Character` (lit facultatif, poste, métier conservé, interruption), `game` (commandes `Talk`, `EndTalk`, `AssignPost`, `AssignBed` ; postes ; lit automatique), `building` (postes de l'entrepôt et de la taverne), `character` (routines qui attendent un poste, ralentissement), `config`.
+- `afk-core` : `PlanKind::Forge`, enclume et coffre de forge posés à la construction ; `Character` (lit facultatif, poste, métier conservé, interruption), `game` (commandes `Talk`, `EndTalk`, `AssignPost`, `AssignBed` ; postes ; lit automatique), `building` (postes de l'entrepôt et de la taverne), `character` (routines qui attendent un poste, ralentissement), `config`.
 - `afk-game` : l'invite « parler », le menu, la mini-carte, la liste des métiers, le panneau des employés (`hud`, `plan_ui` voisin).
 - `knowledge/` : `regles/propriete-et-affectation.md`, `metiers/vagabond.md`, `metiers/roi.md`, `regles/habitat.md`, `moteur/*`, `log.md`.
-- Un compagnon recommandé : le changement `production-plans` (cabane de bûcheron, mine, champ, forge et leurs postes), sans lequel la mini-carte n'offre que deux métiers.
+- Un compagnon recommandé : le changement `production-plans` (cabane de bûcheron, mine, champ et leurs postes). Avec la forge, la mini-carte offre déjà trois métiers ; sans mine, la forge manque de fer (voir les questions ouvertes).

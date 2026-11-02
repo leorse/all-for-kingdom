@@ -62,6 +62,10 @@ Le fer et l'or arrivent bruts de la mine. Le forgeron en fait des **lingots**, q
 
 Le forgeron a **une limite de stockage**, comme les autres métiers : une fois ses réserves pleines, il cesse de forger. Voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md).
 
+## Décidé : la forge se bâtit, le forgeron s'affecte
+
+La **forge** devient un plan du roi, avec son enclume posée automatiquement et son coffre. L'enclume est un **poste de forgeron** : personne ne forge tant que le roi n'y a pas affecté quelqu'un (un vagabond, ou n'importe qui réaffecté). Voir [propriété et affectation](/regles/propriete-et-affectation.md). Spec : changement `hire-and-assign`, capacité `forge-plan`. Sans mine, la forge manque de fer.
+
 ## À définir
 
 - Les **recettes** : combien de minerai par lingot, combien de lingots par outil, arme, pièce ?
