@@ -157,8 +157,11 @@ pub const WARLORD: SheetSpec = SheetSpec { name: "chef_de_guerre", work: Anim { 
 /// Le tavernier : 6 images de service d'une chope, sans objet fixe.
 pub const INNKEEPER: SheetSpec = SheetSpec { name: "tavernier", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
 
+/// Le vagabond : il ne travaille pas ; la ligne de travail reprend la posture debout, avec un souffle. Sans objet fixe.
+pub const VAGABOND: SheetSpec = SheetSpec { name: "vagabond", work: Anim { name: "travail", row: WORK_ROW, durations: SWING }, extras: &[] };
+
 /// Toutes les planches connues.
-pub const SHEETS: [SheetSpec; 10] = [BLACKSMITH, MINER, LUMBERJACK, FARMER, TRANSPORTER, ARTISAN, GUARD, KING, WARLORD, INNKEEPER];
+pub const SHEETS: [SheetSpec; 11] = [BLACKSMITH, MINER, LUMBERJACK, FARMER, TRANSPORTER, ARTISAN, GUARD, KING, WARLORD, INNKEEPER, VAGABOND];
 
 /// Une cellule de la planche.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

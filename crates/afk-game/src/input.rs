@@ -55,6 +55,9 @@ pub fn poll(player: PlayerId, view: &View, game: &Game, ui_has_mouse: bool, moda
     if is_key_pressed(KeyCode::E) {
         commands.push(Command::Interact { player }); // près de quelqu'un : parler (ou finir de parler)
     }
+    if is_key_pressed(KeyCode::B) && !modal {
+        commands.push(Command::ClaimBed { player }); // près d'un lit : le roi se le prend
+    }
     if is_key_pressed(KeyCode::C) {
         commands.push(Command::EmptyDepot { player }); // vide les coffres de l'entrepôt central
     }

@@ -191,6 +191,8 @@ pub fn at_forge_post(pos: Vec2, anvil: TilePos) -> bool {
 pub struct Character {
     pub id: CharacterId,
     pub name: String,
+    /// Le prénom qu'on voit à l'écran ; `name` reste l'étiquette du scénario (« Paysan 2 »).
+    pub first_name: String,
     pub role: Role,
     /// Centre du personnage, en coordonnées monde (tuiles).
     pub pos: Vec2,
@@ -266,6 +268,7 @@ impl Character {
         assert!(!work_spots.is_empty(), "un personnage a besoin d'au moins un poste de travail");
         Character {
             id,
+            first_name: name.clone(),
             name,
             role,
             pos: work_spots[0].center(),

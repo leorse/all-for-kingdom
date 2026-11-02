@@ -219,7 +219,7 @@ pub fn draw(
     assign_ui.draw_world(game, view, me);
     crate::hud::draw(game, sheets, me, speed);
     plan_ui.draw(game, view, me);
-    assign_ui.draw(game, view, me);
+    assign_ui.draw(game, sheets, me);
     crate::hud::draw_help(help_open);
 }
 

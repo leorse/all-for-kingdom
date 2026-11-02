@@ -24,6 +24,13 @@
 - [x] 4.2 Mini-carte : liste des métiers (libres d'abord), postes verts et rouges, clic pour affecter ou remplacer ; mode lits
 - [x] 4.3 Panneau des employés (nom, métier, poste, symbole de lit)
 
+## 4b. Le lit du roi et les repères
+
+- [x] 4b.1 `ClaimBed` : le roi s'attribue un lit à portée (libre ou occupé) ; vérifier par des tests (lit libre, occupé, hors de portée, ancien lit libéré)
+- [x] 4b.2 Invite « B » et un lit au-dessus du lit à portée ; touche `B`
+- [x] 4b.3 Plus de cercle autour de l'interlocuteur ; points de la mini-carte à la couleur du métier
+- [x] 4b.4 Fiche de conversation en icônes (photo, prénom, → outil, → lit, croix rouge) ; 200 prénoms médiévaux neutres pour les vagabonds ; planche du vagabond
+
 ## 5. Documentation et vérification
 
 - [x] 5.1 `knowledge/` (règles, métiers, moteur, journal), `README.md`

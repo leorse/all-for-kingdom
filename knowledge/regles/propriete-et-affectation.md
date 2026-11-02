@@ -30,7 +30,8 @@ Les **trois lits du camp de base** sont ceux du roi et des deux artisans (voir [
 
 ## Parler, affecter — en place
 
-Touche **`E`** près de quelqu'un (portée `talk_range`, 2 tuiles) : une invite « E parler » s'affiche au-dessus de la personne la plus proche. Un menu propose *Affecter a un poste*, *Donner un lit*, *Rien* (`Echap` ou clic droit pour finir). La conversation se termine aussi si le roi s'éloigne ou change de personnage. Pendant une conversation, le roi ne bouge pas, mais le temps continue.
+Touche **`E`** près de quelqu'un (portée `talk_range`, 2 tuiles) : une invite « E parler » s'affiche au-dessus de la personne la plus proche. Une **fiche** s'ouvre, sans phrase : la photo et le prénom de la personne, puis trois icônes : « → outil » (affecter à un poste), « → lit » (donner un lit), une croix rouge (annuler ; `Echap` ou clic droit aussi). Aucun cercle n'entoure la personne. Sur la mini-carte, chaque personne est un point de la couleur de son métier. La conversation se termine aussi si le roi s'éloigne ou change de personnage. Pendant une conversation, le roi ne bouge pas, mais le temps continue.
+Le roi peut aussi **se prendre un lit** : à portée d'un lit (et sans personne à aborder), une invite « B » + lit s'affiche ; `B` le lui attribue, même occupé (l'occupant le perd), et libère son ancien lit. Aucune conversation.
 
 Le roi **s'adresse** à quelqu'un : proche de lui, il appuie sur un bouton. La personne **arrête tout et garde en mémoire ce qu'elle faisait** ; **lui parler alors qu'elle dort la réveille**, le roi n'attend pas ; si le roi ne dit rien, elle reprend exactement où elle en était. **Près d'un vagabond**, le roi le fait toujours **ralentir**, même sans lui parler (un vagabond n'a pas d'autre but que d'être embauché) ; près de n'importe qui d'autre il n'y a **aucun ralentissement** : la personne continue son travail, sauf si le roi lui parle.
 

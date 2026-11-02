@@ -65,6 +65,8 @@ pub enum Command {
     AssignPost { player: PlayerId, who: CharacterId, post: TilePos },
     /// Le roi attribue ce lit à la personne à qui il parle ; si le lit était à quelqu'un, celui-ci le perd.
     AssignBed { player: PlayerId, who: CharacterId, bed: TilePos },
+    /// Le roi se prend le lit le plus proche à portée (voir `Game::bed_in_reach`), libre ou occupé, sans parler à personne.
+    ClaimBed { player: PlayerId },
 }
 
 /// Un poste de travail que fournit un bâtiment : une place d'un métier, tenue par une seule personne (sauf le poste
@@ -123,6 +125,13 @@ impl Game {
             .enumerate()
             .map(|(i, s)| Character::new(CharacterId(i), s.name, s.role, s.home, s.night_shift, s.work_spots))
             .collect();
+        // chacun a son prénom, distinct (un tirage à part : il ne touche pas au hasard de la partie)
+        let mut names_rng = Rng::new(0x5EED_CAFE);
+        for i in 0..characters.len() {
+            let taken: Vec<&str> = characters[..i].iter().map(|c| c.first_name.as_str()).collect();
+            let first = crate::names::pick_name(names_rng.index(crate::names::FIRST_NAMES.len()), &taken);
+            characters[i].first_name = first;
+        }
         // au camp, les artisans tiennent le poste d'artisan de la place du camp
         if let Some(camp) = scenario.camp {
             for c in characters.iter_mut().filter(|c| c.role == Role::Artisan) {
@@ -391,6 +400,19 @@ impl Game {
         self.characters.iter().filter(|c| !c.gone && c.post == Some(tile)).map(|c| c.id).collect()
     }
 
+    /// Le lit à portée du roi de ce joueur (hors le sien) : le plus proche à moins de `talk_range`, s'il n'est pas en
+    /// conversation. Quelqu'un à aborder garde la priorité côté interface.
+    pub fn bed_in_reach(&self, player: PlayerId) -> Option<TilePos> {
+        let king = self.possessed_by(player).and_then(|id| self.characters.get(id.0)).filter(|c| c.role == Role::King && !c.asleep)?;
+        if self.talking_to(player).is_some() {
+            return None;
+        }
+        self.beds()
+            .into_iter()
+            .filter(|&b| !(king.has_bed && king.home == b) && b.center().distance(king.pos) <= self.config.talk_range)
+            .min_by(|a, b| a.center().distance(king.pos).total_cmp(&b.center().distance(king.pos)))
+    }
+
     /// La personne à qui le roi parle en ce moment.
     pub fn talking_to(&self, player: PlayerId) -> Option<CharacterId> {
         self.players.get(player.0 as usize).and_then(|p| p.talking)
@@ -608,6 +630,7 @@ impl Game {
             Command::EndTalk { player } => self.end_talk(player),
             Command::AssignPost { player, who, post } => self.assign_post(player, who, post),
             Command::AssignBed { player, who, bed } => self.assign_bed(player, who, bed),
+            Command::ClaimBed { player } => self.claim_bed(player),
             Command::Interact { player } => {
                 let Some(id) = self.possessed_by(player) else { return };
                 // le roi : un appui s'adresse à la personne la plus proche, un second met fin à la conversation
@@ -943,6 +966,16 @@ impl Game {
         self.end_talk(player);
     }
 
+    /// Le roi se couche dans le lit à sa portée ; l'ancien occupant le perd, l'ancien lit du roi se libère.
+    fn claim_bed(&mut self, player: PlayerId) {
+        let Some(bed) = self.bed_in_reach(player) else { return };
+        let Some(king) = self.possessed_by(player) else { return };
+        if let Some(owner) = self.bed_owner(bed).filter(|&o| o != king) {
+            self.characters[owner.0].set_bed(None);
+        }
+        self.characters[king.0].set_bed(Some(bed));
+    }
+
     fn assign_bed(&mut self, player: PlayerId, who: CharacterId, bed: TilePos) {
         if !self.is_king(player) || self.talking_to(player) != Some(who) || !self.beds().contains(&bed) {
             return;
@@ -1158,7 +1191,10 @@ impl Game {
             }
             self.vagabonds_seen += 1;
             let id = CharacterId(self.characters.len());
-            let mut vagabond = Character::new(id, format!("Vagabond {}", self.vagabonds_seen), Role::Vagabond, spot, false, vec![spot]);
+            let pick = self.rng.index(crate::names::FIRST_NAMES.len());
+            let taken: Vec<&str> = self.characters.iter().filter(|c| !c.gone).map(|c| c.first_name.as_str()).collect();
+            let name = crate::names::pick_name(pick, &taken);
+            let mut vagabond = Character::new(id, name.clone(), Role::Vagabond, spot, false, vec![spot]);
             vagabond.set_stay_hours(self.config.vagabond_stay_hours);
             vagabond.has_bed = false;
             self.characters.push(vagabond);
@@ -3513,7 +3549,7 @@ mod camp_tests {
         let id = game.characters().iter().position(|c| c.role == Role::Vagabond).unwrap();
         let v = &game.characters()[id];
         assert!(game.map().get(v.tile()) != Tile::Water && !game.map().get(v.tile()).is_solid(), "il arrive par un bord praticable");
-        assert!(v.name.starts_with("Vagabond"));
+        assert!(crate::names::FIRST_NAMES.contains(&v.first_name.as_str()), "un prénom, pas un numéro");
         // il se promène : il bouge
         let start = game.characters()[id].pos;
         run(&mut game, 15.0);
@@ -3985,6 +4021,25 @@ mod hire_tests {
         assert_eq!(game.bed_owner(bed_b), Some(a));
         assert_eq!(game.bed_owner(bed_a), None);
         assert_eq!(game.free_places(), 1, "le lit de A est libre");
+    }
+
+    #[test]
+    fn the_king_claims_a_bed_in_reach_and_frees_his_own() {
+        let mut game = new_game(cfg());
+        let (king_bed, bed_b) = (game.characters()[KING.0].home, game.characters()[2].home);
+        // trop loin : rien ne change
+        game.characters[KING.0].pos = bed_b.center() + Vec2::new(0.0, 30.0);
+        assert_eq!(game.bed_in_reach(P0), None);
+        game.apply(Command::ClaimBed { player: P0 });
+        assert_eq!(game.characters()[KING.0].bed(), Some(king_bed));
+        // à portée : le lit de B devient celui du roi
+        game.characters[KING.0].pos = bed_b.center() + Vec2::new(0.5, 0.0);
+        assert_eq!(game.bed_in_reach(P0), Some(bed_b));
+        game.apply(Command::ClaimBed { player: P0 });
+        assert_eq!(game.characters()[KING.0].bed(), Some(bed_b));
+        assert_eq!(game.characters()[2].bed(), None, "B perd son lit");
+        assert_eq!(game.bed_owner(king_bed), None, "l'ancien lit du roi est libre");
+        assert_eq!(game.bed_in_reach(P0), None, "son propre lit n'est plus proposé");
     }
 
     #[test]

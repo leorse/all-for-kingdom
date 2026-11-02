@@ -2,10 +2,12 @@
 //! métiers à gauche, postes ou lits en vert/rouge), et la liste des employés (touche L). Aucune règle ici : les clics
 //! deviennent des `Command` (`AssignPost`, `AssignBed`, `EndTalk`).
 
+use crate::character_view::Sheets;
+use crate::hud;
 use crate::hud_icons::{self, Icon};
-use crate::render::{tile_color, View};
+use crate::render::{role_color, tile_color, View};
 use crate::theme;
-use afk_core::{CharacterId, Command, Game, PlayerId, Role, TilePos};
+use afk_core::{CharacterId, Command, Game, PlayerId, Role, TilePos, WorkKind};
 use macroquad::prelude::*;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -175,9 +177,19 @@ impl AssignUi {
         commands
     }
 
-    /// Dessin du monde : l'invite « E parler » au-dessus de la personne qu'on peut aborder.
+    /// Dessin du monde : l'invite « E parler » au-dessus de la personne qu'on peut aborder, sinon « B » et un lit au-dessus
+    /// du lit que le roi peut prendre.
     pub fn draw_world(&self, game: &Game, view: &View, me: PlayerId) {
-        let Some(id) = game.talkable(me) else { return };
+        let Some(id) = game.talkable(me) else {
+            if let Some(bed) = game.bed_in_reach(me) {
+                let (x, y) = view.to_screen(bed.center());
+                let lift = view.tile_px * 0.9;
+                theme::plank(x - 40.0, y - lift - 6.0, 80.0, 34.0);
+                theme::keycap(x - 34.0, y - lift - 1.0, 22.0, "B");
+                hud_icons::draw(Icon::Bed, x - 6.0, y - lift - 1.0, 2.5, 1.0);
+            }
+            return;
+        };
         let Some(c) = game.character(id) else { return };
         let (x, y) = view.to_screen(c.pos);
         let lift = view.tile_px * 1.7;
@@ -188,45 +200,58 @@ impl AssignUi {
         theme::gilt(label, x - w / 2.0 + 32.0, y - lift + 16.0, 20.0);
     }
 
-    pub fn draw(&self, game: &Game, view: &View, me: PlayerId) {
+    pub fn draw(&self, game: &Game, sheets: &Sheets, me: PlayerId) {
         if self.employees_open && self.who.is_none() {
             draw_employees(game);
         }
         let Some(who) = self.who else { return };
         let Some(person) = game.character(who) else { return };
-        // la personne à qui on parle : un cercle pulsant
-        let (px, py) = view.to_screen(person.pos);
-        let pulse = 0.6 + 0.4 * (game.time() * 5.0).sin().abs();
-        draw_circle_lines(px, py, view.tile_px * 0.7, 3.0, theme::with_alpha(theme::GOLD_LIGHT, pulse));
         match self.step {
-            Step::Menu => draw_menu(person.name.as_str(), person.role),
-            Step::Posts(selected) => draw_minimap(game, person.name.as_str(), selected, false, who),
-            Step::Beds => draw_minimap(game, person.name.as_str(), None, true, who),
+            Step::Menu => draw_menu(person, sheets),
+            Step::Posts(selected) => draw_minimap(game, person.first_name.as_str(), selected, false, who),
+            Step::Beds => draw_minimap(game, person.first_name.as_str(), None, true, who),
         }
         let _ = me;
     }
 }
 
+const BTN: f32 = 72.0;
+
 fn menu_rect() -> (f32, f32, f32, f32) {
-    let (w, h) = (330.0, 200.0);
+    let (w, h) = (3.0 * BTN + 4.0 * 14.0, 190.0);
     ((screen_width() - w) / 2.0, screen_height() - h - 24.0, w, h)
 }
 
+/// Les trois boutons de la fiche : travail, lit, annuler.
 fn menu_button(i: usize) -> (f32, f32, f32, f32) {
-    let (x, y, w, _) = menu_rect();
-    (x + 24.0, y + 62.0 + i as f32 * 38.0, w - 48.0, 32.0)
+    let (x, y, _, h) = menu_rect();
+    (x + 14.0 + i as f32 * (BTN + 14.0), y + h - BTN - 14.0, BTN, BTN)
 }
 
-fn draw_menu(name: &str, role: Role) {
+/// Une icône et son éventuelle flèche « -> », centrées dans le bouton `i`.
+fn menu_icon(i: usize, arrow: bool, icon: Icon) {
+    let (x, y, w, h) = menu_button(i);
+    let px = 3.0;
+    let size = hud_icons::GRID as f32 * px;
+    let total = if arrow { size * 2.0 } else { size };
+    let (ix, iy) = (x + (w - total) / 2.0, y + (h - size) / 2.0);
+    if arrow {
+        hud_icons::draw(Icon::Arrow, ix, iy, px, 1.0);
+    }
+    hud_icons::draw(icon, ix + total - size, iy, px, 1.0);
+}
+
+/// La fiche du personnage à qui le roi parle : sa photo, son prénom, puis trois icônes (au travail, au lit, annuler).
+fn draw_menu(person: &afk_core::Character, sheets: &Sheets) {
     let (x, y, w, h) = menu_rect();
     theme::panel(x, y, w, h);
-    theme::ribbon(x + 22.0, y - 14.0, w - 44.0, "Parler");
-    theme::ink(&format!("{} ({})", name, role_label(role)), x + 24.0, y + 54.0, 20.0);
+    hud::portrait(x + 20.0, y + 26.0, person, sheets);
+    theme::ink(person.first_name.as_str(), x + 20.0 + 56.0 + 16.0, y + 62.0, 26.0);
     let mouse = mouse_position();
-    for (i, label) in ["Affecter a un poste", "Donner un lit", "Rien"].into_iter().enumerate() {
+    for (i, (arrow, icon)) in [(true, Icon::Work(WorkKind::Build)), (true, Icon::Bed), (false, Icon::Cross)].into_iter().enumerate() {
         let (bx, by, bw, bh) = menu_button(i);
         theme::button(bx, by, bw, bh, inside(mouse, bx, by, bw, bh), false);
-        theme::ink(label, bx + 12.0, by + 22.0, 20.0);
+        menu_icon(i, arrow, icon);
     }
 }
 
@@ -267,8 +292,10 @@ fn draw_minimap(game: &Game, name: &str, selected: Option<Role>, beds: bool, who
         }
     }
     for c in game.characters().iter().filter(|c| !c.gone) {
-        let col = if c.id == who { theme::GOLD_LIGHT } else { WHITE };
-        draw_circle(mx + c.pos.x * scale, my + c.pos.y * scale, (scale * 0.45).max(2.0), col);
+        let r = (scale * 0.45).max(2.0);
+        let (x, y) = (mx + c.pos.x * scale, my + c.pos.y * scale);
+        draw_circle(x, y, r + 1.0, theme::with_alpha(BLACK, 0.7));
+        draw_circle(x, y, r, role_color(c.role));
     }
 
     // les marqueurs : vert libre, rouge occupé
@@ -337,7 +364,7 @@ fn draw_employees(game: &Game) {
     }
     for (i, c) in list.iter().enumerate() {
         let ly = y + 52.0 + i as f32 * 28.0;
-        theme::ink(&c.name, x + 24.0, ly, 20.0);
+        theme::ink(&c.first_name, x + 24.0, ly, 20.0);
         draw_text(role_label(c.role), x + 150.0, ly, 20.0, theme::INK_SOFT);
         let post = if c.post.is_some() { "poste" } else { "sans poste" };
         draw_text(post, x + 262.0, ly, 20.0, if c.post.is_some() { theme::INK_SOFT } else { RED });

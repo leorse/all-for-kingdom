@@ -16,6 +16,7 @@ pub mod habitat;
 pub mod map;
 pub mod math;
 pub mod mine;
+pub mod names;
 pub mod resources;
 pub mod transport;
 pub mod rng;

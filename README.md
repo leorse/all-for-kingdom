@@ -30,6 +30,7 @@ Tous les autres réglages (heure de départ, aube, crépuscule, rythme de fatigu
 | E | (roi) parler à la personne proche : l'affecter à un poste ou à un lit sur une mini-carte ; sinon travailler la parcelle visée (paysan) / forger (forgeron) / miner le filon visé (mineur) / abattre l'arbre visé (bûcheron) / construire les fondations visées (artisan) / se coucher près de son lit / se lever / annuler le travail en cours |
 | Clic dans le panneau des plans (roi) | choisir un plan ; puis clic sur la carte pour fixer le coin, la souris agrandit, second clic pour valider |
 | L | liste des employés : nom, métier, poste, lit |
+| B | près d'un lit (roi) : se prendre ce lit |
 | Retour arrière | du dimensionnement d'un plan au déplacement |
 | C | vider l'entrepôt central (toutes ses ressources disparaissent) |
 | Espace | mode AFK on/off (en vue libre, reprend aussi le dernier personnage) |
