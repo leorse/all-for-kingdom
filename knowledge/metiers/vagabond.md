@@ -35,3 +35,7 @@ Une personne qui **passe par là**, sans foyer et sans métier. Elle n'est pas u
 - Comment on embauche (clic sur le vagabond ? depuis la taverne ?) et ce qui se passe s'il n'y a pas de lit.
 - Ce qui fait varier le **rythme d'arrivée** (prospérité, réputation, taverne).
 - Un vagabond qu'on n'embauche pas dort-il quelque part, mange-t-il ?
+
+## Embauche — en place
+
+Le roi, proche d'un vagabond, le **ralentit** toujours (`slow_range`, `vagabond_slow_factor`). Il lui parle (`E`) et l'affecte à un poste ou à un lit ; **l'embauche n'exige plus de lit**. Voir [propriété et affectation](/regles/propriete-et-affectation.md).

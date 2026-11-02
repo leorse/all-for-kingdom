@@ -36,9 +36,10 @@ pub fn draw_help(open: bool) {
         theme::keycap(screen_width() - MARGIN - size, screen_height() - MARGIN - size, size, "H");
         return;
     }
-    const LINES: [(&str, &str); 10] = [
+    const LINES: [(&str, &str); 11] = [
         ("ZQSD / fleches", "bouger"),
-        ("E", "travailler, dormir, deposer"),
+        ("E", "travailler, dormir, deposer, parler"),
+        ("L", "liste des employes"),
         ("Tab / 1-9 / clic", "incarner quelqu'un"),
         ("Espace", "mode AFK"),
         ("T", "vitesse du temps"),

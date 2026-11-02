@@ -125,7 +125,7 @@ impl View {
 
 // ---------------------------------------------------------------- apparence
 
-fn tile_color(tile: Tile, x: i32, y: i32) -> Color {
+pub(crate) fn tile_color(tile: Tile, x: i32, y: i32) -> Color {
     // petite variation déterministe pour éviter l'aplat monotone
     let v = ((x * 7 + y * 13) % 5) as u8 * 3;
     match tile {
@@ -158,6 +158,7 @@ pub(crate) fn role_color(role: Role) -> Color {
         Role::Transporter => Color::from_rgba(60, 190, 190, 255),
         Role::Artisan => Color::from_rgba(188, 134, 70, 255),
         Role::Vagabond => Color::from_rgba(132, 120, 108, 255),
+        Role::Villager => Color::from_rgba(160, 150, 130, 255),
     }
 }
 
@@ -194,6 +195,7 @@ pub fn draw(
     art: &crate::habitat_view::Art,
     sheets: &Sheets,
     plan_ui: &crate::plan_ui::PlanUi,
+    assign_ui: &crate::assign_ui::AssignUi,
     me: PlayerId,
     speed: f32,
     help_open: bool,
@@ -214,8 +216,10 @@ pub fn draw(
     crate::habitat_view::draw_habitat_lights(game, view);
     crate::construction_view::draw_campfire_light(game, view);
     plan_ui.draw_world(game, view, me);
+    assign_ui.draw_world(game, view, me);
     crate::hud::draw(game, sheets, me, speed);
     plan_ui.draw(game, view, me);
+    assign_ui.draw(game, view, me);
     crate::hud::draw_help(help_open);
 }
 

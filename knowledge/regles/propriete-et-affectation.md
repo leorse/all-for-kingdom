@@ -1,17 +1,21 @@
 ---
 type: Règle
 title: Propriété et affectation
-description: Le roi s'adresse à quelqu'un, l'affecte à un poste ou à un lit sur une mini-carte (vert libre, rouge occupé) ; lit automatique près du poste, sans lit on s'épuise ; liste des employés. Décidé et spécifié, pas encore en jeu.
-etat_en_jeu: décidé (spec hire-and-assign) ; seul le compte des places libres est en place
+description: Le roi s'adresse à quelqu'un (E), l'affecte à un poste ou à un lit sur une mini-carte (vert libre, rouge occupé) ; lit automatique près du poste, sans lit on s'épuise ; liste des employés (L). En place ; l'équilibrage du départ viendra plus tard.
+etat_en_jeu: en place (changement hire-and-assign) ; propriétaire de maison à plusieurs lits, compétences et satisfaction restent à définir
 tags: [regle, population, roi, affectation]
 sources:
   - resource: crates/afk-core/src/game.rs
-    title: free_places, can_hire (places libres et embauche)
+    title: Command::{Talk, EndTalk, AssignPost, AssignBed}, posts, auto_beds, free_places
+  - resource: crates/afk-core/src/character.rs
+    title: paused, post, has_bed, take_post, lose_post, speed_factor (ralentissement du vagabond)
+  - resource: crates/afk-game/src/assign_ui.rs
+    title: invite « parler », menu, mini-carte, liste des employés
 ---
 
 # Propriété et affectation
 
-Règles **décidées et spécifiées, pas encore dans le jeu**. En place aujourd'hui : le jeu compte les places libres (`free_places`). Tout le reste est à faire.
+Règles **en place** (changement `hire-and-assign`), sauf mention contraire. Le **propriétaire** d'une maison à plusieurs lits et l'équilibrage du départ restent à faire.
 
 ## Principe — décidé
 
@@ -24,7 +28,9 @@ Règles **décidées et spécifiées, pas encore dans le jeu**. En place aujourd
 
 Les **trois lits du camp de base** sont ceux du roi et des deux artisans (voir [depart-et-camp.md](/regles/depart-et-camp.md)).
 
-## Parler, affecter — décidé (spec `hire-and-assign`)
+## Parler, affecter — en place
+
+Touche **`E`** près de quelqu'un (portée `talk_range`, 2 tuiles) : une invite « E parler » s'affiche au-dessus de la personne la plus proche. Un menu propose *Affecter a un poste*, *Donner un lit*, *Rien* (`Echap` ou clic droit pour finir). La conversation se termine aussi si le roi s'éloigne ou change de personnage. Pendant une conversation, le roi ne bouge pas, mais le temps continue.
 
 Le roi **s'adresse** à quelqu'un : proche de lui, il appuie sur un bouton. La personne **arrête tout et garde en mémoire ce qu'elle faisait** ; **lui parler alors qu'elle dort la réveille**, le roi n'attend pas ; si le roi ne dit rien, elle reprend exactement où elle en était. **Près d'un vagabond**, le roi le fait toujours **ralentir**, même sans lui parler (un vagabond n'a pas d'autre but que d'être embauché) ; près de n'importe qui d'autre il n'y a **aucun ralentissement** : la personne continue son travail, sauf si le roi lui parle.
 
@@ -40,9 +46,9 @@ Trois choses distinctes. Le **métier** reste à la personne même sans poste. U
 - **L'embauche n'exige plus de lit** (cette règle est abandonnée). Sans lit, la personne est embauchée mais **ne se repose jamais** : elle s'épuise et travaille moins vite.
 - Le roi peut aussi **attribuer un lit à la main** ; l'occupant d'un lit repris le perd.
 
-## La liste des employés — décidé
+## La liste des employés — en place
 
-Le roi a une liste de ses employés : leur **nom**, leur **métier**, leur **poste** (ou l'absence de poste), et un **symbole** s'ils ont un lit.
+Touche **`L`** : leur **nom**, leur **métier**, leur **poste** (ou « sans poste »), et un **lit** (pictogramme) ou une croix s'ils n'en ont pas. Le roi et les vagabonds n'y figurent pas. Un vagabond à qui on donne un lit sans poste devient un **habitant** (`Role::Villager`) : il dort et ne fait rien le jour.
 
 ## Au départ — décidé pour l'instant
 
@@ -50,7 +56,7 @@ Les **trois lits du camp de base** sont ceux du roi et des deux artisans (voir [
 
 ## À définir
 
-- La **touche** pour parler (proposée : `E`) et les **portées** (parler, ralentissement).
+- Les **portées** exactes (`talk_range`, `slow_range`) à ajuster à l'usage.
 - Réaffecter **à distance** depuis la liste des employés, sans s'approcher ?
 - Les **compétences** (voir [competences.md](/regles/competences.md)) : tirées au hasard à l'arrivée, affichées dans la liste ?
 - Un **coût** ou un **salaire** d'embauche, avec l'économie ?

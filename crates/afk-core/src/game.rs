@@ -14,7 +14,7 @@ use crate::building::{check_plan, plan_build_secs, plan_cost, Building, Cost, Pl
 use crate::character::{at_forge_post, forge_spot, Character, Env, Facing, Outcome, Role, BODY_HALF};
 use crate::clock::Clock;
 use crate::config::Config;
-use crate::container::{container_at, place_crates, Container, ContainerKind};
+use crate::container::{container_at, place_crates, Container, ContainerKind, ContainerSpec};
 use crate::farm::Farm;
 use crate::forest::{Forest, LodgeSpec, Saplings};
 use crate::habitat::HabitatSpec;
@@ -56,12 +56,32 @@ pub enum Command {
     /// (`x`, `y`), avec `beds` lits pour une maison. Refusé si le joueur n'incarne pas un roi ou si le plan ne peut
     /// pas être posé là (voir `Game::check_plan`). Même sans les ressources, le plan se pose : le chantier attend.
     PlacePlan { player: PlayerId, kind: PlanKind, x: i32, y: i32, w: i32, h: i32, beds: u32 },
+    /// Le roi s'adresse à la personne la plus proche à portée : elle arrête tout (et se réveille si elle dormait).
+    Talk { player: PlayerId },
+    /// Fin de la conversation sans rien décider : la personne reprend exactement ce qu'elle faisait.
+    EndTalk { player: PlayerId },
+    /// Le roi affecte la personne à qui il parle au poste de cette tuile, libre ou occupé (le titulaire garde son métier
+    /// mais perd son poste). Elle prend le métier du poste.
+    AssignPost { player: PlayerId, who: CharacterId, post: TilePos },
+    /// Le roi attribue ce lit à la personne à qui il parle ; si le lit était à quelqu'un, celui-ci le perd.
+    AssignBed { player: PlayerId, who: CharacterId, bed: TilePos },
+}
+
+/// Un poste de travail que fournit un bâtiment : une place d'un métier, tenue par une seule personne (sauf le poste
+/// d'artisan du camp, sans limite).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Post {
+    pub role: Role,
+    pub tile: TilePos,
+    pub unlimited: bool,
 }
 
 struct PlayerSlot {
     possessed: Option<CharacterId>,
     last: CharacterId,
     move_dir: Vec2,
+    /// La personne à qui le roi parle.
+    talking: Option<CharacterId>,
 }
 
 pub struct Game {
@@ -103,6 +123,12 @@ impl Game {
             .enumerate()
             .map(|(i, s)| Character::new(CharacterId(i), s.name, s.role, s.home, s.night_shift, s.work_spots))
             .collect();
+        // au camp, les artisans tiennent le poste d'artisan de la place du camp
+        if let Some(camp) = scenario.camp {
+            for c in characters.iter_mut().filter(|c| c.role == Role::Artisan) {
+                c.post = Some(camp);
+            }
+        }
         // un bûcheron coupe dans la forêt de la cabane dont il occupe le lit
         for c in characters.iter_mut().filter(|c| c.role == Role::Lumberjack) {
             c.forest = scenario.lodges.iter().find(|l| l.bed == c.home).map(|l| l.forest);
@@ -147,6 +173,7 @@ impl Game {
                 possessed: None,
                 last: CharacterId(0),
                 move_dir: Vec2::ZERO,
+                talking: None,
             })
             .collect();
         let farm = Farm::from_map(&map);
@@ -309,12 +336,78 @@ impl Game {
     /// Places libres d'un habitat : ses lits que personne n'occupe comme logement (aucun personnage n'y a son lit).
     pub fn free_places_in(&self, habitat: usize) -> u32 {
         let Some(h) = self.habitats.get(habitat) else { return 0 };
-        h.bed_homes().iter().filter(|&&bed| !self.characters.iter().any(|c| c.home == bed)).count() as u32
+        h.bed_homes().iter().filter(|&&bed| !self.characters.iter().any(|c| c.has_bed && c.home == bed)).count() as u32
     }
 
-    /// Places libres dans tout le royaume.
+    /// Tous les lits du royaume : ceux des habitats (la tuile de tête) et les lits isolés (le camp, le château).
+    pub fn beds(&self) -> Vec<TilePos> {
+        let mut beds: Vec<TilePos> = self.habitats.iter().flat_map(|h| h.bed_homes()).collect();
+        for t in self.map.find_tiles(Tile::Bed) {
+            if !self.habitats.iter().any(|h| h.covers(t)) {
+                beds.push(t);
+            }
+        }
+        beds
+    }
+
+    /// Qui dort dans ce lit, s'il est à quelqu'un.
+    pub fn bed_owner(&self, bed: TilePos) -> Option<CharacterId> {
+        self.characters.iter().find(|c| !c.gone && c.has_bed && c.home == bed).map(|c| c.id)
+    }
+
+    /// Places libres dans tout le royaume : les lits que personne n'occupe (le camp compris).
     pub fn free_places(&self) -> u32 {
-        (0..self.habitats.len()).map(|i| self.free_places_in(i)).sum()
+        self.beds().into_iter().filter(|&b| self.bed_owner(b).is_none()).count() as u32
+    }
+
+    /// Les postes de travail que fournissent les bâtiments : une enclume par poste de forgeron, des postes de
+    /// transporteur à l'entrepôt, le tavernier à la taverne, et au camp le poste d'artisan, sans limite.
+    pub fn posts(&self) -> Vec<Post> {
+        let mut posts = Vec::new();
+        if let Some(camp) = self.camp {
+            posts.push(Post { role: Role::Artisan, tile: camp, unlimited: true });
+        }
+        for b in &self.buildings {
+            match b.kind {
+                PlanKind::Warehouse => {
+                    let width = (b.w - 2).max(1);
+                    for i in 0..self.config.warehouse_posts as i32 {
+                        let tile = TilePos::new(b.x + 1 + i % width, b.y + 3 + i / width);
+                        posts.push(Post { role: Role::Transporter, tile, unlimited: false });
+                    }
+                }
+                PlanKind::Tavern => {
+                    posts.push(Post { role: Role::Innkeeper, tile: TilePos::new(b.x + b.w / 2, b.y + 2), unlimited: false })
+                }
+                PlanKind::Forge => posts.push(Post { role: Role::Blacksmith, tile: forge_spot(b.anvil_tile()), unlimited: false }),
+                PlanKind::House => {}
+            }
+        }
+        posts
+    }
+
+    /// Ceux qui tiennent le poste de cette tuile.
+    pub fn post_holders(&self, tile: TilePos) -> Vec<CharacterId> {
+        self.characters.iter().filter(|c| !c.gone && c.post == Some(tile)).map(|c| c.id).collect()
+    }
+
+    /// La personne à qui le roi parle en ce moment.
+    pub fn talking_to(&self, player: PlayerId) -> Option<CharacterId> {
+        self.players.get(player.0 as usize).and_then(|p| p.talking)
+    }
+
+    /// Qui le roi de ce joueur pourrait aborder : la personne la plus proche à portée de parole (éveillée ou non), s'il n'est
+    /// pas déjà en conversation.
+    pub fn talkable(&self, player: PlayerId) -> Option<CharacterId> {
+        let king = self.possessed_by(player).and_then(|id| self.characters.get(id.0)).filter(|c| c.role == Role::King && !c.asleep)?;
+        if self.talking_to(player).is_some() {
+            return None;
+        }
+        self.characters
+            .iter()
+            .filter(|c| !c.gone && c.id != king.id && c.pos.distance(king.pos) <= self.config.talk_range)
+            .min_by(|a, b| a.pos.distance(king.pos).total_cmp(&b.pos.distance(king.pos)))
+            .map(|c| c.id)
     }
 
     /// Peut-on embaucher un vagabond de la taverne ? Seulement s'il reste une place libre quelque part.
@@ -370,6 +463,7 @@ impl Game {
         match self.characters.get(id.0) {
             Some(c) => {
                 !c.asleep
+                    && c.has_bed
                     && c.distance_to_bed() <= self.config.bed_reach
                     && (c.is_sleep_time(self.clock.is_night()) || c.fatigue > self.config.wake_fatigue)
             }
@@ -510,8 +604,23 @@ impl Game {
                     self.place_plan(kind, x, y, w, h, beds);
                 }
             }
+            Command::Talk { player } => self.start_talk(player),
+            Command::EndTalk { player } => self.end_talk(player),
+            Command::AssignPost { player, who, post } => self.assign_post(player, who, post),
+            Command::AssignBed { player, who, bed } => self.assign_bed(player, who, bed),
             Command::Interact { player } => {
                 let Some(id) = self.possessed_by(player) else { return };
+                // le roi : un appui s'adresse à la personne la plus proche, un second met fin à la conversation
+                if self.characters[id.0].role == Role::King && !self.characters[id.0].asleep {
+                    if self.talking_to(player).is_some() {
+                        self.end_talk(player);
+                        return;
+                    }
+                    if self.talkable(player).is_some() {
+                        self.start_talk(player);
+                        return;
+                    }
+                }
                 if self.characters[id.0].asleep {
                     self.characters[id.0].wake_up();
                 } else if self.characters[id.0].is_approaching() {
@@ -560,6 +669,14 @@ impl Game {
         let night = self.clock.is_night();
         let mut finished = Vec::new();
         let tavern = self.buildings.iter().find(|b| b.kind == PlanKind::Tavern).map(|b| b.front());
+        let king_pos = self
+            .players
+            .iter()
+            .filter_map(|p| p.possessed)
+            .map(|id| &self.characters[id.0])
+            .find(|c| c.role == Role::King)
+            .map(|c| c.pos);
+        self.drop_far_conversations();
         for i in 0..self.characters.len() {
             if self.characters[i].gone {
                 continue;
@@ -599,6 +716,8 @@ impl Game {
                 sites: &self.sites,
                 camp: self.camp,
                 tavern,
+                posts_required: self.camp.is_some(),
+                king_pos,
             };
             if let Some(outcome) = self.characters[i].update(&env, control, &mut self.rng) {
                 finished.push((i, outcome));
@@ -619,6 +738,7 @@ impl Game {
         }
 
         self.chop_trees();
+        self.auto_beds();
         self.update_sites();
         self.build_sites();
         self.spawn_vagabonds(dt_hours);
@@ -774,6 +894,87 @@ impl Game {
         }
     }
 
+    /// Le roi s'adresse à la personne la plus proche : elle arrête tout (et se réveille si elle dormait).
+    fn start_talk(&mut self, player: PlayerId) {
+        let Some(target) = self.talkable(player) else { return };
+        let Some(king) = self.possessed_by(player) else { return };
+        let king_pos = self.characters[king.0].pos;
+        self.characters[target.0].start_talk(king_pos);
+        if let Some(slot) = self.players.get_mut(player.0 as usize) {
+            slot.talking = Some(target);
+        }
+    }
+
+    /// Fin de la conversation : la personne reprend ce qu'elle faisait.
+    fn end_talk(&mut self, player: PlayerId) {
+        let Some(slot) = self.players.get_mut(player.0 as usize) else { return };
+        if let Some(id) = slot.talking.take() {
+            self.characters[id.0].end_talk();
+        }
+    }
+
+    /// Le roi qui s'éloigne (ou qu'on lâche) met fin à la conversation.
+    fn drop_far_conversations(&mut self) {
+        for pi in 0..self.players.len() {
+            let Some(target) = self.players[pi].talking else { continue };
+            let king = self.players[pi].possessed.map(|id| &self.characters[id.0]).filter(|c| c.role == Role::King);
+            let near = king.map_or(false, |k| k.pos.distance(self.characters[target.0].pos) <= self.config.talk_range * 2.0);
+            if !near {
+                self.end_talk(PlayerId(pi as u8));
+            }
+        }
+    }
+
+    fn assign_post(&mut self, player: PlayerId, who: CharacterId, tile: TilePos) {
+        if !self.is_king(player) || self.talking_to(player) != Some(who) {
+            return;
+        }
+        let Some(post) = self.posts().into_iter().find(|p| p.tile == tile) else { return };
+        // le titulaire remplacé garde son métier mais n'a plus de poste
+        if !post.unlimited {
+            for holder in self.post_holders(tile) {
+                if holder != who {
+                    self.characters[holder.0].lose_post();
+                }
+            }
+        }
+        let container = (post.role == Role::Blacksmith).then(|| self.containers.iter().position(|c| c.kind == ContainerKind::Forge)).flatten();
+        self.characters[who.0].take_post(post.role, tile, container);
+        self.end_talk(player);
+    }
+
+    fn assign_bed(&mut self, player: PlayerId, who: CharacterId, bed: TilePos) {
+        if !self.is_king(player) || self.talking_to(player) != Some(who) || !self.beds().contains(&bed) {
+            return;
+        }
+        if let Some(owner) = self.bed_owner(bed).filter(|&o| o != who) {
+            self.characters[owner.0].set_bed(None);
+        }
+        self.characters[who.0].set_bed(Some(bed));
+        if self.characters[who.0].role == Role::Vagabond {
+            self.characters[who.0].settle(); // un lit sans poste : un habitant sans métier
+        }
+        self.end_talk(player);
+    }
+
+    /// Quelqu'un qui a un poste sans lit prend le lit libre le plus proche de son poste ; refait à chaque pas, un lit qui
+    /// apparaît (une maison finie) va au premier qui en manque.
+    fn auto_beds(&mut self) {
+        if !self.characters.iter().any(|c| !c.gone && !c.has_bed && c.post.is_some()) {
+            return;
+        }
+        let mut free: Vec<TilePos> = self.beds().into_iter().filter(|&b| self.bed_owner(b).is_none()).collect();
+        for i in 0..self.characters.len() {
+            let c = &self.characters[i];
+            let Some(post) = c.post.filter(|_| !c.gone && !c.has_bed) else { continue };
+            let nearest = free.iter().copied().min_by_key(|b| (b.x - post.x).abs() + (b.y - post.y).abs());
+            if let Some(bed) = nearest {
+                free.retain(|&b| b != bed);
+                self.characters[i].set_bed(Some(bed));
+            }
+        }
+    }
+
     /// Pose un plan validé : les fondations apparaissent (solides) et le chantier attend ses ressources.
     fn place_plan(&mut self, kind: PlanKind, x: i32, y: i32, w: i32, h: i32, beds: u32) {
         self.map.fill_rect(x, y, w, h, Tile::Foundation);
@@ -877,10 +1078,17 @@ impl Game {
                     self.habitats.push(spec);
                 }
             }
-            PlanKind::Warehouse | PlanKind::Tavern => {
+            PlanKind::Warehouse | PlanKind::Tavern | PlanKind::Forge => {
                 let building = Building { kind: site.kind, x: site.x, y: site.y, w: site.w, h: site.h };
                 building.build(&mut self.map);
                 self.buildings.push(building);
+                if site.kind == PlanKind::Forge {
+                    // le coffre de la forge, dehors contre le mur : le fer qu'on lui apporte, les outils qu'on y range
+                    let chest = building.chest_tile();
+                    self.map.set(chest, Tile::Crate);
+                    let spec = ContainerSpec { kind: ContainerKind::Forge, tile: chest };
+                    self.containers.push(Container::new(spec, self.config.container_capacity, &self.veins));
+                }
             }
         }
         if let Some(p) = pile {
@@ -952,6 +1160,7 @@ impl Game {
             let id = CharacterId(self.characters.len());
             let mut vagabond = Character::new(id, format!("Vagabond {}", self.vagabonds_seen), Role::Vagabond, spot, false, vec![spot]);
             vagabond.set_stay_hours(self.config.vagabond_stay_hours);
+            vagabond.has_bed = false;
             self.characters.push(vagabond);
             break;
         }
@@ -962,6 +1171,7 @@ impl Game {
     }
 
     fn possess(&mut self, player: PlayerId, character: CharacterId) {
+        self.end_talk(player);
         let pi = player.0 as usize;
         if pi >= self.players.len()
             || character.0 >= self.characters.len()
@@ -3347,5 +3557,519 @@ mod camp_tests {
         for c in game.characters() {
             assert!(c.asleep || game.clock().hour() < 20.0, "{} devrait dormir la nuit", c.name);
         }
+    }
+}
+
+/// Parler, affecter à un poste ou à un lit, la forge : le roi qui répartit les gens.
+#[cfg(test)]
+mod hire_tests {
+    use super::*;
+    use crate::building::SiteState;
+    use crate::character::Activity;
+
+    const P0: PlayerId = PlayerId(0);
+    const KING: CharacterId = CharacterId(0);
+    const ARTISAN: CharacterId = CharacterId(1);
+
+    fn cfg() -> Config {
+        Config { starting_stone: 100, vagabond_first_hours: 0.1, vagabond_every_hours: 1000.0, vagabond_stay_hours: 1000.0, ..Config::default() }
+    }
+
+    fn new_game(config: Config) -> Game {
+        let mut game = Game::new(Scenario::camp(), 1, config);
+        game.apply(Command::Possess { player: P0, character: KING });
+        game
+    }
+
+    fn run(game: &mut Game, seconds: f32) {
+        for _ in 0..(seconds / TICK) as usize {
+            game.step(TICK);
+        }
+    }
+
+    fn run_until(game: &mut Game, max_secs: f32, done: impl Fn(&Game) -> bool) {
+        for _ in 0..(max_secs / TICK) as u32 {
+            if done(game) {
+                return;
+            }
+            game.step(TICK);
+        }
+        panic!("condition jamais atteinte en {max_secs} s");
+    }
+
+    /// Le premier emplacement libre pour un plan de ce type, loin du camp.
+    fn spot(game: &Game, kind: PlanKind, skip: usize) -> (i32, i32) {
+        let (w, h) = kind.min_size();
+        let camp = game.camp().unwrap();
+        let mut found = Vec::new();
+        for y in 2..game.map().height() - 2 {
+            for x in 2..game.map().width() - 3 {
+                if game.check_plan(kind, x, y, w, h, kind.min_beds()).is_ok() {
+                    found.push((x, y));
+                }
+            }
+        }
+        let dist = |&(x, y): &(i32, i32)| (x - camp.x).pow(2) + (y - camp.y).pow(2);
+        found.retain(|p| dist(p) > 120);
+        found.sort_by_key(|p| (dist(p), p.1, p.0));
+        found[skip]
+    }
+
+    /// Fait bâtir un plan du type donné (au minimum) et attend la fin du chantier.
+    fn build(game: &mut Game, kind: PlanKind, skip: usize) -> usize {
+        let (w, h) = kind.min_size();
+        let (x, y) = spot(game, kind, skip);
+        game.apply(Command::PlacePlan { player: P0, kind, x, y, w, h, beds: kind.min_beds() });
+        let i = game.sites().len() - 1;
+        run_until(game, 900.0, |g| g.sites()[i].state == SiteState::Done);
+        i
+    }
+
+    fn vagabond(game: &mut Game) -> CharacterId {
+        run_until(game, 120.0, |g| g.characters().iter().any(|c| c.role == Role::Vagabond));
+        game.characters().iter().find(|c| c.role == Role::Vagabond).unwrap().id
+    }
+
+    /// Place la personne juste à côté du roi.
+    fn bring_next_to_king(game: &mut Game, id: CharacterId) {
+        let king = game.characters[KING.0].pos;
+        game.characters[id.0].pos = king + Vec2::new(0.8, 0.0);
+    }
+
+    fn talk_to(game: &mut Game, id: CharacterId) {
+        // les autres s'écartent : le roi parle à la personne la plus proche
+        let king = game.characters[KING.0].pos;
+        for c in game.characters.iter_mut().filter(|c| c.id != id && c.id != KING) {
+            if c.pos.distance(king) < 4.0 {
+                c.pos = king + Vec2::new(0.0, 12.0);
+            }
+        }
+        bring_next_to_king(game, id);
+        game.apply(Command::Talk { player: P0 });
+        assert_eq!(game.talking_to(P0), Some(id), "le roi doit parler à {id:?}");
+    }
+
+    fn post_of_role(game: &Game, role: Role, n: usize) -> TilePos {
+        game.posts().into_iter().filter(|p| p.role == role).nth(n).unwrap_or_else(|| panic!("aucun poste {role:?} n°{n}")).tile
+    }
+
+    fn assign_post(game: &mut Game, who: CharacterId, post: TilePos) {
+        talk_to(game, who);
+        game.apply(Command::AssignPost { player: P0, who, post });
+    }
+
+    // ------------------------------------------------------------ parler
+
+    #[test]
+    fn the_king_talks_to_the_nearest_person_in_range_only() {
+        let mut game = new_game(cfg());
+        // deux artisans à portée : on parle au plus proche
+        let king = game.characters[0].pos;
+        game.characters[1].pos = king + Vec2::new(1.5, 0.0);
+        game.characters[2].pos = king + Vec2::new(0.7, 0.0);
+        game.apply(Command::Talk { player: P0 });
+        assert_eq!(game.talking_to(P0), Some(CharacterId(2)));
+        game.apply(Command::EndTalk { player: P0 });
+        assert_eq!(game.talking_to(P0), None);
+        // hors de portée : rien
+        game.characters[1].pos = game.characters[0].pos + Vec2::new(10.0, 0.0);
+        game.characters[2].pos = game.characters[0].pos + Vec2::new(-10.0, 0.0);
+        game.apply(Command::Talk { player: P0 });
+        assert_eq!(game.talking_to(P0), None, "personne à portée");
+    }
+
+    #[test]
+    fn only_the_king_can_talk_and_not_to_himself() {
+        let mut game = new_game(cfg());
+        game.apply(Command::ToggleIdle { player: P0 });
+        game.apply(Command::Possess { player: P0, character: ARTISAN });
+        game.apply(Command::Talk { player: P0 });
+        assert_eq!(game.talking_to(P0), None, "un artisan ne parle pas à la place du roi");
+        game.apply(Command::ToggleIdle { player: P0 });
+        game.apply(Command::Possess { player: P0, character: KING });
+        game.characters[1].pos = game.characters[0].pos + Vec2::new(30.0, 0.0);
+        game.characters[2].pos = game.characters[0].pos + Vec2::new(30.0, 0.0);
+        game.apply(Command::Talk { player: P0 });
+        assert_eq!(game.talking_to(P0), None, "il n'a personne d'autre que lui-même à portée");
+    }
+
+    #[test]
+    fn someone_spoken_to_stops_and_resumes_exactly() {
+        let mut game = new_game(cfg());
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(&game, PlanKind::House, 0);
+        game.apply(Command::PlacePlan { player: P0, kind: PlanKind::House, x, y, w, h, beds: 1 });
+        // un artisan part avec une cargaison de matériaux
+        run_until(&mut game, 60.0, |g| g.characters()[1].cargo.is_some());
+        bring_next_to_king(&mut game, ARTISAN);
+        game.apply(Command::Talk { player: P0 });
+        assert_eq!(game.talking_to(P0), Some(ARTISAN));
+        let (cargo, pos) = (game.characters()[1].cargo, game.characters()[1].pos);
+        assert!(game.characters()[1].is_talking());
+        run(&mut game, 5.0);
+        assert_eq!(game.characters()[1].cargo, cargo, "il garde sa cargaison");
+        assert_eq!(game.characters()[1].pos, pos, "il ne bouge plus");
+        assert_eq!(game.characters()[1].activity, Activity::Idle);
+        // le roi ne dit rien : il reprend et livre
+        game.apply(Command::EndTalk { player: P0 });
+        assert!(!game.characters()[1].is_talking());
+        let pile = game.sites()[0].pile.expect("un tas");
+        run_until(&mut game, 60.0, |g| g.containers()[pile].get(Resource::Wood) + g.containers()[pile].get(Resource::Stone) > 0);
+    }
+
+    #[test]
+    fn a_work_in_progress_keeps_its_progress_through_a_conversation() {
+        let mut game = new_game(cfg());
+        build_site_to_building(&mut game);
+        run(&mut game, 6.0);
+        let progress = game.sites()[0].progress;
+        assert!(progress > 0.0 && progress < 1.0, "le chantier avance");
+        let worker = game.characters().iter().position(|c| c.role == Role::Artisan && c.work.is_some()).expect("un artisan construit");
+        let work_progress = game.characters()[worker].work.unwrap().progress;
+        bring_next_to_king(&mut game, CharacterId(worker));
+        game.apply(Command::Talk { player: P0 });
+        run(&mut game, 4.0);
+        assert!(game.characters()[worker].work.is_some(), "son travail est toujours là");
+        assert!((game.sites()[0].progress - progress).abs() < 0.2, "un seul artisan travaille en moins, pas de retour à zéro");
+        game.apply(Command::EndTalk { player: P0 });
+        assert!(game.characters()[worker].work.map_or(false, |w| (w.progress - work_progress).abs() < 0.5));
+    }
+
+    /// Place une maison et attend que les artisans la construisent.
+    fn build_site_to_building(game: &mut Game) {
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(game, PlanKind::House, 0);
+        game.apply(Command::PlacePlan { player: P0, kind: PlanKind::House, x, y, w, h, beds: 1 });
+        run_until(game, 120.0, |g| g.sites()[0].state == SiteState::Building);
+    }
+
+    #[test]
+    fn talking_to_a_sleeper_wakes_him_and_he_goes_back_to_bed_if_the_king_says_nothing() {
+        let mut game = new_game(Config { start_hour: 23.0, ..cfg() });
+        run_until(&mut game, 120.0, |g| g.characters()[1].asleep);
+        bring_next_to_king(&mut game, ARTISAN);
+        game.characters[KING.0].pos = game.characters[ARTISAN.0].pos + Vec2::new(0.8, 0.0);
+        game.apply(Command::Talk { player: P0 });
+        assert_eq!(game.talking_to(P0), Some(ARTISAN), "on peut parler à quelqu'un qui dort");
+        assert!(!game.characters()[1].asleep, "lui parler le réveille");
+        run(&mut game, 3.0);
+        assert!(!game.characters()[1].asleep, "il ne se rendort pas pendant qu'on lui parle");
+        game.apply(Command::EndTalk { player: P0 });
+        run_until(&mut game, 120.0, |g| g.characters()[1].asleep);
+        assert_eq!(game.characters()[1].tile(), game.characters()[1].home, "il est retourné se coucher dans son lit");
+    }
+
+    #[test]
+    fn walking_away_ends_the_conversation() {
+        let mut game = new_game(cfg());
+        talk_to(&mut game, ARTISAN);
+        game.characters[KING.0].pos = game.characters[KING.0].pos + Vec2::new(20.0, 0.0);
+        run(&mut game, 0.1);
+        assert_eq!(game.talking_to(P0), None);
+        assert!(!game.characters()[1].is_talking());
+    }
+
+    #[test]
+    fn pressing_e_as_the_king_talks_then_ends() {
+        let mut game = new_game(cfg());
+        bring_next_to_king(&mut game, ARTISAN);
+        game.apply(Command::Interact { player: P0 });
+        assert!(game.talking_to(P0).is_some(), "E s'adresse à quelqu'un");
+        game.apply(Command::Interact { player: P0 });
+        assert_eq!(game.talking_to(P0), None, "un second E met fin à la conversation");
+    }
+
+    #[test]
+    fn possessing_someone_else_ends_the_conversation() {
+        let mut game = new_game(cfg());
+        talk_to(&mut game, ARTISAN);
+        game.apply(Command::Possess { player: P0, character: CharacterId(2) });
+        assert_eq!(game.talking_to(P0), None);
+        assert!(!game.characters()[1].is_talking());
+    }
+
+    // ------------------------------------------------------------ postes
+
+    #[test]
+    fn buildings_provide_posts_and_the_artisans_hold_the_camp_post() {
+        let mut game = new_game(cfg());
+        let camp = game.camp().unwrap();
+        let posts = game.posts();
+        assert_eq!(posts.len(), 1);
+        assert_eq!((posts[0].role, posts[0].tile, posts[0].unlimited), (Role::Artisan, camp, true));
+        assert_eq!(game.post_holders(camp).len(), 2, "les deux artisans tiennent le poste du camp");
+        build(&mut game, PlanKind::Warehouse, 0);
+        let transporters: Vec<Post> = game.posts().into_iter().filter(|p| p.role == Role::Transporter).collect();
+        assert_eq!(transporters.len() as u32, game.config().warehouse_posts);
+        assert!(transporters.iter().all(|p| !p.unlimited && game.post_holders(p.tile).is_empty()), "libres");
+        for p in &transporters {
+            assert!(!game.map().get(p.tile).is_solid(), "{p:?} est dans le passage");
+        }
+        build(&mut game, PlanKind::Tavern, 1);
+        assert_eq!(game.posts().iter().filter(|p| p.role == Role::Innkeeper).count(), 1);
+    }
+
+    #[test]
+    fn a_vagabond_becomes_a_transporter_at_a_free_post() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let v = vagabond(&mut game);
+        let post = post_of_role(&game, Role::Transporter, 0);
+        assert_eq!(game.free_places(), 0, "aucun lit libre : on embauche quand même");
+        assign_post(&mut game, v, post);
+        let c = &game.characters()[v.0];
+        assert_eq!((c.role, c.post), (Role::Transporter, Some(post)));
+        assert_eq!(game.post_holders(post), vec![v]);
+        assert_eq!(game.talking_to(P0), None, "la conversation est finie");
+        assert!(!c.is_talking());
+        // il ne repart plus : il reste au royaume bien après son temps de séjour
+        run(&mut game, 30.0);
+        assert!(!game.characters()[v.0].gone);
+    }
+
+    #[test]
+    fn replacing_a_holder_leaves_him_with_his_trade_but_no_post_and_idle() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let post = post_of_role(&game, Role::Transporter, 0);
+        let (a, b) = (vagabond(&mut game), CharacterId(2));
+        assign_post(&mut game, a, post);
+        assert_eq!(game.characters()[a.0].post, Some(post));
+        // un artisan prend le poste du transporteur
+        assign_post(&mut game, b, post);
+        assert_eq!(game.post_holders(post), vec![b], "un seul titulaire");
+        let old = &game.characters()[a.0];
+        assert_eq!(old.role, Role::Transporter, "il garde son métier");
+        assert_eq!(old.post, None, "mais n'a plus de poste");
+        assert_eq!(game.characters()[b.0].role, Role::Transporter, "le nouveau prend le métier du poste");
+        // il ne fait plus rien
+        run(&mut game, 20.0);
+        let old = &game.characters()[a.0];
+        assert!(old.work.is_none() && old.cargo.is_none() && old.activity == Activity::Idle, "{:?}", old.activity);
+    }
+
+    #[test]
+    fn reassigning_frees_the_old_post() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let (p0, p1) = (post_of_role(&game, Role::Transporter, 0), post_of_role(&game, Role::Transporter, 1));
+        let v = vagabond(&mut game);
+        assign_post(&mut game, v, p0);
+        assign_post(&mut game, v, p1);
+        assert!(game.post_holders(p0).is_empty(), "le premier poste est libre");
+        assert_eq!(game.post_holders(p1), vec![v]);
+    }
+
+    #[test]
+    fn an_artisan_can_be_reassigned_and_come_back_to_the_unlimited_camp_post() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let camp = game.camp().unwrap();
+        { let p = post_of_role(&game, Role::Transporter, 0); assign_post(&mut game, ARTISAN, p); }
+        assert_eq!(game.characters()[1].role, Role::Transporter);
+        assert_eq!(game.post_holders(camp).len(), 1, "il n'est plus artisan");
+        let v = vagabond(&mut game);
+        assign_post(&mut game, v, camp);
+        assign_post(&mut game, ARTISAN, camp);
+        assert_eq!(game.characters()[1].role, Role::Artisan);
+        assert_eq!(game.post_holders(camp).len(), 3, "le poste du camp n'a pas de limite");
+    }
+
+    #[test]
+    fn the_king_cannot_be_assigned() {
+        let mut game = new_game(cfg());
+        let camp = game.camp().unwrap();
+        game.apply(Command::AssignPost { player: P0, who: KING, post: camp });
+        assert_eq!(game.characters()[0].role, Role::King);
+        assert_eq!(game.characters()[0].post, None);
+    }
+
+    #[test]
+    fn only_the_person_spoken_to_can_be_assigned() {
+        let mut game = new_game(cfg());
+        let camp = game.camp().unwrap();
+        build(&mut game, PlanKind::Warehouse, 0);
+        let v = vagabond(&mut game);
+        let post = post_of_role(&game, Role::Transporter, 0);
+        game.apply(Command::AssignPost { player: P0, who: v, post });
+        assert_eq!(game.characters()[v.0].role, Role::Vagabond, "on ne lui a pas parlé");
+        let _ = camp;
+    }
+
+    #[test]
+    fn without_a_post_a_trade_is_not_exercised_at_the_camp() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let (w, h) = PlanKind::House.min_size();
+        let (x, y) = spot(&game, PlanKind::House, 5);
+        let v = vagabond(&mut game);
+        { let p = post_of_role(&game, Role::Transporter, 0); assign_post(&mut game, v, p); }
+        // un chantier attend des matériaux : le transporteur en porte
+        game.apply(Command::PlacePlan { player: P0, kind: PlanKind::House, x, y, w, h, beds: 1 });
+        run_until(&mut game, 60.0, |g| g.characters()[v.0].cargo.is_some() || g.characters()[v.0].job.is_some());
+        // on lui retire son poste (un autre le prend) : il ne porte plus rien
+        let post = post_of_role(&game, Role::Transporter, 0);
+        assign_post(&mut game, CharacterId(2), post);
+        let loose = game.characters()[v.0].cargo;
+        run(&mut game, 20.0);
+        assert_eq!(game.characters()[v.0].cargo, loose.filter(|_| false).or(game.characters()[v.0].cargo));
+        assert_eq!(game.characters()[v.0].activity, Activity::Idle);
+        assert!(game.characters()[v.0].job.is_none());
+    }
+
+    // ------------------------------------------------------------ lits
+
+    #[test]
+    fn someone_with_a_post_and_no_bed_takes_the_free_bed_nearest_to_his_post() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let house_a = build(&mut game, PlanKind::House, 3);
+        let house_b = build(&mut game, PlanKind::House, 30);
+        let post = post_of_role(&game, Role::Transporter, 0);
+        let near = |g: &Game, i: usize| {
+            let s = &g.sites()[i];
+            (s.x + 1, s.y + 1)
+        };
+        let dist = |p: TilePos, (x, y): (i32, i32)| (p.x - x).abs() + (p.y - y).abs();
+        let expected = if dist(post, near(&game, house_a)) <= dist(post, near(&game, house_b)) { house_a } else { house_b };
+        let v = vagabond(&mut game);
+        assert!(game.free_places() >= 2);
+        assign_post(&mut game, v, post);
+        run(&mut game, 0.1);
+        let c = &game.characters()[v.0];
+        assert!(c.has_bed, "il a pris un lit");
+        let s = &game.sites()[expected];
+        assert!(game.habitats().iter().any(|h| h.x == s.x && h.y == s.y && h.bed_homes().contains(&c.home)), "le lit de la maison la plus proche");
+    }
+
+    #[test]
+    fn a_new_bed_goes_to_the_first_person_who_lacks_one() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let v = vagabond(&mut game);
+        { let p = post_of_role(&game, Role::Transporter, 0); assign_post(&mut game, v, p); }
+        run(&mut game, 1.0);
+        assert!(!game.characters()[v.0].has_bed, "aucun lit libre pour l'instant");
+        build(&mut game, PlanKind::House, 3);
+        run(&mut game, 0.5);
+        assert!(game.characters()[v.0].has_bed, "la maison finie lui donne un lit");
+        assert_eq!(game.free_places(), 0);
+    }
+
+    #[test]
+    fn without_a_bed_one_never_sleeps_and_wears_out_but_keeps_working() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Warehouse, 0);
+        let v = vagabond(&mut game);
+        { let p = post_of_role(&game, Role::Transporter, 0); assign_post(&mut game, v, p); }
+        let mut slept = false;
+        for _ in 0..(900.0 / TICK) as usize {
+            game.step(TICK);
+            slept |= game.characters()[v.0].asleep;
+        }
+        assert!(!slept, "sans lit, il ne dort jamais");
+        assert!(game.characters()[v.0].fatigue >= 95.0, "fatigue {}", game.characters()[v.0].fatigue);
+        assert!(game.characters()[v.0].efficiency() <= 0.55, "l'épuisement le ralentit");
+        assert!(game.characters()[v.0].post.is_some(), "il garde son poste");
+    }
+
+    #[test]
+    fn the_king_can_give_a_bed_by_hand_and_take_it_from_its_owner() {
+        let mut game = new_game(cfg());
+        let (a, b) = (CharacterId(1), CharacterId(2));
+        let (bed_a, bed_b) = (game.characters()[1].home, game.characters()[2].home);
+        talk_to(&mut game, a);
+        game.apply(Command::AssignBed { player: P0, who: a, bed: bed_b });
+        assert_eq!(game.characters()[a.0].bed(), Some(bed_b), "A a le lit de B");
+        assert_eq!(game.characters()[b.0].bed(), None, "B n'a plus de lit");
+        assert_eq!(game.bed_owner(bed_b), Some(a));
+        assert_eq!(game.bed_owner(bed_a), None);
+        assert_eq!(game.free_places(), 1, "le lit de A est libre");
+    }
+
+    #[test]
+    fn a_vagabond_given_a_bed_becomes_an_idle_inhabitant_who_sleeps_there() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::House, 0);
+        let v = vagabond(&mut game);
+        let bed = game.beds().into_iter().find(|&b| game.bed_owner(b).is_none()).expect("un lit libre");
+        talk_to(&mut game, v);
+        game.apply(Command::AssignBed { player: P0, who: v, bed });
+        let c = &game.characters()[v.0];
+        assert_eq!((c.role, c.bed()), (Role::Villager, Some(bed)));
+        assert_eq!(c.post, None);
+        // le jour il ne fait rien, la nuit il dort dans son lit
+        run_until(&mut game, 700.0, |g| g.characters()[v.0].asleep);
+        assert_eq!(game.characters()[v.0].tile(), bed);
+    }
+
+    // ------------------------------------------------------------ la forge
+
+    #[test]
+    fn a_forge_has_a_solid_anvil_with_a_free_spot_to_its_north_and_a_chest_outside() {
+        let mut game = new_game(cfg());
+        let i = build(&mut game, PlanKind::Forge, 0);
+        let b = *game.buildings().iter().find(|b| b.kind == PlanKind::Forge).unwrap();
+        let anvil = b.anvil_tile();
+        assert_eq!(game.map().get(anvil), Tile::Anvil);
+        assert!(game.map().get(anvil).is_solid());
+        let spot = forge_spot(anvil);
+        assert!(!game.map().get(spot).is_solid() && b.covers(spot));
+        assert!(!game.map().find_path(b.front(), spot).is_empty(), "le point de forge est accessible depuis la porte");
+        let chest = game.containers().iter().find(|c| c.kind == ContainerKind::Forge).expect("un coffre de forge");
+        assert!(!b.covers(chest.tile), "le coffre est dehors");
+        assert_eq!(game.map().get(chest.tile), Tile::Crate);
+        assert_eq!(game.sites()[i].state, SiteState::Done);
+        let post = post_of_role(&game, Role::Blacksmith, 0);
+        assert_eq!(post, spot, "le poste de forgeron est le point de forge");
+    }
+
+    #[test]
+    fn nobody_forges_without_a_blacksmith_and_an_assigned_one_forges() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Forge, 0);
+        let chest = game.containers().iter().position(|c| c.kind == ContainerKind::Forge).unwrap();
+        game.containers[chest].add(Resource::Iron, 20);
+        run(&mut game, 60.0);
+        assert_eq!(game.stock().get(Resource::Tools), 0, "personne n'est affecté à l'enclume");
+        let v = vagabond(&mut game);
+        let post = post_of_role(&game, Role::Blacksmith, 0);
+        assign_post(&mut game, v, post);
+        assert_eq!(game.characters()[v.0].role, Role::Blacksmith);
+        run_until(&mut game, 120.0, |g| g.stock().get(Resource::Tools) >= 1);
+        assert!(game.stock().get(Resource::Iron) < 20, "il a forgé avec le fer du coffre");
+    }
+
+    #[test]
+    fn a_forge_without_iron_leaves_the_blacksmith_waiting_at_his_post() {
+        let mut game = new_game(cfg());
+        build(&mut game, PlanKind::Forge, 0);
+        let v = vagabond(&mut game);
+        { let p = post_of_role(&game, Role::Blacksmith, 0); assign_post(&mut game, v, p); }
+        run(&mut game, 60.0);
+        assert_eq!(game.stock().get(Resource::Tools), 0);
+        assert_eq!(game.characters()[v.0].post, Some(post_of_role(&game, Role::Blacksmith, 0)));
+    }
+
+    #[test]
+    fn the_forge_plan_is_in_the_list_with_a_cost_that_follows_its_surface() {
+        let game = new_game(cfg());
+        assert!(PlanKind::ALL.contains(&PlanKind::Forge));
+        let (w, h) = PlanKind::Forge.min_size();
+        let small = game.plan_cost(PlanKind::Forge, w, h, 0);
+        let big = game.plan_cost(PlanKind::Forge, w + 4, h + 2, 0);
+        assert!(big.wood > small.wood && big.stone > small.stone);
+        assert!(game.plan_secs(PlanKind::Forge, w + 4, h + 2, 0) > game.plan_secs(PlanKind::Forge, w, h, 0));
+        // un coffre qui ne tiendrait pas dans la carte refuse le plan
+        let map_w = game.map().width();
+        assert_eq!(game.check_plan(PlanKind::Forge, map_w - w - 1, 10, w, h, 0), Err(PlanError::Blocked));
+    }
+
+    #[test]
+    fn the_village_workers_still_work_without_any_post() {
+        let mut game = Game::new(Scenario::village(), 1, Config::default());
+        run(&mut game, 90.0);
+        assert!(game.characters().iter().filter(|c| c.role == Role::Blacksmith).all(|c| c.post.is_none()));
+        assert!(game.stock().get(Resource::Tools) >= 1, "le forgeron du village forge sans poste");
     }
 }

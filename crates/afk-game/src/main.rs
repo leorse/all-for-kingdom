@@ -10,6 +10,7 @@
 //!   cargo run -- --day-seconds 10     journée de 10 s (tout le rythme de vie suit)
 //!   cargo run -- --speed 20           journée normale vue en accéléré (30 s)
 
+mod assign_ui;
 mod camera;
 #[allow(dead_code)] // une partie du gabarit ne sert qu'à l'outil `spritegen`
 mod character_sprites;
@@ -62,6 +63,7 @@ async fn main() {
     let art = habitat_view::Art::new();
     let sheets = character_view::Sheets::new();
     let mut plan_ui = plan_ui::PlanUi::new();
+    let mut assign_ui = assign_ui::AssignUi::new();
     // Le personnage que la caméra suit : le dernier incarné (elle continue de le suivre en mode AFK).
     let mut followed: Option<CharacterId> = None;
 
@@ -77,12 +79,15 @@ async fn main() {
 
     loop {
         // l'interface du roi lit la souris en premier : un clic sur le panneau ne doit pas incarner quelqu'un
-        let plan_commands = plan_ui.update(&game, &view, me, get_frame_time());
-        let input = input::poll(me, &view, &game, plan_ui.captures_mouse());
+        // la conversation avec quelqu'un (menu, mini-carte) passe avant : elle prend clavier et souris
+        let assign_commands = assign_ui.update(&game, me);
+        let modal = assign_ui.is_open();
+        let plan_commands = if modal { Vec::new() } else { plan_ui.update(&game, &view, me, get_frame_time()) };
+        let input = input::poll(me, &view, &game, plan_ui.captures_mouse() || assign_ui.captures_mouse(), modal);
         if input.toggle_help {
             help_open = !help_open;
         }
-        if input.quit && !plan_ui.consumed_escape() {
+        if input.quit && !plan_ui.consumed_escape() && !assign_ui.consumed_escape() && !modal {
             if help_open {
                 help_open = false; // Échap referme d'abord l'aide
             } else {
@@ -98,7 +103,7 @@ async fn main() {
                 1.0
             };
         }
-        for command in plan_commands.into_iter().chain(input.commands) {
+        for command in assign_commands.into_iter().chain(plan_commands).chain(input.commands) {
             game.apply(command);
         }
 
@@ -138,7 +143,7 @@ async fn main() {
         let target = followed.and_then(|id| game.character(id)).map(|c| c.pos);
         view.update(&game, target, recenter, get_frame_time());
 
-        render::draw(&game, &view, &art, &sheets, &plan_ui, me, speed, help_open);
+        render::draw(&game, &view, &art, &sheets, &plan_ui, &assign_ui, me, speed, help_open);
         next_frame().await;
     }
 }

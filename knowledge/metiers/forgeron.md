@@ -73,3 +73,7 @@ La **forge** devient un plan du roi, avec son enclume posée automatiquement et 
 - Quelles **armes**, pour qui (les gardes, le chef de guerre) ?
 - Comment le roi donne-t-il ses priorités : une liste ordonnée, des quantités à atteindre ?
 - Une forge peut-elle avoir plusieurs enclumes, et un atelier plus grand ?
+
+## Le poste du forgeron — en place
+
+Le forgeron travaille à l'**enclume d'une forge bâtie** (plan du roi, voir [construire](/regles/construction.md)) : un poste par enclume, qu'on affecte via la conversation du roi (voir [propriété et affectation](/regles/propriete-et-affectation.md)). Au village de départ (`--village`), il garde son enclume fixe.

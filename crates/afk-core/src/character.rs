@@ -54,6 +54,10 @@ pub(crate) struct Env<'a> {
     pub camp: Option<TilePos>,
     /// La case devant la porte d'une taverne bâtie, s'il y en a une : les vagabonds s'y retrouvent.
     pub tavern: Option<TilePos>,
+    /// Au camp, un métier qui a des postes ne s'exerce qu'avec un poste ; dans le village, personne n'en dépend.
+    pub posts_required: bool,
+    /// Où est le roi incarné, s'il y en a un : un vagabond qui s'en approche ralentit.
+    pub king_pos: Option<Vec2>,
 }
 
 impl Env<'_> {
@@ -115,6 +119,15 @@ pub enum Role {
     Artisan,
     /// Un vagabond qui passe par là : sans métier, sans lit, il se promène puis repart.
     Vagabond,
+    /// Un habitant sans métier : un vagabond à qui le roi a donné un lit sans poste. Il dort et ne fait rien le jour.
+    Villager,
+}
+
+impl Role {
+    /// Ce métier s'exerce à un poste que fournit un bâtiment (voir `Game::posts`).
+    pub fn has_posts(self) -> bool {
+        matches!(self, Role::Blacksmith | Role::Transporter | Role::Innkeeper | Role::Artisan)
+    }
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -183,8 +196,12 @@ pub struct Character {
     pub pos: Vec2,
     pub facing: Facing,
     pub activity: Activity,
-    /// Tuile de son lit.
+    /// Tuile de son lit. Sans lit (`has_bed` faux), elle ne sert à rien.
     pub home: TilePos,
+    /// A-t-il un lit ? Sans lit, on ne dort jamais : la fatigue monte jusqu'au maximum.
+    pub has_bed: bool,
+    /// Le poste de travail qu'il tient : la tuile du poste (voir `Game::posts`).
+    pub post: Option<TilePos>,
     /// Travaille la nuit et dort le jour.
     pub night_shift: bool,
     /// Fatigue de 0 (en forme) à 100 (épuisé).
@@ -200,6 +217,8 @@ pub struct Character {
     pub cargo: Option<(Resource, u32)>,
     /// Son contenant : celui où il dépose sa production ou livre son bois.
     pub container: Option<usize>,
+    /// En conversation avec le roi : il a tout arrêté mais garde son travail, son chemin et sa cargaison.
+    pub(crate) paused: bool,
     /// Un vagabond reparti : il n'est plus dans le royaume (il n'est ni mis à jour ni dessiné).
     pub gone: bool,
     /// Le voyage d'un transporteur en cours.
@@ -254,6 +273,9 @@ impl Character {
             activity: Activity::Idle,
             home,
             night_shift,
+            has_bed: true,
+            post: None,
+            paused: false,
             fatigue: 0.0,
             asleep: false,
             work: None,
@@ -312,6 +334,16 @@ impl Character {
         self.pos.distance(self.home.center())
     }
 
+    /// La tuile de son lit, s'il en a un.
+    pub fn bed(&self) -> Option<TilePos> {
+        self.has_bed.then_some(self.home)
+    }
+
+    /// Le roi lui parle en ce moment.
+    pub fn is_talking(&self) -> bool {
+        self.paused
+    }
+
     /// Est-ce l'heure de dormir pour lui ? La nuit pour la plupart, le jour pour le quart de nuit.
     pub fn is_sleep_time(&self, night: bool) -> bool {
         night != self.night_shift
@@ -323,11 +355,15 @@ impl Character {
     }
 
     /// Les transporteurs courent : ils vont plus vite que les autres, à pied comme sous le contrôle du joueur.
-    fn speed_factor(&self, cfg: &Config) -> f32 {
-        if self.role == Role::Transporter {
-            cfg.transporter_speed_factor
-        } else {
-            1.0
+    /// Un vagabond qui s'approche du roi ralentit, quoi qu'il arrive : on peut l'aborder.
+    fn speed_factor(&self, env: &Env) -> f32 {
+        match self.role {
+            Role::Transporter => env.cfg.transporter_speed_factor,
+            Role::Vagabond => match env.king_pos {
+                Some(king) if king.distance(self.pos) < env.cfg.slow_range => env.cfg.vagabond_slow_factor,
+                _ => 1.0,
+            },
+            _ => 1.0,
         }
     }
 
@@ -349,6 +385,13 @@ impl Character {
         self.chop_delta = 0.0;
         self.build_delta = 0.0;
         self.outcome = None;
+        if self.paused {
+            // le roi lui parle : il ne bouge plus et ne travaille plus, mais son travail, son chemin et sa cargaison
+            // restent tels quels (il reprend exactement ensuite) ; seule la fatigue suit le temps
+            self.activity = Activity::Idle;
+            self.tick_fatigue(env);
+            return None;
+        }
         if self.asleep {
             self.sleep_tick(env); // dort, qu'il soit incarné ou non
             return None;
@@ -449,6 +492,65 @@ impl Character {
     #[cfg(test)]
     pub(crate) fn stand_still_for_test(&mut self, secs: f32) {
         self.wait = secs;
+    }
+
+    /// Le roi lui parle : il se tourne vers lui et arrête tout. S'il dormait, il se réveille.
+    pub(crate) fn start_talk(&mut self, king: Vec2) {
+        if self.asleep {
+            self.wake_up();
+        }
+        self.paused = true;
+        self.activity = Activity::Idle;
+        let to_king = king - self.pos;
+        if to_king != Vec2::ZERO {
+            self.facing = Facing::from_dir(to_king);
+        }
+    }
+
+    /// La conversation est finie : il reprend ce qu'il faisait.
+    pub(crate) fn end_talk(&mut self) {
+        self.paused = false;
+    }
+
+    /// Un nouveau métier et un nouveau poste : tout ce qu'il faisait est abandonné, il repart de son poste.
+    pub(crate) fn take_post(&mut self, role: Role, post: TilePos, container: Option<usize>) {
+        self.role = role;
+        self.post = Some(post);
+        self.work_spots = vec![post];
+        self.container = container;
+        self.job = None;
+        self.work = None;
+        self.leaving = None;
+        self.release_to_ai();
+    }
+
+    /// Il perd son poste : il garde son métier mais ne fait plus rien.
+    pub(crate) fn lose_post(&mut self) {
+        self.post = None;
+        self.work = None;
+        self.work_target = None;
+        self.job = None;
+        self.release_to_ai();
+    }
+
+    /// Un lit pour lui (ou plus de lit).
+    pub(crate) fn set_bed(&mut self, bed: Option<TilePos>) {
+        match bed {
+            Some(tile) => {
+                self.home = tile;
+                self.has_bed = true;
+            }
+            None => self.has_bed = false,
+        }
+        self.path.clear();
+        self.goal = None;
+    }
+
+    /// Un vagabond devenu habitant sans métier.
+    pub(crate) fn settle(&mut self) {
+        self.role = Role::Villager;
+        self.leaving = None;
+        self.work_spots = vec![self.tile()];
     }
 
     /// On le pousse sur une case voisine (quelqu'un se tenait sur l'emplacement d'un tas de matériaux) et il repart d'un
@@ -575,7 +677,7 @@ impl Character {
             return;
         }
         let king = if self.role == Role::King { env.cfg.king_speed_factor } else { 1.0 };
-        let speed = PLAYER_SPEED * self.speed_factor(env.cfg) * king * self.efficiency();
+        let speed = PLAYER_SPEED * self.speed_factor(env) * king * self.efficiency();
         self.try_move(dir * (speed * env.dt), env.map);
         self.facing = Facing::from_dir(dir); // même contre un obstacle : on le regarde
         self.activity = Activity::Walking;
@@ -616,7 +718,7 @@ impl Character {
         let goal = self.path[0].center();
         let to_goal = goal - self.pos;
         let dist = to_goal.length();
-        let step = AI_SPEED * self.speed_factor(env.cfg) * self.efficiency() * env.dt;
+        let step = AI_SPEED * self.speed_factor(env) * self.efficiency() * env.dt;
 
         if dist <= step.max(0.03) {
             self.pos = goal;
@@ -654,7 +756,7 @@ impl Character {
     fn step_to_point(&mut self, target: Vec2, env: &Env) -> bool {
         let to_target = target - self.pos;
         let dist = to_target.length();
-        let step = AI_SPEED * self.speed_factor(env.cfg) * self.efficiency() * env.dt;
+        let step = AI_SPEED * self.speed_factor(env) * self.efficiency() * env.dt;
         if dist <= step.max(0.005) {
             self.pos = target;
             return true;
@@ -676,16 +778,28 @@ impl Character {
             return;
         }
         let exhausted = self.fatigue >= env.cfg.exhausted_fatigue;
-        if self.is_sleep_time(env.night) || exhausted {
+        // sans lit, on ne dort jamais : on continue, de plus en plus fatigué
+        if self.has_bed && (self.is_sleep_time(env.night) || exhausted) {
             self.work = None;
             self.work_target = None;
             self.go_to_bed(env);
             return;
         }
         // trajet vers le lit abandonné : l'heure de dormir est passée
-        if self.goal == Some(self.home) {
+        if self.has_bed && self.goal == Some(self.home) {
             self.path.clear();
             self.goal = None;
+        }
+        // un métier à postes ne s'exerce qu'avec un poste : sans poste, on ne fait rien
+        if env.posts_required && self.role.has_posts() && self.post.is_none() {
+            self.work = None;
+            self.work_target = None;
+            self.idle_routine();
+            return;
+        }
+        if self.role == Role::Villager {
+            self.idle_routine(); // un habitant sans métier : rien à faire le jour
+            return;
         }
         if self.work.is_some() {
             return; // il continue son travail
@@ -700,6 +814,13 @@ impl Character {
             Role::Guard => self.patrol_routine(env, rng),
             _ => self.wander_routine(env, rng),
         }
+    }
+
+    /// Sans rien à faire : il reste là où il est (un titulaire remplacé, un habitant sans métier).
+    fn idle_routine(&mut self) {
+        self.path.clear();
+        self.goal = None;
+        self.activity = Activity::Idle;
     }
 
     fn go_to_bed(&mut self, env: &Env) {
@@ -1333,6 +1454,8 @@ mod tests {
                 sites: &[],
                 camp: None,
                 tavern: None,
+                posts_required: false,
+                king_pos: None,
             };
             if night {
                 c.go_to_bed(&env);
@@ -1425,6 +1548,8 @@ mod tests {
             sites: &[],
             camp: None,
             tavern: None,
+            posts_required: false,
+            king_pos: None,
         };
         let on_road = |p: &VecDeque<TilePos>| p.iter().filter(|t| map.get(**t) == Tile::Path).count();
         let chase = env.direct_path(tp(0, 2), tp(27, 27));
@@ -1443,5 +1568,41 @@ mod tests {
         assert!(c.asleep, "il est allé se coucher");
         let on_road = trail.iter().filter(|p| map.get(p.tile()) == Tile::Path).count();
         assert!(on_road > trail.len() / 2, "il rejoint la route puis la suit : {on_road}/{}", trail.len());
+    }
+
+    #[test]
+    fn a_vagabond_near_the_king_slows_down_and_nobody_else_does() {
+        let map = TileMap::new(20, 20, Tile::Grass);
+        let farm = Farm::from_map(&map);
+        let cfg = Config::default();
+        let env = |king: Option<Vec2>| Env {
+            map: &map,
+            farm: &farm,
+            containers: &[],
+            reservations: &[],
+            cfg: &cfg,
+            night: false,
+            dt: DT,
+            dt_hours: 0.0,
+            claimed: &[],
+            veins: &[],
+            forests: &[],
+            sites: &[],
+            camp: None,
+            tavern: None,
+            posts_required: false,
+            king_pos: king,
+        };
+        let mut vagabond = walker(&map, tp(5, 5), tp(5, 5));
+        vagabond.role = Role::Vagabond;
+        let mut smith = walker(&map, tp(5, 5), tp(5, 5));
+        smith.role = Role::Blacksmith;
+        let near = Some(vagabond.pos + Vec2::new(1.0, 0.0));
+        let far = Some(vagabond.pos + Vec2::new(10.0, 0.0));
+        assert_eq!(vagabond.speed_factor(&env(None)), 1.0);
+        assert_eq!(vagabond.speed_factor(&env(far)), 1.0);
+        assert_eq!(vagabond.speed_factor(&env(near)), cfg.vagabond_slow_factor);
+        assert!(cfg.vagabond_slow_factor < 1.0);
+        assert_eq!(smith.speed_factor(&env(near)), 1.0, "le roi ne ralentit pas les autres");
     }
 }

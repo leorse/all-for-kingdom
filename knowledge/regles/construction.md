@@ -1,8 +1,8 @@
 ---
 type: Règle
 title: Construire : le plan, le chantier et l'interface du roi
-description: Le roi choisit un plan dans une liste puis place un rectangle (bleu, rouge ou gris) ; les fondations bloquent le passage ; le chantier démarre quand tout est disponible, les matériaux sont portés devant, les artisans construisent ; une route mène au camp. En place pour la maison, l'entrepôt et la taverne.
-etat_en_jeu: en place (trois types de plan) + décidé
+description: Le roi choisit un plan dans une liste puis place un rectangle (bleu, rouge ou gris) ; les fondations bloquent le passage ; le chantier démarre quand tout est disponible, les matériaux sont portés devant, les artisans construisent ; une route mène au camp. En place pour la maison, l'entrepôt, la taverne et la forge.
+etat_en_jeu: en place (quatre types de plan) + décidé
 tags: [regle, construction, interface, roi]
 sources:
   - resource: crates/afk-core/src/building.rs
@@ -19,7 +19,7 @@ sources:
 
 # Construire
 
-Le [roi](/metiers/roi.md) place des plans ; les [artisans](/metiers/artisan.md) les construisent. En place pour trois types : **maison**, **entrepôt**, **taverne** (voir [batiments.md](/regles/batiments.md)). Le départ de partie est décrit dans [depart-et-camp.md](/regles/depart-et-camp.md).
+Le [roi](/metiers/roi.md) place des plans ; les [artisans](/metiers/artisan.md) les construisent. En place pour quatre types : **maison**, **entrepôt**, **taverne**, **forge** (voir [batiments.md](/regles/batiments.md)). Le départ de partie est décrit dans [depart-et-camp.md](/regles/depart-et-camp.md).
 
 ## L'interface du roi — en place
 
@@ -56,6 +56,7 @@ Un artisan a **toujours pour priorité de construire** ; il ne transporte que s'
 - **Maison** : un habitat de taille libre, meublé au minimum (un lit par place, une table, un bac d'eau) ; chaque lit est une **place libre** (voir [habitat.md](/regles/habitat.md)).
 - **Entrepôt** : un bâtiment dont le tas devient le coffre de l'entrepôt, grand et vide.
 - **Taverne** : un bâtiment avec cheminée et tables, qui retient les vagabonds (ce n'est pas un habitat).
+- **Forge** : un bâtiment (8×6 au minimum) dont l'**enclume est posée automatiquement** au milieu ; le **coffre** de la forge est posé **à l'extérieur**, contre le mur est, et doit être libre. Elle offre **un poste de forgeron par enclume** (voir [forgeron](/metiers/forgeron.md)). Sans forgeron affecté et sans fer, elle ne produit rien.
 
 ## À définir
 
@@ -65,4 +66,4 @@ Un artisan a **toujours pour priorité de construire** ; il ne transporte que s'
 - Quand les ressources deviennent disponibles pour un plan, elles sont **mises de côté** (en place : réservées par calcul, pas physiquement) ; comment le roi exprimera des **priorités** plus fines que l'ordre des placements.
 - Le tracé d'une route **vers le camp** : en place, le trajet ordinaire qui préfère les routes déjà là.
 - Ce que fait **l'IA du roi** quand personne ne l'incarne : elle ne pose aucun plan.
-- Les plans de **production** (cabane de bûcheron, mine, champ) ne sont pas encore dans la liste ; **la forge** est spécifiée (changement `hire-and-assign`, capacité `forge-plan`) mais pas encore en jeu.
+- Les plans de **production** (cabane de bûcheron, mine, champ) ne sont pas encore dans la liste .

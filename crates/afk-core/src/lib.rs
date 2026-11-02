@@ -29,7 +29,7 @@ pub use config::Config;
 pub use container::{Container, ContainerKind, ContainerSpec};
 pub use farm::{Farm, Plot, PlotState};
 pub use forest::{Forest, LodgeSpec, Saplings};
-pub use game::{CharacterId, Command, Game, PlayerId, TICK};
+pub use game::{CharacterId, Command, Game, PlayerId, Post, TICK};
 pub use habitat::{Furniture, HabitatClass, HabitatSpec};
 pub use map::{Tile, TileMap};
 pub use math::{Rotation, TilePos, Vec2};
