@@ -251,7 +251,7 @@ fn pick(game: &Game, spots: &[TilePos], mouse: (f32, f32)) -> Option<TilePos> {
 
 fn draw_minimap(game: &Game, name: &str, selected: Option<Role>, beds: bool, who: CharacterId) {
     let (sw, sh) = (screen_width(), screen_height());
-    draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.0, 0.0, 0.0, 0.62));
+    draw_rectangle(0.0, 0.0, sw, sh, Color::new(0.05, 0.06, 0.08, 0.96));
     let title = if beds { format!("Un lit pour {}", name) } else { format!("Un poste pour {}", name) };
     theme::ribbon(sw / 2.0 - 220.0, 16.0, 440.0, &title);
     let mouse = mouse_position();
@@ -292,15 +292,15 @@ fn draw_minimap(game: &Game, name: &str, selected: Option<Role>, beds: bool, who
         draw_rectangle_lines(cx - size / 2.0, cy - size / 2.0, size, size, 2.0, WHITE);
     }
     if beds {
-        theme::gilt("Vert : lit libre. Rouge : pris (on le lui reprend).", 24.0, 70.0, 20.0);
+        draw_text("Vert : lit libre. Rouge : pris (on le lui reprend).", mx, sh - 38.0, 20.0, theme::GOLD_LIGHT);
     } else if spots.is_empty() {
-        theme::gilt("Choisissez un metier.", 24.0, 70.0, 20.0);
+        draw_text("Choisissez un metier, puis un poste vert.", mx, sh - 38.0, 20.0, theme::GOLD_LIGHT);
     }
 
     // la liste des métiers
     if !beds {
         let roles = roles_with_posts(game);
-        theme::gilt("Metiers", 24.0, 86.0, 22.0);
+        theme::gilt("Metiers", 24.0, 76.0, 22.0);
         if roles.is_empty() {
             draw_text("Aucun poste : batissez une", 24.0, 130.0, 20.0, WHITE);
             draw_text("forge, un entrepot, une taverne.", 24.0, 154.0, 20.0, WHITE);
@@ -324,7 +324,7 @@ fn employees(game: &Game) -> Vec<&afk_core::Character> {
 fn employees_rect(game: &Game) -> (f32, f32, f32, f32) {
     let rows = employees(game).len().max(1) as f32;
     let w = 400.0;
-    (screen_width() - w - 14.0, 70.0, w, 70.0 + rows * 28.0)
+    (screen_width() - w - 14.0, 250.0, w, 70.0 + rows * 28.0)
 }
 
 fn draw_employees(game: &Game) {
