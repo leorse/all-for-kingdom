@@ -1,5 +1,8 @@
 # Journal de la base de connaissances
 
+## 2026-11-03
+* **Postes de production (spec `hire-production-posts`, pas en jeu)** : dès le début le roi peut faire un bûcheron, un mineur ou un paysan sans bâtiment, avec un **coffre** posé près de la forêt, du filon ou du champ (un poste par coffre). Le mineur pourra aussi miner sous terre (pas implémenté). La surface cultivable est définie par le roi ou le paysan ; le paysan seul choisit la culture, s'il y a plusieurs graines. Pages : [paysan](/metiers/paysan.md), [bûcheron](/metiers/bucheron.md), [mineur](/metiers/mineur.md), [propriété et affectation](/regles/propriete-et-affectation.md), [départ](/regles/depart-et-camp.md), [construire](/regles/construction.md).
+
 ## 2026-11-02
 * **Le roi prend un lit (en jeu)** : près d'un lit (portée de parole), une invite « B » avec un lit apparaît (sauf si quelqu'un est abordable) ; `B` donne ce lit au roi, libre ou occupé, l'occupant le perd, l'ancien lit du roi se libère (`Command::ClaimBed`). Page : [propriété et affectation](/regles/propriete-et-affectation.md).
 * **Planche du vagabond (graphiste)** : `assets/characters/vagabond.png` (+ SVG dérivé du paysan) : chapeau mou brun râpé, barbe grise, manches de toile, manteau de cuir rapiécé, baluchon au bout d'un bâton sur le dos (visible de dos et de profil, dépasse de l'épaule de face). `SheetSpec VAGABOND`, 11 planches, `Role::Vagabond` branché dans `character_view.rs` ; aucune couleur ajoutée à la palette. Il ne travaille pas : la ligne `travail` reprend la posture debout. Pages : [inventaire graphique](/graphisme/inventaire.md), [direction artistique](/graphisme/direction-artistique.md).
