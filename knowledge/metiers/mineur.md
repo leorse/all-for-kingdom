@@ -75,3 +75,7 @@ La mine est attenante à son filon : on la construit contre lui.
 - Les **8 postes** autour d'un filon sont aujourd'hui tous utilisables : seront-ils limités par la taille de la mine ?
 - Le **fer de départ** du royaume : on le garde, on le réduit, on le supprime ?
 - Où placer les mines sur la carte ? D'abord dans le scénario fixé à l'avance, puis par le roi (voir [roi.md](/metiers/roi.md)).
+
+## Le poste — décidé (spec `hire-production-posts`)
+
+Au camp, ce métier n'a **pas de bâtiment** : un **coffre de mineur, contre un filon** posé par le roi suffit. Il y a un poste par coffre, un seul titulaire ; le roi l'affecte comme les autres (voir [propriété et affectation](/regles/propriete-et-affectation.md)). Le coffre prend la nature du filon (fer, or, cuivre, pierre) et ne reçoit que ce minerai. Le mineur pourra **aussi** miner **sous terre** (voir [les idées](/idees.md)) : pas encore implémenté, mais le poste ne suppose pas qu'on mine toujours en surface. Pas encore en jeu ; le village de départ garde les mineurs fixes qu'il a aujourd'hui.

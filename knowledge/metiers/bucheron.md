@@ -42,3 +42,7 @@ Il abat des arbres et produit du **bois**. Ce métier est **en place** : forêts
 - Le roi peut-il **désigner** une forêt à exploiter ou à ménager ?
 - Faut-il des **outils** pour couper (voir [forgeron.md](/metiers/forgeron.md)) ?
 - Y aura-t-il une **replantation** à la main ? Pour l'instant l'arbre repousse seul.
+
+## Le poste — décidé (spec `hire-production-posts`)
+
+Au camp, ce métier n'a **pas de bâtiment** : un **coffre de bûcheron, au bord d'une forêt** posé par le roi suffit. Il y a un poste par coffre, un seul titulaire ; le roi l'affecte comme les autres (voir [propriété et affectation](/regles/propriete-et-affectation.md)). Le bûcheron coupe les arbres de la forêt la plus proche de son coffre et y dépose son bois. Pas encore en jeu ; le village de départ garde les bûcherons fixes qu'il a aujourd'hui.

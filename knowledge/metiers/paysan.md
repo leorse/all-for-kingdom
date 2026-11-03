@@ -64,3 +64,10 @@ Le blé récolté est pris **en main** par le paysan (20 au plus, soit cinq réc
 
 - Où est stocké le blé : la maison du paysan, ou un grenier à part ?
 - À quoi sert le blé (nourrir les habitants, être vendu ou taxé…) ?
+
+## Le poste et le champ — décidé (spec `hire-production-posts`)
+
+- Au camp, le paysan n'a **pas de bâtiment** : un **coffre de paysan** posé par le roi est son poste (un titulaire par coffre).
+- **Le champ est à lui.** La **surface cultivable** est définie par le **roi** ou par le **paysan** (quand on l'incarne), avec le même geste : un rectangle de terre à cultiver, gratuit. Chaque parcelle dépend du coffre de paysan le plus proche ; son titulaire la laboure, la sème, la récolte, et y dépose son blé.
+- **Seul le paysan choisit la culture**, quand le royaume a plusieurs graines différentes ; le roi ne choisit jamais. Aujourd'hui il n'y a que le blé : aucun choix n'est proposé. L'IA sème la culture dont il reste le plus de graines.
+- Pas encore en jeu ; le village de départ garde ses paysans et ses champs fixes.
