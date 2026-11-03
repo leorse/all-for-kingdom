@@ -20,6 +20,7 @@ pub enum Icon {
     Up,
     Down,
     Cross,
+    Arrow,
     Bang,
     Pause,
     Fast,
@@ -256,6 +257,18 @@ const CROSS: [&str; GRID] = [
     "rrr....rrr",
     "rr......rr",
 ];
+const ARROW: [&str; GRID] = [
+    "..........",
+    ".....w....",
+    ".....ww...",
+    "wwwwwwww..",
+    "wwwwwwwww.",
+    "wwwwwwwww.",
+    "wwwwwwww..",
+    ".....ww...",
+    ".....w....",
+    "..........",
+];
 const BANG: [&str; GRID] = [
     "...kkkk...",
     "..krrrrk..",
@@ -392,6 +405,7 @@ impl Icon {
             Icon::Sack => &SACK,
             Icon::Up | Icon::Down => &UP,
             Icon::Cross => &CROSS,
+            Icon::Arrow => &ARROW,
             Icon::Bang => &BANG,
             Icon::Pause => &PAUSE,
             Icon::Fast => &FAST,
@@ -458,7 +472,7 @@ mod tests {
 
     fn all_icons() -> Vec<Icon> {
         [
-            Icon::Crown, Icon::Bed, Icon::Sun, Icon::Moon, Icon::Chest, Icon::Sack, Icon::Up, Icon::Down, Icon::Cross, Icon::Bang,
+            Icon::Crown, Icon::Bed, Icon::Sun, Icon::Moon, Icon::Chest, Icon::Sack, Icon::Up, Icon::Down, Icon::Cross, Icon::Arrow, Icon::Bang,
             Icon::Pause, Icon::Fast,
         ]
         .into_iter()

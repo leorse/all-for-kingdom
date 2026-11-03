@@ -62,6 +62,10 @@ Le fer et l'or arrivent bruts de la mine. Le forgeron en fait des **lingots**, q
 
 Le forgeron a **une limite de stockage**, comme les autres métiers : une fois ses réserves pleines, il cesse de forger. Voir [ressources-et-stocks.md](/regles/ressources-et-stocks.md).
 
+## Décidé : la forge se bâtit, le forgeron s'affecte
+
+La **forge** devient un plan du roi, avec son enclume posée automatiquement et son coffre. L'enclume est un **poste de forgeron** : personne ne forge tant que le roi n'y a pas affecté quelqu'un (un vagabond, ou n'importe qui réaffecté). Voir [propriété et affectation](/regles/propriete-et-affectation.md). Spec : changement `hire-and-assign`, capacité `forge-plan`. Sans mine, la forge manque de fer.
+
 ## À définir
 
 - Les **recettes** : combien de minerai par lingot, combien de lingots par outil, arme, pièce ?
@@ -69,3 +73,7 @@ Le forgeron a **une limite de stockage**, comme les autres métiers : une fois s
 - Quelles **armes**, pour qui (les gardes, le chef de guerre) ?
 - Comment le roi donne-t-il ses priorités : une liste ordonnée, des quantités à atteindre ?
 - Une forge peut-elle avoir plusieurs enclumes, et un atelier plus grand ?
+
+## Le poste du forgeron — en place
+
+Le forgeron travaille à l'**enclume d'une forge bâtie** (plan du roi, voir [construire](/regles/construction.md)) : un poste par enclume, qu'on affecte via la conversation du roi (voir [propriété et affectation](/regles/propriete-et-affectation.md)). Au village de départ (`--village`), il garde son enclume fixe.

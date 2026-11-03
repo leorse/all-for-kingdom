@@ -22,7 +22,8 @@ pub struct Input {
     pub wheel: i32,
 }
 
-pub fn poll(player: PlayerId, view: &View, game: &Game, ui_has_mouse: bool) -> Input {
+/// `modal` : une conversation est ouverte, le clavier et la souris lui appartiennent (le roi ne bouge pas).
+pub fn poll(player: PlayerId, view: &View, game: &Game, ui_has_mouse: bool, modal: bool) -> Input {
     let mut commands = Vec::new();
 
     // Déplacement : flèches, WASD (QWERTY) ou ZQSD (AZERTY).
@@ -40,16 +41,22 @@ pub fn poll(player: PlayerId, view: &View, game: &Game, ui_has_mouse: bool) -> I
         dir.y += 1.0;
     }
     commands.push(Command::Move { player, dir });
+    if modal {
+        dir = Vec2::ZERO;
+    }
     let moving = dir != Vec2::ZERO;
 
-    if is_key_pressed(KeyCode::Tab) {
+    if is_key_pressed(KeyCode::Tab) && !modal {
         commands.push(Command::PossessNext { player });
     }
-    if is_key_pressed(KeyCode::Space) {
+    if is_key_pressed(KeyCode::Space) && !modal {
         commands.push(Command::ToggleIdle { player });
     }
     if is_key_pressed(KeyCode::E) {
-        commands.push(Command::Interact { player });
+        commands.push(Command::Interact { player }); // près de quelqu'un : parler (ou finir de parler)
+    }
+    if is_key_pressed(KeyCode::B) && !modal {
+        commands.push(Command::ClaimBed { player }); // près d'un lit : le roi se le prend
     }
     if is_key_pressed(KeyCode::C) {
         commands.push(Command::EmptyDepot { player }); // vide les coffres de l'entrepôt central
@@ -68,7 +75,7 @@ pub fn poll(player: PlayerId, view: &View, game: &Game, ui_has_mouse: bool) -> I
         (KeyCode::Key9, KeyCode::Kp9),
     ];
     for (i, (key, keypad)) in DIGITS.iter().enumerate() {
-        if is_key_pressed(*key) || is_key_pressed(*keypad) {
+        if !modal && (is_key_pressed(*key) || is_key_pressed(*keypad)) {
             commands.push(Command::Possess { player, character: CharacterId(i) });
         }
     }

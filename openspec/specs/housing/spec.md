@@ -107,15 +107,15 @@ Le jeu SHALL savoir, pour chaque habitat et pour le royaume entier, combien de p
 - **THEN** elle a une place libre et le royaume en compte une de plus
 
 ### Requirement: On n'embauche que s'il y a de la place
-Un vagabond de la taverne ne SHALL pouvoir être embauché que s'il reste au moins une place libre dans un habitat du royaume. Sans place libre nulle part, l'embauche est refusée.
+Embaucher quelqu'un SHALL ne plus dépendre des lits libres : on peut affecter un vagabond à un poste même s'il n'y a pas de place libre. Un habitant peut ne pas avoir de lit ; il ne se repose alors jamais (voir `bed-assignment`). Le jeu compte toujours les places libres.
 
-#### Scenario: Tout est plein
-- **WHEN** aucune place n'est libre dans le royaume
-- **THEN** l'embauche d'un vagabond est refusée
+#### Scenario: Sans place libre
+- **WHEN** il n'y a aucune place libre
+- **THEN** on peut quand même affecter un vagabond à un poste
 
-#### Scenario: Une place existe
-- **WHEN** au moins une place est libre dans un habitat quelconque
-- **THEN** l'embauche est permise
+#### Scenario: Compter les places
+- **WHEN** quelqu'un perd son lit
+- **THEN** le nombre de places libres augmente
 
 ### Requirement: Agrandir demande de la place autour
 Un habitat SHALL pouvoir passer à la classe supérieure seulement si l'emprise de cette classe, ancrée au même coin haut-gauche, ne couvre que des cases libres (herbe ou chemin) dans la carte. Un obstacle sur le chemin (arbre, eau, mur, coffre, champ, filon, autre bâtiment) l'interdit. Une grande maison ne peut pas être agrandie.

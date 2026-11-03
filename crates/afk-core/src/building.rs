@@ -23,10 +23,12 @@ pub enum PlanKind {
     Warehouse,
     /// Une taverne : elle retient les vagabonds qui passent par là.
     Tavern,
+    /// Une forge : une enclume, un coffre dehors, un poste de forgeron par enclume.
+    Forge,
 }
 
 impl PlanKind {
-    pub const ALL: [PlanKind; 3] = [PlanKind::House, PlanKind::Warehouse, PlanKind::Tavern];
+    pub const ALL: [PlanKind; 4] = [PlanKind::House, PlanKind::Warehouse, PlanKind::Tavern, PlanKind::Forge];
 
     /// Position dans les tableaux de réglages de `Config`.
     pub fn index(self) -> usize {
@@ -34,6 +36,7 @@ impl PlanKind {
             PlanKind::House => 0,
             PlanKind::Warehouse => 1,
             PlanKind::Tavern => 2,
+            PlanKind::Forge => 3,
         }
     }
 
@@ -43,6 +46,7 @@ impl PlanKind {
             PlanKind::House => crate::habitat::HabitatSpec::MIN_HOUSE,
             PlanKind::Warehouse => (8, 6),
             PlanKind::Tavern => (9, 7),
+            PlanKind::Forge => (8, 6),
         }
     }
 
@@ -180,6 +184,11 @@ impl Site {
         TilePos::new(self.x + self.w / 2, self.y + self.h / 2)
     }
 
+    /// Pour une forge : la case du coffre, dehors contre le mur est, près du bas.
+    pub fn chest_tile(&self) -> TilePos {
+        TilePos::new(self.x + self.w, self.y + self.h - 3)
+    }
+
     /// Les cases praticables qui touchent le chantier par un côté : d'où l'on construit.
     pub fn work_tiles(&self, map: &TileMap) -> Vec<TilePos> {
         let mut tiles = Vec::new();
@@ -219,6 +228,17 @@ impl Building {
         TilePos::new(self.x + self.w / 2, self.y + self.h)
     }
 
+    /// Pour une forge : la case de l'enclume (au milieu, trois rangées sous le mur du fond), dont la case au nord est le
+    /// point où se tient le forgeron.
+    pub fn anvil_tile(&self) -> TilePos {
+        TilePos::new(self.x + self.w / 2, self.y + 3)
+    }
+
+    /// Pour une forge : la case du coffre, dehors contre le mur est.
+    pub fn chest_tile(&self) -> TilePos {
+        TilePos::new(self.x + self.w, self.y + self.h - 3)
+    }
+
     /// Les tuiles solides du mobilier posé dans l'intérieur : des tas de caisses contre le mur nord pour un entrepôt,
     /// deux tables dans les coins du fond pour une taverne. Le milieu reste libre, de la porte jusqu'au fond.
     pub fn decor_tiles(&self) -> Vec<TilePos> {
@@ -230,7 +250,7 @@ impl Building {
                 tiles.extend([TilePos::new(self.x + self.w - 3, top), TilePos::new(self.x + self.w - 2, top)]);
                 tiles
             }
-            PlanKind::House => Vec::new(),
+            PlanKind::House | PlanKind::Forge => Vec::new(),
         }
     }
 
@@ -239,6 +259,9 @@ impl Building {
         map.add_building(self.x, self.y, self.w, self.h, self.door());
         for t in self.decor_tiles() {
             map.set(t, Tile::Furniture);
+        }
+        if self.kind == PlanKind::Forge {
+            map.set(self.anvil_tile(), Tile::Anvil);
         }
     }
 }
@@ -288,7 +311,8 @@ pub fn check_plan(
     // l'emprise, la case devant la porte et le tas de matériaux : de l'herbe ou un chemin, loin du bord d'eau
     let in_land = x >= 1 && y >= 1 && x + w <= map.width() - 1 && y + h + 1 <= map.height() - 1;
     let ground_ok = (y..y + h).all(|yy| (x..x + w).all(|xx| free(TilePos::new(xx, yy))));
-    if !in_land || !ground_ok || !free(site.front()) || !free(site.pile_tile()) {
+    let chest_ok = kind != PlanKind::Forge || (free(site.chest_tile()) && site.chest_tile().x < map.width() - 1);
+    if !in_land || !ground_ok || !free(site.front()) || !free(site.pile_tile()) || !chest_ok {
         return Err(PlanError::Blocked);
     }
     if bodies.iter().any(|&b| site.contains(b)) {

@@ -209,6 +209,7 @@ pub fn building_decor(b: &afk_core::Building) -> WallDecor {
     let mid = b.x + b.w / 2;
     match b.kind {
         afk_core::PlanKind::Tavern => WallDecor { fireplace: mid, windows: vec![b.x + b.w / 4 + 1, b.x + b.w - b.w / 4 - 2] },
+        afk_core::PlanKind::Forge => WallDecor { fireplace: mid, windows: vec![b.x + 2] },
         _ => WallDecor { fireplace: -1000, windows: vec![mid] },
     }
 }
@@ -230,7 +231,7 @@ pub fn draw_buildings(game: &Game, view: &View, art: &Art) {
             let window = if night { &art.window_lit } else { &art.window_day };
             window.draw(px + 4.0 * s, py + 6.0 * s, s);
         }
-        if b.kind == afk_core::PlanKind::Tavern {
+        if matches!(b.kind, afk_core::PlanKind::Tavern | afk_core::PlanKind::Forge) {
             let (fx, fy) = view.tile_origin(TilePos::new(decor.fireplace, b.y));
             art.fireplace[frame].draw(fx, fy - 4.0 * s, s);
         }
@@ -263,7 +264,8 @@ pub fn draw_buildings(game: &Game, view: &View, art: &Art) {
                     }
                 }
             }
-            afk_core::PlanKind::House => {}
+            // l'enclume est dessinée avec les personnages (elle passe devant ou derrière selon la profondeur)
+            afk_core::PlanKind::House | afk_core::PlanKind::Forge => {}
         }
     }
 }
@@ -298,7 +300,7 @@ pub fn draw_habitat_lights(game: &Game, view: &View) {
         }
     }
     // la taverne : un feu dans la cheminée et des fenêtres éclairées
-    for b in game.buildings().iter().filter(|b| b.kind == afk_core::PlanKind::Tavern) {
+    for b in game.buildings().iter().filter(|b| matches!(b.kind, afk_core::PlanKind::Tavern | afk_core::PlanKind::Forge)) {
         let decor = building_decor(b);
         let t = view.tile_px;
         let glow = |tx: i32, ty: i32, alpha: f32| {

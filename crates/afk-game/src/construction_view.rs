@@ -12,6 +12,7 @@ pub fn plan_name(kind: PlanKind) -> &'static str {
         PlanKind::House => "Maison",
         PlanKind::Warehouse => "Entrepot",
         PlanKind::Tavern => "Taverne",
+        PlanKind::Forge => "Forge",
     }
 }
 

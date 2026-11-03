@@ -378,6 +378,7 @@ fn draw_panel(game: &Game, origin: (f32, f32), collapsed: bool, hover: Option<Pl
             PlanKind::House => "lits, table, bac d'eau",
             PlanKind::Warehouse => "stocke beaucoup plus",
             PlanKind::Tavern => "retient les vagabonds",
+            PlanKind::Forge => "enclume et coffre",
         };
         draw_text(blurb, cx + 74.0, cy + 75.0, 13.0, with_alpha(theme::INK_SOFT, 0.9));
     }
@@ -411,6 +412,18 @@ fn draw_icon(kind: PlanKind, x: f32, y: f32, s: f32) {
                 draw_line(x + (18.0 + 10.0 * i as f32) * k, y + 30.0 * k, x + (18.0 + 10.0 * i as f32) * k, y + 52.0 * k, 1.5, wall_dark);
             }
             draw_rectangle(x + 10.0 * k, y + 38.0 * k, 36.0 * k, 3.0 * k, wall_dark);
+        }
+        PlanKind::Forge => {
+            draw_rectangle(x + 4.0 * k, y + 22.0 * k, 48.0 * k, 30.0 * k, wall);
+            draw_rectangle(x + 2.0 * k, y + 14.0 * k, 52.0 * k, 10.0 * k, Color::from_rgba(96, 92, 100, 255));
+            draw_rectangle(x + 38.0 * k, y + 4.0 * k, 8.0 * k, 14.0 * k, Color::from_rgba(120, 118, 124, 255)); // la cheminée
+            draw_rectangle(x + 10.0 * k, y + 34.0 * k, 11.0 * k, 18.0 * k, door);
+            // une enclume
+            let iron = Color::from_rgba(60, 62, 70, 255);
+            draw_rectangle(x + 28.0 * k, y + 34.0 * k, 20.0 * k, 6.0 * k, iron);
+            draw_rectangle(x + 32.0 * k, y + 40.0 * k, 12.0 * k, 5.0 * k, iron);
+            draw_rectangle(x + 30.0 * k, y + 45.0 * k, 16.0 * k, 4.0 * k, iron);
+            draw_rectangle(x + 36.0 * k, y + 31.0 * k, 8.0 * k, 3.0 * k, Color::from_rgba(255, 150, 40, 255));
         }
         PlanKind::Tavern => {
             draw_rectangle(x + 4.0 * k, y + 22.0 * k, 48.0 * k, 30.0 * k, wall);

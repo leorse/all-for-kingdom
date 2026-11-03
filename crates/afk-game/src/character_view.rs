@@ -22,10 +22,11 @@ const GARDE_PNG: &[u8] = include_bytes!("../assets/characters/garde.png");
 const ROI_PNG: &[u8] = include_bytes!("../assets/characters/roi.png");
 const CHEF_DE_GUERRE_PNG: &[u8] = include_bytes!("../assets/characters/chef_de_guerre.png");
 const TAVERNIER_PNG: &[u8] = include_bytes!("../assets/characters/tavernier.png");
+const VAGABOND_PNG: &[u8] = include_bytes!("../assets/characters/vagabond.png");
 
 /// Toutes les planches embarquées, avec leur gabarit : le test d'intégrité les parcourt.
 #[cfg(test)]
-const EMBEDDED: &[(SheetSpec, &[u8])] = &[(cs::BLACKSMITH, FORGERON_PNG), (cs::MINER, MINEUR_PNG), (cs::LUMBERJACK, BUCHERON_PNG), (cs::FARMER, PAYSAN_PNG), (cs::TRANSPORTER, TRANSPORTEUR_PNG), (cs::ARTISAN, ARTISAN_PNG), (cs::GUARD, GARDE_PNG), (cs::KING, ROI_PNG), (cs::WARLORD, CHEF_DE_GUERRE_PNG), (cs::INNKEEPER, TAVERNIER_PNG)];
+const EMBEDDED: &[(SheetSpec, &[u8])] = &[(cs::BLACKSMITH, FORGERON_PNG), (cs::MINER, MINEUR_PNG), (cs::LUMBERJACK, BUCHERON_PNG), (cs::FARMER, PAYSAN_PNG), (cs::TRANSPORTER, TRANSPORTEUR_PNG), (cs::ARTISAN, ARTISAN_PNG), (cs::GUARD, GARDE_PNG), (cs::KING, ROI_PNG), (cs::WARLORD, CHEF_DE_GUERRE_PNG), (cs::INNKEEPER, TAVERNIER_PNG), (cs::VAGABOND, VAGABOND_PNG)];
 
 /// Une planche chargée en texture.
 pub struct Sheet {
@@ -45,11 +46,12 @@ pub struct Sheets {
     pub king: Sheet,
     pub warlord: Sheet,
     pub innkeeper: Sheet,
+    pub vagabond: Sheet,
 }
 
 impl Sheets {
     pub fn new() -> Sheets {
-        Sheets { blacksmith: Sheet::load(cs::BLACKSMITH, FORGERON_PNG), miner: Sheet::load(cs::MINER, MINEUR_PNG), lumberjack: Sheet::load(cs::LUMBERJACK, BUCHERON_PNG), farmer: Sheet::load(cs::FARMER, PAYSAN_PNG), transporter: Sheet::load(cs::TRANSPORTER, TRANSPORTEUR_PNG), artisan: Sheet::load(cs::ARTISAN, ARTISAN_PNG), guard: Sheet::load(cs::GUARD, GARDE_PNG), king: Sheet::load(cs::KING, ROI_PNG), warlord: Sheet::load(cs::WARLORD, CHEF_DE_GUERRE_PNG), innkeeper: Sheet::load(cs::INNKEEPER, TAVERNIER_PNG) }
+        Sheets { blacksmith: Sheet::load(cs::BLACKSMITH, FORGERON_PNG), miner: Sheet::load(cs::MINER, MINEUR_PNG), lumberjack: Sheet::load(cs::LUMBERJACK, BUCHERON_PNG), farmer: Sheet::load(cs::FARMER, PAYSAN_PNG), transporter: Sheet::load(cs::TRANSPORTER, TRANSPORTEUR_PNG), artisan: Sheet::load(cs::ARTISAN, ARTISAN_PNG), guard: Sheet::load(cs::GUARD, GARDE_PNG), king: Sheet::load(cs::KING, ROI_PNG), warlord: Sheet::load(cs::WARLORD, CHEF_DE_GUERRE_PNG), innkeeper: Sheet::load(cs::INNKEEPER, TAVERNIER_PNG), vagabond: Sheet::load(cs::VAGABOND, VAGABOND_PNG) }
     }
 
     /// La planche d'un métier, s'il en a une ; sinon il garde son dessin d'avant.
@@ -65,6 +67,7 @@ impl Sheets {
             Role::King => Some(&self.king),
             Role::Warlord => Some(&self.warlord),
             Role::Innkeeper => Some(&self.innkeeper),
+            Role::Vagabond => Some(&self.vagabond),
             _ => None,
         }
     }

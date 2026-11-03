@@ -46,3 +46,7 @@ Le coffre du camp ne contient que 100 de chaque ressource. Le joueur a **tout in
 - Que devient la **zone temporaire** : améliorée, ou remplacée (un château, des maisons) ? Le roi dort-il toujours au camp ?
 - La **composition et les quantités du pécule**, et la **capacité de l'entrepôt**, à calibrer avec le game designer.
 - Aucun métier de production ne peut encore être bâti : bois et pierre ne se renouvellent pas tant qu'on ne peut pas poser de cabane de bûcheron ni de mine.
+
+## Embaucher — en place
+
+Les vagabonds qui passent peuvent être embauchés par le roi (`E` pour parler, poste ou lit sur la mini-carte) : voir [propriété et affectation](/regles/propriete-et-affectation.md). Le fer pour la forge n'est pas dans le pécule : l'équilibrage du départ viendra plus tard.

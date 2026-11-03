@@ -10,6 +10,12 @@ tags: [idees, a-decider]
 
 Vrac d'idées pour plus tard. Rien ici n'est décidé ni planifié : quand une idée mûrit, elle est décrite dans les [métiers](/metiers/paysan.md) et [règles](/regles/temps-et-repos.md) puis devient un changement OpenSpec.
 
+## Satisfaction des habitants
+Pas une règle, une idée à creuser avec l'embauche (voir [propriété et affectation](/regles/propriete-et-affectation.md)).
+- Chaque habitant aurait un **état de satisfaction** de sa condition de vie : avoir un lit, le confort de sa maison, peut-être manger, être bien placé dans son métier.
+- Sans lit, la personne **s'épuise** (règle spécifiée). L'idée : la fatigue, ou plutôt la satisfaction, **passe dans le négatif** à force de privation, et la personne **risque de partir et de quitter le royaume**.
+- À définir : une seule jauge de satisfaction ou plusieurs (repos, confort, nourriture) ; le seuil de départ et le hasard (« risque de partir ») ; si la personne prévient avant de partir ; ce qui se passe de son poste (il se libère) ; le lien avec les améliorations de maison et le mobilier, qui augmenteraient la satisfaction ; la perte pour le roi (une personne employée qui s'en va).
+
 ## Bandits
 - Ils circulent dans le royaume, peuvent voler et attaquer.
 - Seuls les gardes peuvent se défendre.

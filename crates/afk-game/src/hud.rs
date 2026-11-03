@@ -36,9 +36,10 @@ pub fn draw_help(open: bool) {
         theme::keycap(screen_width() - MARGIN - size, screen_height() - MARGIN - size, size, "H");
         return;
     }
-    const LINES: [(&str, &str); 10] = [
+    const LINES: [(&str, &str); 11] = [
         ("ZQSD / fleches", "bouger"),
-        ("E", "travailler, dormir, deposer"),
+        ("E", "travailler, dormir, deposer, parler"),
+        ("L", "liste des employes"),
         ("Tab / 1-9 / clic", "incarner quelqu'un"),
         ("Espace", "mode AFK"),
         ("T", "vitesse du temps"),
@@ -150,7 +151,7 @@ fn fitness_bar(x: f32, y: f32, w: f32, h: f32, fitness: f32) {
 
 /// La tête du personnage : celle de sa planche quand son métier est dessiné, sinon (le vagabond) un visage simple aux
 /// couleurs de son métier. Endormi, un « z ».
-fn portrait(x: f32, y: f32, c: &Character, sheets: &Sheets) {
+pub(crate) fn portrait(x: f32, y: f32, c: &Character, sheets: &Sheets) {
     if let Some(sheet) = sheets.for_role(c.role) {
         draw_rectangle(x - 2.0, y - 2.0, PORTRAIT + 4.0, PORTRAIT + 4.0, theme::WOOD_DARK);
         draw_rectangle(x, y, PORTRAIT, PORTRAIT, with_alpha(role_color(c.role), 0.45));

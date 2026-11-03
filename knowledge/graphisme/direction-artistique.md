@@ -118,7 +118,7 @@ L'interface du roi a son propre thème, **médiéval** : bois sombre, parchemin,
 
 ## Ce qui est déjà dans ce style
 
-Les **habitats** (toutes les maisons, mines et cabanes, encore sur 16 pixels), le **forgeron**, l'**enclume** et les personnages des métiers (mineur, bûcheron, paysan, transporteur, artisan, garde, roi, chef de guerre, tavernier ; le vagabond reste une silhouette). Le terrain, les arbres, les champs, les filons, les coffres, la forge, la taverne et les blocs portés gardent leur apparence d'avant, jusqu'à ce qu'on les redessine à leur tour. Le **château** n'est pas touché : il aura son propre fonctionnement.
+Les **habitats** (toutes les maisons, mines et cabanes, encore sur 16 pixels), le **forgeron**, l'**enclume** et les personnages des métiers (mineur, bûcheron, paysan, transporteur, artisan, garde, roi, chef de guerre, tavernier, vagabond). Le terrain, les arbres, les champs, les filons, les coffres, la forge, la taverne et les blocs portés gardent leur apparence d'avant, jusqu'à ce qu'on les redessine à leur tour. Le **château** n'est pas touché : il aura son propre fonctionnement.
 
 ## Pour ajouter un dessin
 

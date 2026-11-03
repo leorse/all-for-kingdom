@@ -1,7 +1,7 @@
 ---
 type: Règle
 title: Les bâtiments
-description: Un bâtiment est un type, une taille minimale et des assets obligatoires ; la taille est libre au-dessus du minimum ; chaque asset améliore la vie des occupants ; un lit égale une personne. En place pour la maison, l'entrepôt et la taverne (assets de base seulement).
+description: Un bâtiment est un type, une taille minimale et des assets obligatoires ; la taille est libre au-dessus du minimum ; chaque asset améliore la vie des occupants ; un lit égale une personne. En place pour la maison, l'entrepôt, la taverne et la forge (assets de base seulement).
 etat_en_jeu: en place (maison, entrepôt, taverne, assets de base) + décidé
 tags: [regle, batiment, habitat, confort]
 sources:
@@ -50,10 +50,11 @@ Un bâtiment **appartient à quelqu'un**, et chaque lit a son occupant. Voir [pr
 
 ## En place
 
-- **Trois types** : maison (taille minimale 6×5, murs compris), entrepôt (8×6), taverne (9×7). Taille maximale 18×12 (un garde-fou).
+- **Quatre types** : maison (taille minimale 6×5, murs compris), entrepôt (8×6), taverne (9×7), forge (8×6). Taille maximale 18×12 (un garde-fou).
 - **La maison** a, au minimum, un lit (2×1), une table (2×1) et un bac d'eau (1×1), posés automatiquement (`HabitatSpec::house`) : les lits rangés au nord (une rangée sur deux), la table et le bac de part et d'autre de la porte, au milieu du mur sud. **Le nombre de lits** se règle à la pose, dans ce que la taille permet ; plus elle est grande, plus il y a de places. Pas d'étagère d'office.
 - **L'entrepôt** : murs, porte, des tas de caisses contre le mur du fond ; son coffre est grand (`warehouse_capacity`).
 - **La taverne** : murs, porte, cheminée, deux tables dans les coins du fond.
+- **La forge** : murs, porte, cheminée, enclume au milieu ; son coffre est posé dehors. Un poste de forgeron par enclume.
 - Les assets obligatoires sont dans le prix (voir [construction.md](/regles/construction.md)). Ajouter des assets de confort après coup n'existe pas encore.
 
 ## Le village de départ, et ce qui change
