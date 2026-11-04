@@ -1,5 +1,8 @@
 # Journal de la base de connaissances
 
+## 2026-11-04
+* **Version web (essai)** : le jeu compile en WebAssembly et tourne dans Chromium (`web/build.sh`, sortie dans `web/dist`, environ 2 Mo) ; clavier et souris seulement, pas de tactile ni de sauvegarde. Page : [contrôles et lancement](/projet/controles-et-lancement.md).
+
 ## 2026-11-02
 * **Le roi prend un lit (en jeu)** : près d'un lit (portée de parole), une invite « B » avec un lit apparaît (sauf si quelqu'un est abordable) ; `B` donne ce lit au roi, libre ou occupé, l'occupant le perd, l'ancien lit du roi se libère (`Command::ClaimBed`). Page : [propriété et affectation](/regles/propriete-et-affectation.md).
 * **Planche du vagabond (graphiste)** : `assets/characters/vagabond.png` (+ SVG dérivé du paysan) : chapeau mou brun râpé, barbe grise, manches de toile, manteau de cuir rapiécé, baluchon au bout d'un bâton sur le dos (visible de dos et de profil, dépasse de l'épaule de face). `SheetSpec VAGABOND`, 11 planches, `Role::Vagabond` branché dans `character_view.rs` ; aucune couleur ajoutée à la palette. Il ne travaille pas : la ligne `travail` reprend la posture debout. Pages : [inventaire graphique](/graphisme/inventaire.md), [direction artistique](/graphisme/direction-artistique.md).

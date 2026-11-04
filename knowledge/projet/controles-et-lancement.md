@@ -37,3 +37,7 @@ cargo test                         # tests de la logique
 | Échap | fermer l'aide, sinon annuler l'étape d'un plan ; sans rien d'ouvert, quitter |
 
 La caméra suit le personnage incarné ; déplacer la vue à la souris la rend libre jusqu'à ce qu'on bouge au clavier, qu'on change de personnage ou qu'on reprenne la main avec Espace. Voir [le rendu et la caméra](/moteur/rendu-et-camera.md) et [le temps et le repos](/regles/temps-et-repos.md).
+
+## Version web — essai
+
+`web/build.sh` construit le jeu pour le navigateur (`wasm32-unknown-unknown`, macroquad) dans `web/dist` ; `web/build.sh serve` le sert en local. Clavier et souris seulement : le **tactile** demanderait une couche d'entrées à part (joystick, boutons, gestes) et une interface du roi revue pour le doigt. Pas de sauvegarde. Essai, pas une cible de livraison.

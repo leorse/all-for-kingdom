@@ -21,6 +21,17 @@ pour voir un cycle cohérent en accéléré, `--speed` est plus adapté. La touc
 Tous les autres réglages (heure de départ, aube, crépuscule, rythme de fatigue...) sont dans
 `crates/afk-core/src/config.rs`.
 
+## Version web (WebAssembly)
+
+Le jeu compile pour le navigateur (clavier et souris ; le tactile n'est pas géré) :
+
+```
+rustup target add wasm32-unknown-unknown
+./web/build.sh serve      # construit web/dist puis sert http://localhost:8000
+```
+
+`web/dist` (le `.wasm` d'environ 2 Mo, `index.html`, le chargeur JS de miniquad) peut être déposé tel quel sur n'importe quel hébergement statique. Pas de sauvegarde : la partie repart de zéro à chaque chargement.
+
 ## Contrôles
 
 | Touche | Action |
