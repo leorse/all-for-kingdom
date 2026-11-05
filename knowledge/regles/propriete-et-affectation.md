@@ -41,6 +41,10 @@ Après avoir parlé, le roi peut **réaffecter** la personne (n'importe qui, art
 
 Trois choses distinctes. Le **métier** reste à la personne même sans poste. Un **poste** est une place de travail dans un bâtiment (une enclume pour un forgeron, un poste de transporteur à l'entrepôt, le tavernier à la taverne…), tenu par une seule personne. La **forge** est un nouveau plan du roi, avec son enclume : un poste de forgeron par enclume. Un **lit** est une place. Un titulaire **remplacé** garde son métier mais n'a plus de poste : **il ne fait plus rien**.
 
+## Les postes de production — décidé (spec `hire-production-posts`)
+
+Dès le départ, le roi peut faire un **bûcheron**, un **mineur** ou un **paysan** sans bâtiment : il pose un **coffre** (un objet à part, payé en bois, une ressource par coffre ; voir [coffres](/regles/coffres.md)). **Posé près de sa matière, le coffre est le poste** : bois près d'une forêt, minerai près d'un filon de même nature, blé près d'un champ (un carré de terre de 3×3, posé nu). Un coffre, un titulaire. Voir [bûcheron](/metiers/bucheron.md), [mineur](/metiers/mineur.md), [paysan](/metiers/paysan.md).
+
 ## Le lit — décidé
 
 - Quelqu'un qui a un poste mais pas de lit prend **automatiquement le lit libre le plus proche de son poste**. Un lit qui apparaît (maison finie) va à celui qui en manque.

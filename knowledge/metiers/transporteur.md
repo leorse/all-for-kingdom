@@ -66,3 +66,7 @@ Cela donne une vraie **logistique** : les routes, les distances et le nombre de 
 - Où habitent les transporteurs, et ont-ils un lieu d'attache (un entrepôt central) ?
 - Les transporteurs sont-ils vulnérables aux **bandits** (voir [les idées](/idees.md)) ?
 - Si on incarne un transporteur, que décide-t-on à sa place ?
+
+## L'entrepôt par la porte — décidé (spec `hire-production-posts`)
+
+Un transporteur **n'entre pas** dans l'entrepôt : toucher la **porte** suffit pour déposer ou prendre, dans les grands coffres intérieurs (voir [coffres](/regles/coffres.md)).

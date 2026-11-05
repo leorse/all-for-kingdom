@@ -50,3 +50,7 @@ Le coffre du camp ne contient que 100 de chaque ressource. Le joueur a **tout in
 ## Embaucher — en place
 
 Les vagabonds qui passent peuvent être embauchés par le roi (`E` pour parler, poste ou lit sur la mini-carte) : voir [propriété et affectation](/regles/propriete-et-affectation.md). Le fer pour la forge n'est pas dans le pécule : l'équilibrage du départ viendra plus tard.
+
+## Les premiers métiers de production — décidé
+
+Dès le début le roi peut faire un bûcheron, un mineur ou un paysan : un **coffre** posé près de la matière est leur poste, et un champ est un carré de 3×3 posé nu (voir [coffres](/regles/coffres.md) et [propriété et affectation](/regles/propriete-et-affectation.md)). Le coffre du camp reste celui qui contient tout (100 de chaque). Spec `hire-production-posts`, pas encore en jeu.
