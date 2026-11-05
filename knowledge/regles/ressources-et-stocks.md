@@ -102,3 +102,7 @@ La capacité d'un stock peut grandir grâce aux améliorations de la maison (voi
 - Les **pièces d'or** : leur circulation, les taxes (voir l'idée « Économie » dans [les idées](/idees.md)).
 - Le **cuivre** : son usage.
 - Si le stock de matières premières du forgeron est plein, que fait-il ? Il s'arrête, ou son propre stock d'objets est-il le seul limité ?
+
+## Décidé : le modèle des coffres
+
+Un coffre est posé volontairement, pour **une seule ressource** (200 au plus) ; chacun porte sa production au coffre le plus proche qui l'accepte ; l'**entrepôt** a de **grands coffres à l'intérieur** (200 ressources mélangées chacun), accessibles en touchant la porte. Voir [coffres](/regles/coffres.md). Spec `hire-production-posts`, pas encore en jeu.

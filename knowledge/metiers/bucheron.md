@@ -45,4 +45,4 @@ Il abat des arbres et produit du **bois**. Ce métier est **en place** : forêts
 
 ## Le poste — décidé (spec `hire-production-posts`)
 
-Au camp, ce métier n'a **pas de bâtiment** : un **coffre de bûcheron, au bord d'une forêt** posé par le roi suffit. Il y a un poste par coffre, un seul titulaire ; le roi l'affecte comme les autres (voir [propriété et affectation](/regles/propriete-et-affectation.md)). Le bûcheron coupe les arbres de la forêt la plus proche de son coffre et y dépose son bois. Pas encore en jeu ; le village de départ garde les bûcherons fixes qu'il a aujourd'hui.
+Au camp, ce métier n'a **pas de bâtiment** : le roi pose un **coffre de bois** près d'une forêt, et ce coffre est le poste (un coffre, un titulaire ; voir [propriété et affectation](/regles/propriete-et-affectation.md)). Le bûcheron coupe les arbres de la forêt la plus proche de son coffre, **porte lui-même** son bois et le dépose dans le coffre de bois le plus proche (voir [coffres](/regles/coffres.md)). Pas encore en jeu ; le village de départ garde ses bûcherons fixes.

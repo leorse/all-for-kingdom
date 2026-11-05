@@ -3,7 +3,7 @@
 ## ADDED Requirements
 
 ### Requirement: Seul le paysan choisit la culture
-Quand le royaume possède plusieurs graines différentes, le choix de la culture à semer SHALL revenir au seul paysan. Le roi SHALL pouvoir définir une surface, jamais la culture.
+Quand le royaume possède plusieurs graines différentes, le choix de la culture à semer SHALL revenir au seul paysan. Le roi SHALL pouvoir poser un champ, jamais choisir la culture.
 
 #### Scenario: Le roi essaie
 - **WHEN** le roi tente de choisir une culture

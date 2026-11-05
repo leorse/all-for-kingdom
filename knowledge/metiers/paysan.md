@@ -67,7 +67,7 @@ Le blé récolté est pris **en main** par le paysan (20 au plus, soit cinq réc
 
 ## Le poste et le champ — décidé (spec `hire-production-posts`)
 
-- Au camp, le paysan n'a **pas de bâtiment** : un **coffre de paysan** posé par le roi est son poste (un titulaire par coffre).
-- **Le champ est à lui.** La **surface cultivable** est définie par le **roi** ou par le **paysan** (quand on l'incarne), avec le même geste : un rectangle de terre à cultiver, gratuit. Chaque parcelle dépend du coffre de paysan le plus proche ; son titulaire la laboure, la sème, la récolte, et y dépose son blé.
+- **Le champ** est un **carré de terre de 3×3, posé nu** : sans coffre, gratuit. Le roi le pose, ou le paysan quand on l'incarne. Le paysan **l'entretient** : il laboure, sème et récolte ses neuf parcelles.
+- **Le coffre** est un objet à part qu'on pose volontairement (voir [coffres](/regles/coffres.md)). **Un coffre de blé posé près d'un champ est le poste de paysan** (un coffre, un titulaire) ; le champ dépend du coffre de blé le plus proche. Le paysan rapporte son blé au coffre de blé le plus proche.
 - **Seul le paysan choisit la culture**, quand le royaume a plusieurs graines différentes ; le roi ne choisit jamais. Aujourd'hui il n'y a que le blé : aucun choix n'est proposé. L'IA sème la culture dont il reste le plus de graines.
 - Pas encore en jeu ; le village de départ garde ses paysans et ses champs fixes.

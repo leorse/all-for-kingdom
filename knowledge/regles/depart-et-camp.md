@@ -53,4 +53,4 @@ Les vagabonds qui passent peuvent être embauchés par le roi (`E` pour parler, 
 
 ## Les premiers métiers de production — décidé
 
-Dès le début le roi peut faire un bûcheron ou un mineur (un coffre suffit) et un paysan (un coffre et une surface cultivable) : voir [propriété et affectation](/regles/propriete-et-affectation.md). Spec `hire-production-posts`, pas encore en jeu.
+Dès le début le roi peut faire un bûcheron, un mineur ou un paysan : un **coffre** posé près de la matière est leur poste, et un champ est un carré de 3×3 posé nu (voir [coffres](/regles/coffres.md) et [propriété et affectation](/regles/propriete-et-affectation.md)). Le coffre du camp reste celui qui contient tout (100 de chaque). Spec `hire-production-posts`, pas encore en jeu.

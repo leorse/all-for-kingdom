@@ -43,7 +43,7 @@ Trois choses distinctes. Le **métier** reste à la personne même sans poste. U
 
 ## Les postes de production — décidé (spec `hire-production-posts`)
 
-Dès le départ, le roi peut faire un **bûcheron**, un **mineur** ou un **paysan** sans bâtiment : il pose un **coffre** (un poste par coffre, coût en bois payé tout de suite), près de la forêt, du filon ou du champ. Voir [bûcheron](/metiers/bucheron.md), [mineur](/metiers/mineur.md), [paysan](/metiers/paysan.md).
+Dès le départ, le roi peut faire un **bûcheron**, un **mineur** ou un **paysan** sans bâtiment : il pose un **coffre** (un objet à part, payé en bois, une ressource par coffre ; voir [coffres](/regles/coffres.md)). **Posé près de sa matière, le coffre est le poste** : bois près d'une forêt, minerai près d'un filon de même nature, blé près d'un champ (un carré de terre de 3×3, posé nu). Un coffre, un titulaire. Voir [bûcheron](/metiers/bucheron.md), [mineur](/metiers/mineur.md), [paysan](/metiers/paysan.md).
 
 ## Le lit — décidé
 

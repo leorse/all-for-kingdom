@@ -2,35 +2,35 @@
 
 ## ADDED Requirements
 
-### Requirement: Définir une surface cultivable
-Le roi SHALL pouvoir définir une surface cultivable : un rectangle de terre à cultiver, gratuit et immédiat. Un paysan que le joueur incarne SHALL pouvoir faire de même, avec le même geste. Seules les tuiles d'herbe libres du rectangle deviennent des parcelles, en friche.
+### Requirement: Un champ est un carré de terre de 3 sur 3
+Un champ SHALL être un **carré de terre de 3×3 tuiles**, posé **nu** : sans coffre, sans bâtiment, gratuit et immédiat. Le roi SHALL pouvoir le poser ; un paysan que le joueur incarne SHALL pouvoir le poser de la même façon. La pose est refusée si l'une des neuf tuiles n'est pas de l'herbe libre (eau, arbre, filon, coffre, fondation, quelqu'un dessus). Chaque tuile est une parcelle, en friche.
 
-#### Scenario: Le roi définit
-- **WHEN** le roi trace un rectangle de 4×3 sur de l'herbe libre
-- **THEN** douze parcelles en friche apparaissent
+#### Scenario: Le roi pose un champ
+- **WHEN** le roi pose un champ sur 3×3 tuiles d'herbe libres
+- **THEN** neuf parcelles en friche apparaissent, sans coffre
 
-#### Scenario: Un paysan définit
-- **WHEN** le joueur incarne un paysan et trace un rectangle
-- **THEN** les parcelles apparaissent de la même façon
+#### Scenario: Un paysan pose un champ
+- **WHEN** le joueur incarne un paysan et pose un champ
+- **THEN** il apparaît de la même façon
 
 #### Scenario: Terrain occupé
-- **WHEN** le rectangle recouvre de l'eau, un arbre, un filon, un coffre ou une fondation
-- **THEN** ces tuiles ne deviennent pas des parcelles
+- **WHEN** une des neuf tuiles est de l'eau, un arbre, un filon ou un coffre
+- **THEN** le champ ne se pose pas
 
-### Requirement: Une parcelle dépend d'un coffre de paysan
-Chaque parcelle SHALL dépendre du coffre-poste de paysan le plus proche, à moins de la portée de rattachement (en cas d'égalité, le coffre posé en premier). Une parcelle sans coffre à portée SHALL rester visible mais n'être travaillée par personne, jusqu'à ce qu'un coffre soit posé à portée.
+### Requirement: Le paysan entretient le champ
+Un champ SHALL être entretenu par un paysan : il laboure, sème et récolte ses parcelles. Un champ dépend du **coffre de blé le plus proche** (à portée de rattachement) ; son titulaire d'un poste de paysan l'entretient. Un champ sans coffre à portée SHALL rester visible, mais n'être entretenu par personne, jusqu'à ce qu'un coffre soit posé à portée.
 
 #### Scenario: Un coffre arrive après le champ
-- **WHEN** le roi pose un coffre de paysan à portée d'un champ déjà tracé
-- **THEN** ces parcelles dépendent de ce coffre
+- **WHEN** le roi pose un coffre de blé à portée d'un champ déjà posé
+- **THEN** ce champ dépend de ce coffre et son paysan l'entretient
 
 #### Scenario: Deux coffres
-- **WHEN** une parcelle est à portée de deux coffres de paysan
-- **THEN** elle dépend du plus proche
+- **WHEN** un champ est à portée de deux coffres de blé
+- **THEN** il dépend du plus proche (en cas d'égalité, du premier posé)
 
-### Requirement: Le paysan ne travaille que ses parcelles
-Le titulaire d'un coffre-poste de paysan SHALL ne labourer, semer et récolter que les parcelles qui dépendent de son coffre, et y déposer son blé. Le roi ne travaille pas la terre.
+### Requirement: Le paysan rapporte son blé au coffre
+Le paysan SHALL récolter à la main puis porter son blé au coffre de blé le plus proche qui n'est pas plein (voir `chests`). Les champs du paysan sont ceux de son coffre ; deux paysans de deux coffres voisins ne se piétinent pas.
 
 #### Scenario: Deux paysans
-- **WHEN** deux paysans tiennent deux coffres voisins
-- **THEN** chacun travaille son champ sans piétiner l'autre
+- **WHEN** deux paysans tiennent deux coffres voisins, chacun près de son champ
+- **THEN** chacun entretient son champ et rapporte son blé à son coffre
